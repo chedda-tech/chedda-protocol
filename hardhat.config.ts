@@ -4,7 +4,7 @@ import "hardhat-preprocessor";
 import fs from "fs";
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.18",
+  solidity: "0.8.20",
   preprocess: {
     eachLine: (hre) => ({
       transform: (line: string) => {
