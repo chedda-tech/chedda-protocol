@@ -1,8 +1,11 @@
 @openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
 @openzeppelin/=lib/openzeppelin-contracts/
+@prb/test/=lib/prb-math/lib/prb-test/src/
 ds-test/=lib/forge-std/lib/ds-test/src/
 erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/
 forge-std/=lib/forge-std/src/
 openzeppelin-contracts/=lib/openzeppelin-contracts/
 openzeppelin/=lib/openzeppelin-contracts/contracts/
+prb-math/=lib/prb-math/src/
+prb-test/=lib/prb-math/lib/prb-test/src/
 solmate/=lib/solmate/src/

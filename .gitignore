@@ -25,4 +25,4 @@ typechain-types
 # Hardhat files
 cache
 artifacts
-
+lcov.info
