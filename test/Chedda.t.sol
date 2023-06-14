@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
-import "../contracts/tokens/Chedda.sol";
+import { Test } from "forge-std/Test.sol";
+import { UD60x18, ud } from "prb-math/UD60x18.sol";
+import { Chedda } from "../contracts/tokens/Chedda.sol";
 
 contract CheddaTest is Test {
 
@@ -12,13 +13,13 @@ contract CheddaTest is Test {
         chedda = new Chedda(address(msg.sender));
     }
 
-    function test_initialSupply() external {
+    function testInitialSupply() external {
         uint256 initialSupply = chedda.INITIAL_SUPPLY();
         uint256 totalSupply = chedda.totalSupply();
         assertEq(initialSupply, totalSupply);
     }
 
-    function test_emissionPerSecondDecreasesOverTime() external {
+    function testEmissionPerSecondDecreasesOverTime() external {
         uint256 emissions0 = chedda.emissionPerSecond();
         assertEq(emissions0, 0);
 
@@ -33,7 +34,7 @@ contract CheddaTest is Test {
         emit log_named_uint("emissions", emissions0);
     }
 
-    function test_rebaseMintsMoreTokens() public {
+    function testRebaseMintsMoreTokens() public {
         uint256 emissionPerSecond = chedda.emissionPerSecond();
         uint256 initialTotalSupply = chedda.totalSupply();
         chedda.rebase();
@@ -51,7 +52,7 @@ contract CheddaTest is Test {
         assertEq(initialTotalSupply + (emissionPerSecond * 60), totalSupplyAfter60Seconds);
     }
 
-    function test_setStakingVault() external {
+    function testSetStakingVault() external {
         address address0 = address(0);
         vm.expectRevert(Chedda.ZeroAddress.selector);
         chedda.setStakingVault(address0);
@@ -66,7 +67,7 @@ contract CheddaTest is Test {
         chedda.setStakingVault(address0x1);
     }
 
-    function test_setGaugeRecipient() external {
+    function testSetGaugeRecipient() external {
         address address0 = address(0);
         vm.expectRevert(Chedda.ZeroAddress.selector);
         chedda.setGaugeRecipient(address0);
@@ -82,7 +83,7 @@ contract CheddaTest is Test {
         chedda.setGaugeRecipient(address0x2);
     }
 
-    function test_rebaseTokenDistribution() external {
+    function testRebaseTokenDistribution() external {
         address stakingVault = address(0x1);
         address gaugeRecipient = address(0x2);
         chedda.setStakingVault(stakingVault);

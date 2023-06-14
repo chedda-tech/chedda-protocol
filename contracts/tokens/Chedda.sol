@@ -42,11 +42,15 @@ contract Chedda  is ERC20, Ownable {
     /// @notice The timestamp of the last rebase.
     uint256 public lastRebase;
 
+    /// @notice The staking vault address that receive staking rewards.
+    address public stakingVault;
+
+    /// @notice The gauge controller address.
+    address public gaugeRecipient;
+
     uint256[5] private _inflationRates = [48e16, 24e16, 12e16, 6e16, 6e16];
     uint256[5] private _targetBaseSupply = [400_000_000e18, 592_000_000e18, 734_080_000e18, 822_169_600e18, 871_499_766e18];
 
-    address public stakingVault;
-    address public gaugeRecipient;
 
     /// @notice Construct a new Chedda token.
     /// @param custodian The token custodian to mint initial supply to.
