@@ -23,8 +23,14 @@ contract DebtToken is ERC4626 {
 
     address public vault;
 
+    /// @dev timestamp of when interest last accrued
     uint256 private _lastAccrual;
+
+    /// @dev interest rate per second.
+    /// TODO: This should be dependent on intrest rate model
     uint256 private _interestPerSecond;
+
+    /// @dev total borrowed + accrued interest
     uint256 private _variableTotalDebt;
 
     modifier onlyVault() {
@@ -124,6 +130,15 @@ contract DebtToken is ERC4626 {
     /// todo: change to totalDebt
     function totalAssets() public view override returns (uint256) {
         return _variableTotalDebt;
+    }
+
+    /// TODO: Change asset references besides underlying `asset` to debt.
+    /// e.g totalAssets(), assetsPerShare(), 
+    /// @notice Returns the total principal amount of debt tracked.
+    /// @dev This does not include any future interest payments.
+    /// @return borrowed Total amount of debt (principal) tracked.
+    function totalBorrowed() external view returns (uint256 borrowed) {
+        borrowed = totalAssets();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
