@@ -13,7 +13,7 @@ import { IInterestRateStrategy, InterestRates } from "./IInterestRateStrategy.so
 import { SimpleInterestRateStrategy } from "./SimpleInterestRateStrategy.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 
-contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
+contract LendingPool is ERC4626, ReentrancyGuard {
 
     /// @dev The type of the collateral.
     /// Options are ERC20, ERC721 and ERC1155.

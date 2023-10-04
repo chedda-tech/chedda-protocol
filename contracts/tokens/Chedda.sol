@@ -55,7 +55,8 @@ contract Chedda  is ERC20, Ownable {
     /// @notice Construct a new Chedda token.
     /// @param custodian The token custodian to mint initial supply to.
     constructor(address custodian)
-    ERC20("Chedda", "CHEDDA") {
+    ERC20("Chedda", "CHEDDA")
+    Ownable(msg.sender) {
         tge = block.timestamp;
         lastRebase = block.timestamp;
         _mint(custodian, INITIAL_SUPPLY);

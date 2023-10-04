@@ -10,7 +10,7 @@ contract SimpleInterestRateStrategy is Ownable, IInterestRateStrategy {
     uint256 public exponentialInterestRate;
     uint256 public targetUtilization;
 
-    constructor(uint256 _linearRate, uint256 _exponentialRate, uint256 _targetUtilization) {
+    constructor(uint256 _linearRate, uint256 _exponentialRate, uint256 _targetUtilization) Ownable(msg.sender) {
         linearInterestRate = _linearRate;
         exponentialInterestRate = _exponentialRate;
         targetUtilization = _targetUtilization;
