@@ -82,15 +82,17 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     uint256 public supplyRate;
     uint256 public borrowRate;
 
+    string public immutable name;
+
     /// Debt and interest
-    DebtToken public debtToken;
-    IPriceFeed public priceFeed;
+    DebtToken public immutable debtToken;
+    IPriceFeed public immutable priceFeed;
     InterestRates public interestRates;
     IInterestRateStrategy public interestRateStrategy;
 
     /// Collateral
 
-        // list of tokens that can be used as collateral
+    // list of tokens that can be used as collateral
     address[] public collateralTokenList;
 
     // token address => is whitelisted
@@ -112,7 +114,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     ///////////////////////////////////////////////////////////////////////////
     ///             initialization
     ///////////////////////////////////////////////////////////////////////////
-    constructor(ERC20 _asset, address _priceFeed, TokenToType[] memory _collateralTokens) 
+    constructor(string memory _name, ERC20 _asset, address _priceFeed, TokenToType[] memory _collateralTokens) 
     ERC4626(
         _asset,
         string(abi.encodePacked("CHEDDA Token ", _asset.name())), 
@@ -123,6 +125,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
             2.0e18, // exponential rate
             0.94e18 // target utilization
         );
+        name = _name;
         priceFeed = IPriceFeed(_priceFeed);
         _initialize(_collateralTokens);
     }
@@ -168,7 +171,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     /// @notice Repays a part or all of a loan.
     /// @param amount amount to repay. Must be > 0 and <= amount borrowed by sender
     function putAmount(uint256 amount) public {
-        address account = address(msg.sender);
+        address account = msg.sender;
         if (amount == 0) {
             revert CheddaPool_ZeroAmount();
         }
@@ -187,7 +190,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     /// @param shares The share of debt token to repay.
     /// @return amountRepaid the amount repaid.
     function putShares(uint256 shares) public returns (uint256) {
-        address account = address(msg.sender);
+        address account = msg.sender;
         
         if (shares == 0) {
             revert CheddaPool_ZeroAmount();
