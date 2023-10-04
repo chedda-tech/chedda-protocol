@@ -17,7 +17,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
 
     /// @dev The type of the collateral.
     /// Options are ERC20, ERC721 and ERC1155.
-    enum CollateralType {
+    enum TokenType {
       ERC20,
       ERC721,
       ERC155
@@ -25,7 +25,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
 
     struct TokenToType {
         address token;
-        CollateralType collateralType;
+        TokenType tokenType;
     }
 
     /// Custom errors
@@ -47,7 +47,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     /// @dev Information about collateral deposited to the pool.
     struct CollateralDeposited {
       address token;
-      CollateralType collateralType;
+      TokenType tokenType;
       uint256 amount;
       uint256[] tokenIds;
     }
@@ -60,8 +60,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     }
 
     /// Events
-    event CollateralAdded(address indexed token, address indexed account, CollateralType ofType, uint256 amount);
-    event CollateralRemoved(address indexed token, address indexed account, CollateralType ofType, uint256 amount);
+    event CollateralAdded(address indexed token, address indexed account, TokenType ofType, uint256 amount);
+    event CollateralRemoved(address indexed token, address indexed account, TokenType ofType, uint256 amount);
     event AssetBorrowed(address indexed account, uint256 amount, uint256 debtMinted);
     event AssetRepaid(address indexed account, uint256 amount, uint256 debtBurned);
 
@@ -82,7 +82,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     uint256 public supplyRate;
     uint256 public borrowRate;
 
-    string public immutable name;
+    string public characterization;
 
     /// Debt and interest
     DebtToken public immutable debtToken;
@@ -98,8 +98,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     // token address => is whitelisted
     mapping(address => bool) public collateralAllowed;
 
-    // token address => CollateralType
-    mapping(address => CollateralType) public collateralTokenTypes;
+    // token address => TokenType
+    mapping(address => TokenType) public collateralTokenTypes;
 
     // Determines Loan to Value ratio for token
     mapping(address => uint256) public collateralFactors;
@@ -125,8 +125,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
             2.0e18, // exponential rate
             0.94e18 // target utilization
         );
-        name = _name;
+        characterization = _name;
         priceFeed = IPriceFeed(_priceFeed);
+        debtToken = new DebtToken(_asset, address(this));
         _initialize(_collateralTokens);
     }
 
@@ -139,7 +140,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < list.length; i++) {
             collateralTokenList.push(list[i].token);
             collateralAllowed[list[i].token] = true;
-            collateralTokenTypes[list[i].token] = list[i].collateralType;
+            collateralTokenTypes[list[i].token] = list[i].tokenType;
         }
     }
 
@@ -212,7 +213,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
     ///////////////////////////////////////////////////////////////////////////
 
     /// @notice Add ERC-20 token collateral to pool.
-    /// Emits CollateralAdded(address token, address account, uint collateralType, uint amount).
+    /// Emits CollateralAdded(address token, address account, uint tokenType, uint amount).
     /// @param token The token to deposit as collateral.
     /// @param amount The amount of token to deposit.
     function addCollateral(address token, uint256 amount) external nonReentrant() {
@@ -222,7 +223,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
         }
 
         // check the collateral is ERC20
-        if (collateralTokenTypes[token] != CollateralType.ERC20) {
+        if (collateralTokenTypes[token] != TokenType.ERC20) {
             revert CheddaPool_WrongCollateralType(token);
         }
         // check amount
@@ -241,14 +242,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
         } else {
             CollateralDeposited memory deposit = CollateralDeposited({
                 token: token,
-                collateralType: CollateralType.ERC20,
+                tokenType: TokenType.ERC20,
                 amount: amount,
                 tokenIds: new uint256[](0)
             });
             accountCollateralDeposited[account][token] = deposit;
         }
 
-        emit CollateralAdded(token, account, CollateralType.ERC20, amount);
+        emit CollateralAdded(token, account, TokenType.ERC20, amount);
     }
 
     /// @notice Removes ERC20 collateral from pool
@@ -276,7 +277,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard {
 
         ERC20(token).safeTransfer(msg.sender, amount);
 
-        emit CollateralRemoved(token, account, CollateralType.ERC20, amount);
+        emit CollateralRemoved(token, account, TokenType.ERC20, amount);
     }
 
     /// @notice Get the token IDs deposited by this account
