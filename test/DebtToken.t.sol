@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { DebtToken } from "../contracts/tokens/DebtToken.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
 
 contract DebtTokenTest is Test {
 
@@ -18,7 +18,7 @@ contract DebtTokenTest is Test {
     function setUp() public {
         bob = makeAddr("bob");
         alice = makeAddr("alice");
-        _asset = new MockERC20("Token", "TOK", 1_000_000 * 1e18);
+        _asset = new MockERC20("Token", "TOK", 18, 1_000_000 * 1e18);
         _debtToken = new DebtToken(_asset, vault);
     }
 

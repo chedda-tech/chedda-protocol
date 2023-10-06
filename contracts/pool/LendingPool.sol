@@ -13,7 +13,14 @@ import { IInterestRateStrategy, InterestRates } from "./IInterestRateStrategy.so
 import { SimpleInterestRateStrategy } from "./SimpleInterestRateStrategy.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 
+/// @title LendingPool
+/// @notice Implements supply and borrow functionality.
+/// @dev Implements ERC4626 interface.
 contract LendingPool is ERC4626, ReentrancyGuard {
+
+    /// TODO: 
+    /// 1. collateralize while supplying.
+    /// 2. collateralize/uncollateralize after supply
 
     /// @dev The type of the collateral.
     /// Options are ERC20, ERC721 and ERC1155.
@@ -23,8 +30,9 @@ contract LendingPool is ERC4626, ReentrancyGuard {
       ERC155
     }
 
-    struct TokenToType {
+    struct CollateralInfo {
         address token;
+        uint256 collateralFactor;
         TokenType tokenType;
     }
 
@@ -46,10 +54,10 @@ contract LendingPool is ERC4626, ReentrancyGuard {
 
     /// @dev Information about collateral deposited to the pool.
     struct CollateralDeposited {
-      address token;
-      TokenType tokenType;
-      uint256 amount;
-      uint256[] tokenIds;
+        address token;
+        TokenType tokenType;
+        uint256 amount;
+        uint256[] tokenIds;
     }
 
     /// @dev The value of a collateral token deposited by an account.
@@ -72,10 +80,13 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     error CheddaPool_ZeroAmount();
     error CheddaPool_InsufficientCollateral(address account, address token, uint256 amountRequested, uint256 amountDeposited);
     error CheddaPool_AccountInsolvent(address account, uint256 health);
+    error CheddaPool_InsufficientAssetBalance(uint256 available,uint256 requested);
     error CheddaPool_Overpayment();
 
     using SafeCast for int256;
     using SafeTransferLib for ERC20;
+
+    uint256 public constant MAX_UTILIZATION = 0.98e18;
 
     /// state vars
     uint256 public supplied;
@@ -95,14 +106,14 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     // list of tokens that can be used as collateral
     address[] public collateralTokenList;
 
-    // token address => is whitelisted
+    // token address => is allowed
     mapping(address => bool) public collateralAllowed;
 
     // token address => TokenType
     mapping(address => TokenType) public collateralTokenTypes;
 
     // Determines Loan to Value ratio for token
-    mapping(address => uint256) public collateralFactors;
+    mapping(address => uint256) public collateralFactor;
     
     // account => token => amount
     mapping(address => mapping(address => CollateralDeposited)) public accountCollateralDeposited;
@@ -114,7 +125,7 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     ///////////////////////////////////////////////////////////////////////////
     ///             initialization
     ///////////////////////////////////////////////////////////////////////////
-    constructor(string memory _name, ERC20 _asset, address _priceFeed, TokenToType[] memory _collateralTokens) 
+    constructor(string memory _name, ERC20 _asset, address _priceFeed, CollateralInfo[] memory _collateralTokens) 
     ERC4626(
         _asset,
         string(abi.encodePacked("CHEDDA Token ", _asset.name())), 
@@ -131,16 +142,18 @@ contract LendingPool is ERC4626, ReentrancyGuard {
         _initialize(_collateralTokens);
     }
 
-    function _initialize(TokenToType[] memory _collateralTokens) private {
+    function _initialize(CollateralInfo[] memory _collateralTokens) private {
         _setCollateralTokenList(_collateralTokens);
     }
 
     /// @notice Sets the list of tokens that can be used as collateral in this pool.
-    function _setCollateralTokenList(TokenToType[] memory list) private {
+    function _setCollateralTokenList(CollateralInfo[] memory list) private {
         for (uint256 i = 0; i < list.length; i++) {
-            collateralTokenList.push(list[i].token);
-            collateralAllowed[list[i].token] = true;
-            collateralTokenTypes[list[i].token] = list[i].tokenType;
+            address collateral = list[i].token;
+            collateralTokenList.push(collateral);
+            collateralAllowed[collateral] = true;
+            collateralTokenTypes[collateral] = list[i].tokenType;
+            collateralFactor[collateral] = list[i].collateralFactor;
         }
     }
 
@@ -335,10 +348,20 @@ contract LendingPool is ERC4626, ReentrancyGuard {
         return assetAmount * assetPrice.toUint256();
     }
 
+    /// @notice Returns the health ratio of the account
+    /// health > 1 means the account is solvent.
+    /// health <1.0 but != 0 means account is insolvent
+    /// health == 0 means account has no debt and is also solvent.
+    /// @dev Explain to a developer any extra details
+    /// @param account The account to check.
+    /// @return health The health ration of the account, to 1e18. i.e 1e18 = 1.0 health.
     function accountHealth(address account) public view returns (uint256) {
         uint256 debt = accountAssetsBorrowed(account);
+        if (debt == 0) {
+            return 0;
+        }
         uint256 collateral = totalAccountCollateralValue(account); 
-        return collateral / debt;
+        return ud(collateral).div(ud(debt)).unwrap();
     }
 
     /// @dev returns true if account has deposited a given token as collateral
@@ -357,8 +380,17 @@ contract LendingPool is ERC4626, ReentrancyGuard {
 
     function _checkAccountHealth(address account) internal view {
         uint256 health = accountHealth(account);
-        if (health < 1.0e18) {
+        if (health < 1.0e18 && health != 0) { // 0 health means no debt
             revert CheddaPool_AccountInsolvent(account, health);
+        }
+    }
+
+    /// To validate borrow
+    /// 1. Check that funds are available.
+    function _validateBorrow(address, uint256 amount) internal view {
+        uint256 available = asset.balanceOf(address(this));
+        if (available <= amount) {
+            revert CheddaPool_InsufficientAssetBalance(available, amount);
         }
     }
 
@@ -367,7 +399,7 @@ contract LendingPool is ERC4626, ReentrancyGuard {
         // if (price < 0) {
         //     revert CheddaPool_InvalidPrice(price, token);
         // }
-        return (price.toUint256() * amount) * collateralFactors[token];
+        return (ud(price.toUint256()).mul(ud(amount))).mul(ud(collateralFactor[token])).unwrap();
     }
 
     /// ERC4626 overrides

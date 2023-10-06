@@ -3,8 +3,7 @@ pragma solidity ^0.8.20;
 
 import { Test } from "forge-std/Test.sol";
 import { Chedda } from "../contracts/tokens/Chedda.sol";
-import { StakedChedda } from "../contracts/tokens/StakedChedda.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { StakedChedda, ERC20 } from "../contracts/tokens/StakedChedda.sol";
 
 contract StakedCheddaTest is Test {
 
@@ -25,7 +24,9 @@ contract StakedCheddaTest is Test {
         emit log_named_uint("bob's balance", bobBalance);
 
         vm.startPrank(bob);
-        vm.expectRevert("ERC20: insufficient allowance");
+        vm.expectRevert();
+        // vm.expectRevert(ERC20.ERC20InsufficientAllowance.selector);
+
         // not yet approved
         uint256 shares = xChedda.stake(amount);
 

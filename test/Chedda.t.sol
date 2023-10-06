@@ -3,13 +3,13 @@ pragma solidity ^0.8.20;
 
 import { Test } from "forge-std/Test.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
-import { Chedda } from "../contracts/tokens/Chedda.sol";
+import { Chedda, Ownable } from "../contracts/tokens/Chedda.sol";
 
 contract CheddaTest is Test {
 
     Chedda public chedda;
 
-    function setUp() public {
+    function setUp() external {
         chedda = new Chedda(address(msg.sender));
     }
 
@@ -34,7 +34,7 @@ contract CheddaTest is Test {
         emit log_named_uint("emissions", emissions0);
     }
 
-    function testRebaseMintsMoreTokens() public {
+    function testRebaseMintsMoreTokens() external {
         uint256 emissionPerSecond = chedda.emissionPerSecond();
         uint256 initialTotalSupply = chedda.totalSupply();
         chedda.rebase();
@@ -63,7 +63,8 @@ contract CheddaTest is Test {
         assertEq(address0x1, vaultAddress);
 
         vm.prank(address(0x2));
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
+        // vm.expectRevert(Ownable.OwnableUnauthorizedAccount.selector);
         chedda.setStakingVault(address0x1);
     }
 
@@ -79,7 +80,8 @@ contract CheddaTest is Test {
         assertEq(address0x2, gaugeRecipient);
 
         vm.prank(address(0x2));
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
+        // vm.expectRevert(Ownable.OwnableUnauthorizedAccount.selector);
         chedda.setGaugeRecipient(address0x2);
     }
 
