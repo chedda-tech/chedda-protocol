@@ -22,7 +22,7 @@ contract SimpleInterestRateStrategy is Ownable, IInterestRateStrategy {
         } else {
             // Exponential increase after reaching the target utilization
             uint256 excessUtilization = currentUtilization - targetUtilization;
-            uint256 exponentialIncrease = (exponentialInterestRate * excessUtilization * excessUtilization) / 100;
+            uint256 exponentialIncrease = (exponentialInterestRate * excessUtilization) / 100;
             return linearInterestRate + exponentialIncrease;
         }
     }
