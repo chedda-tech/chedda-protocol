@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.19;
 
-contract LinearInterestRateStrategy {
+import { IInterestRateStrategy, InterestRates } from "./IInterestRateStrategy.sol";
+
+contract LinearInterestRateStrategy is IInterestRateStrategy {
     address public owner;
     uint256 public baseInterestRate;  // Initial interest rate
     uint256 public steeperSlopeInterestRate; // Interest rate after reaching target utilization
@@ -39,5 +41,16 @@ contract LinearInterestRateStrategy {
         baseInterestRate = _baseInterestRate;
         targetUtilization = _targetUtilization;
         steeperSlopeInterestRate = _steeperSlopeInterestRate;
+    }
+
+    function calculateInterestRates(
+        uint256, // liquidityAdded,
+        uint256//  liquidityTaken
+    ) external pure returns (InterestRates memory) {
+        InterestRates memory rates = InterestRates({
+            supplyRate: 0.55e18,
+            borrowRate: 0.75e18
+        });
+        return rates;
     }
 }

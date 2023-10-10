@@ -11,6 +11,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { DebtToken } from "../tokens/DebtToken.sol";
 import { IInterestRateStrategy, InterestRates } from "./IInterestRateStrategy.sol";
 import { SimpleInterestRateStrategy } from "./SimpleInterestRateStrategy.sol";
+import { LinearInterestRateStrategy } from "./LinearInterestRateStrategy.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 
 /// @title LendingPool
@@ -131,6 +132,11 @@ contract LendingPool is ERC4626, ReentrancyGuard {
         string(abi.encodePacked("CHEDDA Token ", _asset.name())), 
         string(abi.encodePacked("ch", _asset.symbol()))) {
         // TODO: set interest rates strategy externally
+        interestRateStrategy = new LinearInterestRateStrategy(
+            0.05e18,
+            0.1e18,
+            0.9e18
+        );
         interestRateStrategy = new SimpleInterestRateStrategy(
             0.05e18, // linear rate
             2.0e18, // exponential rate
