@@ -161,15 +161,61 @@ contract LendingPool is ERC4626, ReentrancyGuard {
                         borrow/repay logic
     //////////////////////////////////////////////////////////////*/
 
-    /// borrows a loan
+    /// TODO: Manage collateral with supply, withdraw, redeem
+
+    /// @notice Supplies assets to pool
+    /// @dev Explain to a developer any extra details
+    /// @param amount The amount to supply
+    /// @param receiver The account to mint share tokens to
+    /// @param useAsCollateral Whethe this deposit should be marked as collateral
+    /// @return shares The amount of shares minted.
+    function supply(uint256 amount, address receiver, bool useAsCollateral) external nonReentrant() returns (uint256) {
+        uint256 shares = deposit(amount, receiver);
+        if (useAsCollateral) {
+            _addCollateral(address(asset), amount);
+        }
+        return shares;
+    }
+
+    /// @notice Withdraws a specified amount of assets from pool
+    /// @dev If user has added this asset as collateral a collateral amount will be removed.
+    /// if owner != msg.sender there must be an existing approval >= assetAmount
+    /// @param assetAmount The amount to withdraw
+    /// @param receiver The account to receive withdrawn assets
+    /// @param owner The account to withdraw assets from.
+    /// @return shares The amount of shares burned by withdrawal.
+    function withdraw(uint256 assetAmount, address receiver, address owner) public override nonReentrant() returns (uint256) {
+        uint256 shares = super.withdraw(assetAmount, receiver, owner);
+        if (_accountHasCollateral(msg.sender, address(asset))) {
+            // TODO: Handle case where collateral < assetAmount
+            _removeCollateral(address(asset), assetAmount);
+        }
+        return shares;
+    }
+
+    /// @notice Withdraws and burns a specified amount of shares.
+    /// @dev If user has added this asset as collateral a collateral amount will be removed.
+    /// if owner != msg.sender there must be an existing approval >= assetAmount
+    /// @param shares The share amount to redeem.
+    /// @param receiver The account to receive withdrawn assets
+    /// @param owner The account to withdraw assets from.
+    /// @return assetAmount The amount of assets repaid.
+    function redeem(uint256 shares, address receiver, address owner) public override nonReentrant() returns (uint256) {
+        uint256 assetAmount = super.redeem(shares, receiver, owner);
+        if (_accountHasCollateral(msg.sender, address(asset))) {
+            _removeCollateral(address(asset), assetAmount);
+        }
+        return assetAmount;
+    }
+
     /// @notice Takes out a loan
     /// @dev The max amount a user can borrow must be less than the value of their collateral weighted
     /// against the loan to value ratio of that colalteral.
     /// @param amount The amount to borrow
     /// @return debt The amount of debt token minted.
-    function take(uint256 amount) public returns (uint256) {
+    function take(uint256 amount) external returns (uint256) {
         address account = msg.sender;
-        // _validateBorrow(account, amount);
+        _validateBorrow(account, amount);
     
         uint256 debt = debtToken.createDebt(amount, account);
         _calculateIntrestRates(0, amount);
@@ -184,7 +230,8 @@ contract LendingPool is ERC4626, ReentrancyGuard {
      // repays a loan
     /// @notice Repays a part or all of a loan.
     /// @param amount amount to repay. Must be > 0 and <= amount borrowed by sender
-    function putAmount(uint256 amount) public {
+    /// @return The amount of debt shares burned by this repayment.
+    function putAmount(uint256 amount) external returns (uint256) {
         address account = msg.sender;
         if (amount == 0) {
             revert CheddaPool_ZeroAmount();
@@ -197,13 +244,15 @@ contract LendingPool is ERC4626, ReentrancyGuard {
         uint256 debtBurned = debtToken.repayAmount(amount, account);
 
         emit AssetRepaid(account, amount, debtBurned);
+
+        return debtBurned;
     }
 
     // repays a loan
-    /// @notice Repays a part or all of a loan.
+    /// @notice Repays a part or all of a loan by specifying the amount of debt token to repay.
     /// @param shares The share of debt token to repay.
     /// @return amountRepaid the amount repaid.
-    function putShares(uint256 shares) public returns (uint256) {
+    function putShares(uint256 shares) external returns (uint256) {
         address account = msg.sender;
         
         if (shares == 0) {
@@ -230,6 +279,10 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     /// @param token The token to deposit as collateral.
     /// @param amount The amount of token to deposit.
     function addCollateral(address token, uint256 amount) external nonReentrant() {
+        _addCollateral(token, amount);
+    }
+
+    function _addCollateral(address token, uint256 amount) private {
         // check collateral is allowed
         if (!collateralAllowed[token]) {
             revert CheddaPool_CollateralNotAllowed(token);
@@ -268,7 +321,11 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     /// @notice Removes ERC20 collateral from pool
     /// @param token The collateral token to remove.
     /// @param amount The amount to remove.
-    function removeCollateral(address token, uint256 amount) public nonReentrant() {
+    function removeCollateral(address token, uint256 amount) external nonReentrant() {
+        _removeCollateral(token, amount);
+    }
+
+    function _removeCollateral(address token, uint256 amount) private {
         address account = msg.sender;
         if (amount <= 0) {
             revert CheddaPool_ZeroAmount();
@@ -358,7 +415,7 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     function accountHealth(address account) public view returns (uint256) {
         uint256 debt = accountAssetsBorrowed(account);
         if (debt == 0) {
-            return 0;
+            return type(uint256).max;
         }
         uint256 collateral = totalAccountCollateralValue(account); 
         return ud(collateral).div(ud(debt)).unwrap();
@@ -380,7 +437,7 @@ contract LendingPool is ERC4626, ReentrancyGuard {
 
     function _checkAccountHealth(address account) internal view {
         uint256 health = accountHealth(account);
-        if (health < 1.0e18 && health != 0) { // 0 health means no debt
+        if (health < 1.0e18) { // 0 health means no debt
             revert CheddaPool_AccountInsolvent(account, health);
         }
     }

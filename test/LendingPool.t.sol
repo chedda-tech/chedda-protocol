@@ -56,6 +56,7 @@ contract LendingPoolTest is Test {
 
         poolAddress = address(pool);
         
+        console.log("Addresses {bob=%b, pool=%s, collateral1=%s}", bob, poolAddress, c1Address);
     }
 
     function testPoolConfiguration() external {
@@ -128,13 +129,85 @@ contract LendingPoolTest is Test {
     }
 
     function testTake() external {
-        uint256 amountToTake = 1000e18;
-        vm.expectRevert();
+        uint256 assetDeposits = 1000e8;
+        uint256 amountToTake = 100e8;
+        uint256 collateralAmount = 10000e18;
+        vm.expectRevert(); // collateral not provided
         pool.take(amountToTake);
+
+        collateral1.transfer(bob, collateralAmount);
+
+        asset.transfer(poolAddress, assetDeposits);
+        vm.startPrank(bob);
+
+        // take without depositing collateral
+        vm.expectRevert(
+            abi.encodeWithSelector(LendingPool.CheddaPool_AccountInsolvent.selector, bob, 0)
+        );
+        pool.take(amountToTake);
+
+        // deposit collateral and take
+        collateral1.approve(poolAddress, collateralAmount);
+
+        pool.addCollateral(c1Address, collateralAmount);
+        uint256 shares = pool.take(amountToTake);
+        assertEq(amountToTake, asset.balanceOf(bob));
+        assertEq(shares, pool.debtToken().balanceOf(bob));
     }
 
-    // function testPutShares() external {}
+    function testPutShares() external {
+        uint256 assetDeposits = 1000e8;
+        uint256 amountToTake = 100e8;
+        uint256 collateralAmount = 10000e18;
+        uint256 excessAssetAmount = 100e8;
 
-    // function testPutAmount() external {}
+        asset.transfer(poolAddress, assetDeposits);
+        asset.transfer(bob, excessAssetAmount);
+        collateral1.transfer(bob, collateralAmount);
+
+        vm.startPrank(bob);
+        collateral1.approve(poolAddress, collateralAmount);
+        pool.addCollateral(c1Address, collateralAmount);
+        uint256 shares = pool.take(amountToTake);
+        
+        uint256 assetAmountToRepay = pool.debtToken().convertToAssets(shares);
+        console.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
+        asset.approve(poolAddress, assetAmountToRepay);
+        uint256 bobAssetBalanceBefore = asset.balanceOf(bob);
+        pool.putShares(shares);
+        uint256 bobAssetBalanceAfter = asset.balanceOf(bob);
+        assertEq(0, pool.debtToken().balanceOf(bob));
+        assertEq(bobAssetBalanceAfter, bobAssetBalanceBefore - assetAmountToRepay);
+    }
+
+    function testPutAmount() external {
+       uint256 assetDeposits = 1000e8;
+        uint256 amountToTake = 100e8;
+        uint256 collateralAmount = 10000e18;
+        uint256 excessAssetAmount = 100e8;
+
+        asset.transfer(poolAddress, assetDeposits);
+        asset.transfer(bob, excessAssetAmount);
+        collateral1.transfer(bob, collateralAmount);
+
+        vm.startPrank(bob);
+        collateral1.approve(poolAddress, collateralAmount);
+        pool.addCollateral(c1Address, collateralAmount);
+        uint256 shares = pool.take(amountToTake);
+        
+        uint256 assetAmountToRepay = amountToTake;
+        uint256 sharesToRepay = pool.debtToken().convertToShares(assetAmountToRepay);
+        console.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
+        asset.approve(poolAddress, assetAmountToRepay);
+        uint256 bobAssetBalanceBefore = asset.balanceOf(bob);
+        uint256 sharesRepaid = pool.putAmount(amountToTake);
+        uint256 bobAssetBalanceAfter = asset.balanceOf(bob);
+        assertEq(shares - sharesRepaid, pool.debtToken().balanceOf(bob));
+
+        // repaid at least sharesToRepay, could have repaid more due to time difference between
+        // computing convertToShares and putAmount
+        assertGe(sharesRepaid, sharesToRepay); 
+        assertEq(bobAssetBalanceAfter, bobAssetBalanceBefore - assetAmountToRepay); 
+    }
 
 }
