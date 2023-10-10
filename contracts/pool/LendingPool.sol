@@ -9,15 +9,19 @@ import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { DebtToken } from "../tokens/DebtToken.sol";
-import { IInterestRateStrategy, InterestRates } from "./IInterestRateStrategy.sol";
-import { SimpleInterestRateStrategy } from "./SimpleInterestRateStrategy.sol";
-import { LinearInterestRateStrategy } from "./LinearInterestRateStrategy.sol";
+import { IInterestRateModel, InterestRates } from "./IInterestRateModel.sol";
+import { SimpleInterestRateModel } from "./SimpleInterestRateModel.sol";
+import { LinearInterestRateModel } from "./LinearInterestRateModel.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
+import { ILendingPool } from "./ILendingPool.sol";
+import { ILiquidityGauge } from "../gauge/ILiquidityGauge.sol";
 
 /// @title LendingPool
 /// @notice Implements supply and borrow functionality.
 /// @dev Implements ERC4626 interface.
-contract LendingPool is ERC4626, ReentrancyGuard {
+
+/// TODO: check prices are positive and no overflow/underflow when using prices
+contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
     /// TODO: 
     /// 1. collateralize while supplying.
@@ -91,8 +95,7 @@ contract LendingPool is ERC4626, ReentrancyGuard {
 
     /// state vars
     uint256 public supplied;
-    uint256 public supplyRate;
-    uint256 public borrowRate;
+    uint256 public feesPaid;
 
     string public characterization;
 
@@ -100,7 +103,8 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     DebtToken public immutable debtToken;
     IPriceFeed public immutable priceFeed;
     InterestRates public interestRates;
-    IInterestRateStrategy public interestRateStrategy;
+    IInterestRateModel public interestRateModel;
+    ILiquidityGauge public gauge;
 
     /// Collateral
 
@@ -124,20 +128,21 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     mapping(address => uint256) public tokenCollateralDeposited;
 
     ///////////////////////////////////////////////////////////////////////////
-    ///             initialization
+    ///                         initialization
     ///////////////////////////////////////////////////////////////////////////
     constructor(string memory _name, ERC20 _asset, address _priceFeed, CollateralInfo[] memory _collateralTokens) 
+    Ownable(msg.sender) // TODO: pass owner as admin
     ERC4626(
         _asset,
         string(abi.encodePacked("CHEDDA Token ", _asset.name())), 
         string(abi.encodePacked("ch", _asset.symbol()))) {
         // TODO: set interest rates strategy externally
-        interestRateStrategy = new LinearInterestRateStrategy(
+        interestRateModel = new LinearInterestRateModel(
             0.05e18,
             0.1e18,
             0.9e18
         );
-        interestRateStrategy = new SimpleInterestRateStrategy(
+        interestRateModel = new SimpleInterestRateModel(
             0.05e18, // linear rate
             2.0e18, // exponential rate
             0.94e18 // target utilization
@@ -432,6 +437,10 @@ contract LendingPool is ERC4626, ReentrancyGuard {
         return accountCollateralDeposited[account][collateral].token != address(0);
     }
 
+    function collaterals() external view returns (address [] memory) {
+        return collateralTokenList;
+    }
+
     /// @dev returns the market value for a given token amount
     function _getTokenMarketValue(address token, uint256 amount) internal view returns (uint256) {
         int256 price = priceFeed.readPrice(token, 0);
@@ -451,9 +460,9 @@ contract LendingPool is ERC4626, ReentrancyGuard {
     /// To validate borrow
     /// 1. Check that funds are available.
     function _validateBorrow(address, uint256 amount) internal view {
-        uint256 available = asset.balanceOf(address(this));
-        if (available <= amount) {
-            revert CheddaPool_InsufficientAssetBalance(available, amount);
+        uint256 amountAvailable = available();
+        if (amountAvailable <= amount) {
+            revert CheddaPool_InsufficientAssetBalance(amountAvailable, amount);
         }
     }
 
@@ -467,13 +476,80 @@ contract LendingPool is ERC4626, ReentrancyGuard {
 
     /// ERC4626 overrides
 
+    function poolAsset() public view returns (ERC20) {
+        return asset;
+    }
+
     function totalAssets() public override view returns (uint256) {
         return supplied;
     }
 
+    function available() public view returns (uint256) {
+        return asset.balanceOf(address(this));
+    }
+
+    function borrowed() public view returns (uint256) {
+        return supplied - available();
+    }
+
+    function tvl() external view returns (uint256) {
+        UD60x18 assetValue = ud(totalAssets()).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256()));
+        UD60x18 collateralValue = ud(0);
+        for (uint256 i = 0; i < collateralTokenList.length; i++) {
+            uint256 collateralAmount = tokenCollateralDeposited[collateralTokenList[i]];
+            collateralValue.add(ud(collateralAmount));
+        }
+        return assetValue.add(collateralValue).unwrap();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    ///                         Interest rates
+    //////////////////////////////////////////////////////////////////////////
+    function baseSupplyAPY() external view returns (uint256) {
+        return interestRateModel.calculateInterestRate(utilization());
+    }
+
+    function baseBorrowAPY() external view returns (uint256) {
+        return interestRateModel.calculateInterestRate(utilization());
+    }
+
+    function setGauge(address _gauge) external onlyOwner() {
+        gauge = ILiquidityGauge(_gauge);
+    }
+
+    function utilization() public view returns (uint256) {
+        // totalDeposits - assetBalance / totalDeposits
+        // also account for repayments
+        return _simpleUtilization();
+    }
+
+    function _simpleUtilization() private view returns (uint256) {
+        if (supplied == 0) {
+            return 0;
+        }
+        return ud(supplied - asset.balanceOf(address(this))).div(ud(supplied)).unwrap();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                        deposit/withdraw hooks
+    ///////////////////////////////////////////////////////////////////////////
+    // solhint-disable-next-line private-vars-leading-underscore
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
+        shares;
+        supplied -= assets;
+        _calculateIntrestRates(0, assets);
+    }
+
+    // solhint-disable-next-line private-vars-leading-underscore
+    function afterDeposit(uint256 assets, uint256 shares) internal override {
+        shares;
+        supplied += assets;
+        _calculateIntrestRates(assets, 0);
+    }
+
     /// Interest rates
     function _calculateIntrestRates(uint256 liquidityAdded, uint256 liquidityTaken) internal {
-        interestRates = interestRateStrategy.calculateInterestRates(
+        interestRates = interestRateModel.calculateInterestRates(
             liquidityAdded,
             liquidityTaken
         );

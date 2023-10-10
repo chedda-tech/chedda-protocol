@@ -2,16 +2,16 @@
 pragma solidity ^0.8.19;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {LinearInterestRateStrategy} from "../contracts/pool/LinearInterestRateStrategy.sol";
+import {LinearInterestRateModel} from "../contracts/pool/LinearInterestRateModel.sol";
 
-contract CheckLinearInterestRateStrategy is Script {
-    LinearInterestRateStrategy public strategy;
+contract CheckLinearInterestRateModel is Script {
+    LinearInterestRateModel public strategy;
 
     function setUp() external {
         uint256 baseInterestRate = 0.05e18;
         uint256 steeperSlopeInterestRate = 0.1e18;
         uint256 targetUtilization = 0.94e18;
-        strategy = new LinearInterestRateStrategy(
+        strategy = new LinearInterestRateModel(
             baseInterestRate,
             steeperSlopeInterestRate,
             targetUtilization

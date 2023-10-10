@@ -2,9 +2,9 @@
 pragma solidity ^0.8.20;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IInterestRateStrategy, InterestRates } from "./IInterestRateStrategy.sol";
+import { IInterestRateModel, InterestRates } from "./IInterestRateModel.sol";
 
-contract SimpleInterestRateStrategy is Ownable, IInterestRateStrategy {
+contract SimpleInterestRateModel is Ownable, IInterestRateModel {
 
     uint256 public linearInterestRate;
     uint256 public exponentialInterestRate;
@@ -16,7 +16,7 @@ contract SimpleInterestRateStrategy is Ownable, IInterestRateStrategy {
         targetUtilization = _targetUtilization;
     }
 
-    function getInterestRate(uint256 currentUtilization) public view returns (uint256) {
+    function calculateInterestRate(uint256 currentUtilization) public view returns (uint256) {
         if (currentUtilization < targetUtilization) {
             return linearInterestRate * currentUtilization / targetUtilization;
         } else {

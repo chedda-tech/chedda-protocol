@@ -6,10 +6,10 @@ struct InterestRates {
     uint256 borrowRate;
 }
 
-interface IInterestRateStrategy {
-
+interface IInterestRateModel {
+    function calculateInterestRate(uint256 utilization) external view returns (uint256);
     function calculateInterestRates(
         uint256 liquidityAdded,
         uint256 liquidityTaken
-    ) external returns (InterestRates memory);
+    ) external view returns (InterestRates memory);
 }
