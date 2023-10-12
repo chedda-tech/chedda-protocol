@@ -9,7 +9,9 @@ import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 
 contract LendingPoolLens is Ownable {
 
-    struct LendingPoolStats {
+    struct PoolStats {
+        address pool;
+        address asset;
         string characterization;
         uint256 supplied;
         uint256 suppliedValue;
@@ -21,6 +23,7 @@ contract LendingPoolLens is Ownable {
         uint256 maxBorrowAPY;
         uint256 utilization;
         uint256 feesPaid;
+        uint256 tvl;
         address[] collaterals;
     }
 
@@ -36,7 +39,8 @@ contract LendingPoolLens is Ownable {
     struct LendingPoolCollateralInfo {
         address collateral;
         uint256 amountDeposited;
-        uint256 depositCap;
+        uint256 value;
+        uint256 collateralFactor;
     }
 
     struct LendingPoolAccountInfo {
@@ -52,12 +56,31 @@ contract LendingPoolLens is Ownable {
         uint256 liquidationPenalty;
     }
 
+    struct AccountCollateralDeposited {
+        address token;
+        uint256 amount;
+        uint256 value;
+        uint256[] tokenIds;
+    }
+
+    struct AccountInfo {
+        uint256 supplied;
+        uint256 borrowed;
+        uint256 healthFactor;
+        uint256 totalCollateralValue;
+        AccountCollateralDeposited[] collateralDeposited;
+    }
+
     event PoolRegistered(address indexed pool, address indexed caller);
     event PoolUnregistered(address indexed pool, address indexed caller);
+
+    error AlreadyRegistered(address pool);
+    error NotRegistered(address pool);
 
     using SafeCast for int256;
 
     address[] private _pools;
+    mapping (address => bool) private _activePools;
 
     // solhint-disable-next-line no-empty-blocks
     constructor(address _owner) Ownable(_owner) {}
@@ -65,17 +88,20 @@ contract LendingPoolLens is Ownable {
     ///////////////////////////////////////////////////////////////////////////
     ///                 Registration/Unregistration
     ///////////////////////////////////////////////////////////////////////////
-    function registerLendingPool(address pool) external onlyOwner() returns (bool) {
+    function registerPool(address pool, bool isActive) external onlyOwner() {
         if (_poolAlreadyRegistered(pool)) {
-            return false;
+            revert AlreadyRegistered(pool);
         }
         _pools.push(pool);
+        _activePools[pool] = isActive;
 
         emit PoolRegistered(pool, msg.sender);
-        return true;
     }
 
-    function unregisterLendingPool(address pool) external onlyOwner() returns (bool) {
+    function unregisterPool(address pool) external onlyOwner() {
+        if (!_poolAlreadyRegistered(pool)) {
+            revert NotRegistered(pool);
+        }
         uint256 foundIndex = type(uint256).max;
         for (uint256 i = 0; i < _pools.length; i++) {
             if (_pools[i] == pool) {
@@ -85,11 +111,17 @@ contract LendingPoolLens is Ownable {
         if (foundIndex != type(uint256).max) {
             _pools[foundIndex] = _pools[_pools.length - 1];
             _pools.pop();
+            _activePools[pool] = false;
 
             emit PoolUnregistered(pool, msg.sender);
-            return true;
         }
-        return false;
+    }
+
+    function setActive(address pool, bool isActive) external onlyOwner() {
+        if (!_poolAlreadyRegistered(pool)) {
+            revert NotRegistered(pool);
+        }
+        _activePools[pool] = isActive;
     }
 
     function _poolAlreadyRegistered(address pool) private view returns (bool) {
@@ -101,8 +133,28 @@ contract LendingPoolLens is Ownable {
         return false;
     }
 
-    function lendingPools() external view returns (address[] memory pools) {
-        pools = _pools;
+    function lendingPools() external view returns (address[] memory) {
+        return _pools;
+    }
+
+    function activePools() external view returns (address[] memory) {
+        uint256 numberActive = 0;
+        for (uint256 i = 0; i < _pools.length; i++) {
+            if (_activePools[_pools[i]]) {
+                numberActive += 1;
+            }
+        }
+        if (numberActive == 0) {
+            return new address[](0);
+        }
+        address[] memory pools = new address[](numberActive);
+        uint256 j = 0;
+        for (uint256 i = 0; i < _pools.length; i++) {
+            if (_activePools[_pools[i]]) {
+                pools[j++] = _pools[i];
+            }
+        }
+        return pools;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -141,13 +193,26 @@ contract LendingPoolLens is Ownable {
     ///////////////////////////////////////////////////////////////////////////
     ///                     Stats for one pool
     ///////////////////////////////////////////////////////////////////////////
-    function getLendingPoolStats(address poolAddress) external view returns (LendingPoolStats memory) {
+
+    function getPoolStatsList(address[] memory pools) external view returns (PoolStats[] memory) {
+        PoolStats[] memory statsList = new PoolStats[](pools.length);
+        PoolStats memory stats;
+        for (uint256 i = 0; i < pools.length; i++) {
+            stats = getPoolStats(pools[i]);
+            statsList[i] = stats;
+        }
+        return statsList;
+    }
+
+    function getPoolStats(address poolAddress) public view returns (PoolStats memory) {
         ILendingPool pool = ILendingPool(poolAddress);
         uint256 supplied = pool.supplied();
         uint256 borrowed = pool.borrowed();
         uint256 assetPrice = pool.priceFeed().readPrice(address(pool.poolAsset()), 0).toUint256();
 
-        LendingPoolStats memory stats = LendingPoolStats({
+        PoolStats memory stats = PoolStats({
+            pool: address(this),
+            asset: address(pool.poolAsset()),
             characterization: pool.characterization(),
             supplied: pool.supplied(),
             borrowed: pool.borrowed(),
@@ -158,9 +223,58 @@ contract LendingPoolLens is Ownable {
             maxSupplyAPY: pool.baseSupplyAPY(), // TODO: base + reward rate from gauge
             maxBorrowAPY: pool.baseBorrowAPY(), // same here
             utilization: pool.utilization(),
-            feesPaid: 0,
+            feesPaid: pool.feesPaid(),
+            tvl: pool.tvl(),
             collaterals: pool.collaterals()
         });
         return stats;
+    }
+
+    function getPoolAccountInfo(address poolAddress, address account) external view returns (AccountInfo memory) {
+        ILendingPool pool = ILendingPool(poolAddress);
+        uint256 supplied = pool.assetBalance(account);
+        uint256 borrowed = pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account));
+        uint256 healthFactor = pool.accountHealth(account);
+        uint256 collateralValue = pool.totalAccountCollateralValue(account);
+        address[] memory collaterals = pool.collaterals();
+        AccountCollateralDeposited[] memory collateralDeposited = new AccountCollateralDeposited[](collaterals.length);
+        address collateral;
+        for (uint256 i = 0; i < collaterals.length; i++) {
+            collateral = collaterals[i];
+            uint256 collateralAmount = pool.accountCollateralAmount(account, collateral);
+            AccountCollateralDeposited memory deposited = AccountCollateralDeposited({
+                token: collateral,
+                amount: collateralAmount,
+                value: pool.getTokenCollateralValue(collateral, collateralAmount),
+                tokenIds: new uint256[](0)
+            });
+            collateralDeposited[i] = deposited;
+        }
+        AccountInfo memory accountInfo = AccountInfo({
+            supplied: supplied,
+            borrowed: borrowed,
+            healthFactor: healthFactor,
+            totalCollateralValue: collateralValue,
+            collateralDeposited: collateralDeposited
+        });
+        return accountInfo;
+    }
+
+    function getPoolCollateral(address poolAddress) external view returns (LendingPoolCollateralInfo[] memory) {
+        ILendingPool pool = ILendingPool(poolAddress);
+        address[] memory collaterals = pool.collaterals();
+        address collateral;
+        LendingPoolCollateralInfo[] memory infoList = new LendingPoolCollateralInfo[](collaterals.length);
+        for (uint256 i = 0; i < collaterals.length; i++) {
+            collateral = collaterals[i];
+            uint256 collateralAmount = pool.tokenCollateralDeposited(collateral);
+            infoList[i] = LendingPoolCollateralInfo({
+                collateral: collateral,
+                amountDeposited: collateralAmount,
+                value: pool.getTokenCollateralValue(collateral, collateralAmount),
+                collateralFactor: pool.collateralFactor(collateral)
+            });
+        }
+        return infoList;
     }
 }
