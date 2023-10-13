@@ -7,6 +7,8 @@ import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { ILendingPool } from "../pool/ILendingPool.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 
+/// @title LendingPoolLens
+/// @notice Provides utility functions to view the state of LendingPools
 contract LendingPoolLens is Ownable {
 
     struct PoolStats {
@@ -36,7 +38,7 @@ contract LendingPoolLens is Ownable {
         uint256 tvl;
     }
 
-    struct LendingPoolCollateralInfo {
+    struct PoolCollateralInfo {
         address collateral;
         uint256 amountDeposited;
         uint256 value;
@@ -88,6 +90,13 @@ contract LendingPoolLens is Ownable {
     ///////////////////////////////////////////////////////////////////////////
     ///                 Registration/Unregistration
     ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice Registers a new lending pool
+    /// @dev Can only be called by owner
+    /// Reverts if pools is already registered.
+    /// Emits PoolRegistered(address pool, address caller)
+    /// @param pool The address of pool.
+    /// @param isActive The active state of pool used for filtering.
     function registerPool(address pool, bool isActive) external onlyOwner() {
         if (_poolAlreadyRegistered(pool)) {
             revert AlreadyRegistered(pool);
@@ -98,6 +107,10 @@ contract LendingPoolLens is Ownable {
         emit PoolRegistered(pool, msg.sender);
     }
 
+    /// @notice Unregisters a lending pool
+    /// @dev Can only be called by admin. Reverts if pool is not registered
+    /// Emits PoolRegistered(address pool, address caller)
+    /// @param pool The pool to register
     function unregisterPool(address pool) external onlyOwner() {
         if (!_poolAlreadyRegistered(pool)) {
             revert NotRegistered(pool);
@@ -117,6 +130,10 @@ contract LendingPoolLens is Ownable {
         }
     }
 
+    /// @notice Sets a pool as active
+    /// @dev Pools can be filtered by their active state
+    /// @param pool The pool to set active or inactive
+    /// @param isActive boolean flag to set pool as active or not
     function setActive(address pool, bool isActive) external onlyOwner() {
         if (!_poolAlreadyRegistered(pool)) {
             revert NotRegistered(pool);
@@ -124,6 +141,7 @@ contract LendingPoolLens is Ownable {
         _activePools[pool] = isActive;
     }
 
+    /// @dev checks if a pool is already registered
     function _poolAlreadyRegistered(address pool) private view returns (bool) {
         for (uint256 i = 0; i < _pools.length; i++) {
             if (_pools[i] == pool) {
@@ -133,10 +151,14 @@ contract LendingPoolLens is Ownable {
         return false;
     }
 
-    function lendingPools() external view returns (address[] memory) {
+    /// @notice Returns a list of all the registered pools
+    /// @return pools The addresses of all registered pools
+    function registeredPools() external view returns (address[] memory) {
         return _pools;
     }
 
+    /// @notice Returns a list of all the active pools
+    /// @return pools The addresses of all active pools
     function activePools() external view returns (address[] memory) {
         uint256 numberActive = 0;
         for (uint256 i = 0; i < _pools.length; i++) {
@@ -160,6 +182,10 @@ contract LendingPoolLens is Ownable {
     ///////////////////////////////////////////////////////////////////////////
     ///                     Aggregate stats
     ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @return aggregateStats The aggregated stats of the all registred pools
     function getAggregateStats() external view returns (AggregateStats memory) {
         uint256 totalSuppliedValue = 0;
         uint256 totalBorrowedValue = 0;
@@ -194,7 +220,17 @@ contract LendingPoolLens is Ownable {
     ///                     Stats for one pool
     ///////////////////////////////////////////////////////////////////////////
 
+    /// @notice Returns various metrics of specified pools.
+    /// @dev Returns an array of `PoolStats` objects.
+    /// Reverts with NotRegistered(pool) error if a pool in the list is not registered.
+    /// @param pools The list of pools to return stats for.
+    /// @return poolStats An array of `PoolStats` objects, containing the stats for specified pools.
     function getPoolStatsList(address[] memory pools) external view returns (PoolStats[] memory) {
+        for (uint256 i = 0; i < pools.length; i++) {
+            if (!_poolAlreadyRegistered(pools[i])) {
+                revert NotRegistered(pools[i]);
+            }
+        }
         PoolStats[] memory statsList = new PoolStats[](pools.length);
         PoolStats memory stats;
         for (uint256 i = 0; i < pools.length; i++) {
@@ -204,7 +240,14 @@ contract LendingPoolLens is Ownable {
         return statsList;
     }
 
+    /// @notice Regturns the metrics of a specified pool.
+    /// @dev Reverts with `NotRegistered(address) error if the pool address is not registered.
+    /// @param poolAddress The address of the pool to return stats for
+    /// @return poolStats The `PoolStats` object containing the stats for specified pool.
     function getPoolStats(address poolAddress) public view returns (PoolStats memory) {
+        if (!_poolAlreadyRegistered(poolAddress)) {
+            revert NotRegistered(poolAddress);
+        }
         ILendingPool pool = ILendingPool(poolAddress);
         uint256 supplied = pool.supplied();
         uint256 borrowed = pool.borrowed();
@@ -230,6 +273,10 @@ contract LendingPoolLens is Ownable {
         return stats;
     }
 
+    /// @notice Returns information about a given account in a specified pool. 
+    /// @param poolAddress The pool to return account info for.
+    /// @param account The account to return info about.
+    /// @return info An `AccountInfo` obect about `account` position in the pool.
     function getPoolAccountInfo(address poolAddress, address account) external view returns (AccountInfo memory) {
         ILendingPool pool = ILendingPool(poolAddress);
         uint256 supplied = pool.assetBalance(account);
@@ -260,15 +307,18 @@ contract LendingPoolLens is Ownable {
         return accountInfo;
     }
 
-    function getPoolCollateral(address poolAddress) external view returns (LendingPoolCollateralInfo[] memory) {
+    /// @notice Returns information about colalteral in the pool
+    /// @param poolAddress The pool to return collateral info for.
+    /// @return info The `PoolCollateralInfo` about collateral in the specified pool.
+    function getPoolCollateral(address poolAddress) external view returns (PoolCollateralInfo[] memory) {
         ILendingPool pool = ILendingPool(poolAddress);
         address[] memory collaterals = pool.collaterals();
         address collateral;
-        LendingPoolCollateralInfo[] memory infoList = new LendingPoolCollateralInfo[](collaterals.length);
+        PoolCollateralInfo[] memory infoList = new PoolCollateralInfo[](collaterals.length);
         for (uint256 i = 0; i < collaterals.length; i++) {
             collateral = collaterals[i];
             uint256 collateralAmount = pool.tokenCollateralDeposited(collateral);
-            infoList[i] = LendingPoolCollateralInfo({
+            infoList[i] = PoolCollateralInfo({
                 collateral: collateral,
                 amountDeposited: collateralAmount,
                 value: pool.getTokenCollateralValue(collateral, collateralAmount),

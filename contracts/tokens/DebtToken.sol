@@ -5,10 +5,18 @@ import { ERC4626 } from "solmate/mixins/ERC4626.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 
+/// @title DebtToken
+/// @notice This is the unit of account of debt in a lending pool.
+/// @dev Implements the ERC4626 interface.
 contract DebtToken is ERC4626 {
 
+    /// @notice Emitted when debt is created
     event DebtCreated(address indexed account, uint256 amount, uint256 shares);
+
+    /// @notice Emitted when debt is repaid
     event DebtRepaid(address indexed account, uint256 amount, uint256 shares);
+
+    /// @notice Emitted when debt accrual takes place.
     event DebtAccrued(uint256 totalDebt, uint256 interest);
 
     error NonTransferrable();
@@ -19,8 +27,9 @@ contract DebtToken is ERC4626 {
     uint64 public constant STARTING_INTEREST_RATE_PER_SECOND = 317097919; // approx 1% APR
     uint64 public constant ONE_PERCENT = 1e18 / 100;
     uint64 public constant PER_SECOND = ONE_PERCENT / 365 / 86400;
-    uint256 internal immutable _oneAsset;
+    uint256 private immutable _oneAsset;
 
+    /// @notice The vault address
     address public vault;
 
     /// @dev timestamp of when interest last accrued
@@ -115,7 +124,7 @@ contract DebtToken is ERC4626 {
 
     /// @notice Returns the amount of shares a given account has
     /// @param account The account to return the balance for
-    /// @return The number of shares
+    /// @return shares The number of shares
     function accountShare(address account) external view returns (uint256) {
         return balanceOf[account];
     }
@@ -145,12 +154,12 @@ contract DebtToken is ERC4626 {
     ///                 ERC20 overrides
     ///////////////////////////////////////////////////////////////////////////////////
 
-    /// @dev Debt tokens are non-transferrable
+    /// @dev Reverts with `NonTransferrable()` error. Debt tokens are non-transferrable
     function transfer(address, uint256) public pure override returns (bool) {
         revert NonTransferrable();
     }
 
-    /// @dev Debt tokens are non-transferrable
+    /// @dev Reverts with `NonTransferrable()` error. Debt tokens are non-transferrable
     function transferFrom(
         address,
         address,
@@ -165,7 +174,7 @@ contract DebtToken is ERC4626 {
         _accrue();
     }
 
-    function _accrue() internal {
+    function _accrue() private {
         uint256 timestamp =  block.timestamp;
          uint256 elapsedTime = timestamp - _lastAccrual;
         if (elapsedTime == 0) {

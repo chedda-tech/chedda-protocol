@@ -121,6 +121,8 @@ contract Chedda  is ERC20, Ownable {
         return currentInflation / 365.25 days * baseSupply;
     }
 
+    /// @notice Returns the number of the current epoch
+    /// @return epoch The current epoch
     function epoch() public view returns (uint256) {
         return (block.timestamp - tge) / 365 days;
     }

@@ -36,6 +36,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
       ERC155
     }
 
+    /// @notice Holds information about the type of collateral held in vault.
+    /// @param token The address of the token
+    /// @param collateralFactor The collateral factor.
+    /// @param tokenType The type of token (ERC20, ERC721, ERC1155)
     struct CollateralInfo {
         address token;
         uint256 collateralFactor;
@@ -74,10 +78,37 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     }
 
     /// Events
+
+    /// @notice Emitted when collateral is added
+    /// @param token The token added
+    /// @param account The account that added the collateral.
+    /// @param ofType The type of collateral
+    /// @param amount The amount of token added as collateral
     event CollateralAdded(address indexed token, address indexed account, TokenType ofType, uint256 amount);
+
+    /// @notice Emitted when collateral is removed
+    /// @param token The token removed.
+    /// @param account The account that removed the collateral.
+    /// @param ofType The type of collateral
+    /// @param amount The amount of token removed as collateral
     event CollateralRemoved(address indexed token, address indexed account, TokenType ofType, uint256 amount);
+
+    /// @notice Emitted when assets are borrowed.
+    /// @param account The account that borrowed assets.
+    /// @param amount The amount of assets borrowed.
+    /// @param debtMinted The amount of debt token created.
     event AssetBorrowed(address indexed account, uint256 amount, uint256 debtMinted);
+    
+    /// @notice Emitted when borrowed assets are repaid.
+    /// @param account The account that repaid assets.
+    /// @param amount The amount of assets repaid.
+    /// @param debtBurned The amount of debt token burned.
     event AssetRepaid(address indexed account, uint256 amount, uint256 debtBurned);
+
+    /// @notice Emitted when the rewards gauge is set
+    /// @param gauge The gauge address.
+    /// @param caller The account that set the gauge.
+    event GaugeSet(address indexed gauge, address indexed caller);
 
     /// Custom errors
     error CheddaPool_InvalidPrice(int256 price, address token);
@@ -91,8 +122,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
     using SafeCast for int256;
     using SafeTransferLib for ERC20;
-
-    uint256 public constant MAX_UTILIZATION = 0.98e18;
 
     /// state vars
     uint256 public supplied;
@@ -133,6 +162,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     ///////////////////////////////////////////////////////////////////////////
     ///                         initialization
     ///////////////////////////////////////////////////////////////////////////
+
     constructor(string memory _name, ERC20 _asset, address _priceFeed, CollateralInfo[] memory _collateralTokens) 
     Ownable(msg.sender) // TODO: pass owner as admin
     ERC4626(
@@ -178,7 +208,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// TODO: Manage collateral with supply, withdraw, redeem
 
     /// @notice Supplies assets to pool
-    /// @dev Explain to a developer any extra details
     /// @param amount The amount to supply
     /// @param receiver The account to mint share tokens to
     /// @param useAsCollateral Whethe this deposit should be marked as collateral
@@ -224,9 +253,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return assetAmount;
     }
 
-    /// @notice Takes out a loan
+    /// @notice Borrows asset from the pool.
     /// @dev The max amount a user can borrow must be less than the value of their collateral weighted
     /// against the loan to value ratio of that colalteral.
+    /// Emits AssetBorrowed(account, amount, debt) event.
     /// @param amount The amount to borrow
     /// @return debt The amount of debt token minted.
     function take(uint256 amount) external returns (uint256) {
@@ -245,6 +275,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
      // repays a loan
     /// @notice Repays a part or all of a loan.
+    /// @dev Emits AssetRepaid(account, amount, debtBurned).
     /// @param amount amount to repay. Must be > 0 and <= amount borrowed by sender
     /// @return The amount of debt shares burned by this repayment.
     function putAmount(uint256 amount) external returns (uint256) {
@@ -266,6 +297,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
     // repays a loan
     /// @notice Repays a part or all of a loan by specifying the amount of debt token to repay.
+    /// @dev Emits AssetRepaid(account, amountRepaid, shares).
     /// @param shares The share of debt token to repay.
     /// @return amountRepaid the amount repaid.
     function putShares(uint256 shares) external returns (uint256) {
@@ -291,7 +323,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     ///////////////////////////////////////////////////////////////////////////
 
     /// @notice Add ERC-20 token collateral to pool.
-    /// Emits CollateralAdded(address token, address account, uint tokenType, uint amount).
+    /// @dev Emits CollateralAdded(address token, address account, uint tokenType, uint amount).
     /// @param token The token to deposit as collateral.
     /// @param amount The amount of token to deposit.
     function addCollateral(address token, uint256 amount) external nonReentrant() {
@@ -336,7 +368,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         emit CollateralAdded(token, account, TokenType.ERC20, amount);
     }
 
-    /// @notice Removes ERC20 collateral from pool
+    /// @notice Removes ERC20 collateral from pool.
+    /// @dev Emits CollateralRemoved(token, account, type, amount).
     /// @param token The collateral token to remove.
     /// @param amount The amount to remove.
     function removeCollateral(address token, uint256 amount) external nonReentrant() {
@@ -402,14 +435,19 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return totalValue;
     }
 
-    /// @dev The amount of collateral an account has deposited
     /// TODO: remove. Renamed from `accountCollateralCount`.
+    /// @notice Returns the amount of a given token an account has deposited as collateral
+    /// @param account The account to check collateral for
+    /// @param collateral The collateral to check 
+    /// @return amount The amount of `collateral` token `account` has deposited.
     function accountCollateralAmount(address account, address collateral) public view returns (uint256) {
         return accountCollateralDeposited[account][collateral].amount;
     }
 
-    /// @dev Returns the amount of debt owed by a given account.
     /// TODO: remove. Renamed from `accountPendingAmount`
+    /// @notice Returns the amount of asset an account has borrowed, including any accrued interest.
+    /// @param account The account to check for.
+    /// @return amount The amount of account borrowed by `account`.
     function accountAssetsBorrowed(address account) public view returns (uint256) {
         uint256 shares = debtToken.accountShare(account);
         return debtToken.convertToAssets(shares);
@@ -424,10 +462,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     }
 
     /// @notice Returns the health ratio of the account
-    /// health > 1 means the account is solvent.
+    /// health > 1.0 means the account is solvent.
     /// health <1.0 but != 0 means account is insolvent
     /// health == 0 means account has no debt and is also solvent.
-    /// @dev Explain to a developer any extra details
     /// @param account The account to check.
     /// @return health The health ration of the account, to 1e18. i.e 1e18 = 1.0 health.
     function accountHealth(address account) public view returns (uint256) {
@@ -448,7 +485,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return collateralTokenList;
     }
 
-    /// @dev returns the market value for a given token amount
+    /// @notice Returns the market value of a given number of token.
+    /// @param token The token to return value for.
+    /// @param amount The amount of token to calculate the value of.
+    /// @return value The market value of `amount` of `token`.
     function getTokenMarketValue(address token, uint256 amount) public view returns (uint256) {
         int256 price = priceFeed.readPrice(token, 0);
         // if (price < 0) {
@@ -457,22 +497,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return price.toUint256() * amount;
     }
 
-    function _checkAccountHealth(address account) internal view {
-        uint256 health = accountHealth(account);
-        if (health < 1.0e18) { // 0 health means no debt
-            revert CheddaPool_AccountInsolvent(account, health);
-        }
-    }
-
-    /// To validate borrow
-    /// 1. Check that funds are available.
-    function _validateBorrow(address, uint256 amount) internal view {
-        uint256 amountAvailable = available();
-        if (amountAvailable <= amount) {
-            revert CheddaPool_InsufficientAssetBalance(amountAvailable, amount);
-        }
-    }
-
+    /// @notice Returns the value as collateral for a given amount of token
+    /// @dev This takes into account the collateral factor of the token.
+    /// @param token The token to return value for.
+    /// @param amount The amount of token to calculate the value of.
+    /// @return value The collateral value of `amount` of `token`.
     function getTokenCollateralValue(address token, uint256 amount) public view returns (uint256) {
         int256 price = priceFeed.readPrice(token, 0);
         // if (price < 0) {
@@ -482,28 +511,60 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return (ud(price.toUint256()).mul(ud(amount))).mul(ud(collateralFactor[token])).unwrap();
     }
 
+    function _checkAccountHealth(address account) private view {
+        uint256 health = accountHealth(account);
+        if (health < 1.0e18) { // 0 health means no debt
+            revert CheddaPool_AccountInsolvent(account, health);
+        }
+    }
+
+    /// To validate borrow
+    /// 1. Check that funds are available.
+    function _validateBorrow(address, uint256 amount) private view {
+        uint256 amountAvailable = available();
+        if (amountAvailable <= amount) {
+            revert CheddaPool_InsufficientAssetBalance(amountAvailable, amount);
+        }
+    }
+
     /// ERC4626 overrides
 
+    /// @notice Returns the asset that can be borrowed from this pool
+    /// @return asset The pool asset
     function poolAsset() public view returns (ERC20) {
         return asset;
     }
 
+    /// @notice The amount of asset an account can access.
+    /// @dev This is based on the number of pool shares an account holds.
+    /// @param account The account to check the balance of.
+    /// @return amount The amount of asset an account holds in the pool.
     function assetBalance(address account) external view returns (uint256) {
         return convertToAssets(balanceOf[account]);
     }
 
+    /// @notice The total amount of asset deposited into the pool.
+    /// @dev This includes assets that have been borrowed.
+    /// @return amount The total assets supplied to pool.
     function totalAssets() public override view returns (uint256) {
         return supplied;
     }
 
+    /// @notice The assets available to be borrowed from pool.
+    /// @return assetAmount The amount of asset available in pool.
     function available() public view returns (uint256) {
         return asset.balanceOf(address(this));
     }
 
+    /// @notice The assets borrowed from pool.
+    /// @return assetAmount The amount of asset borrowed from pool.
     function borrowed() public view returns (uint256) {
         return supplied - available();
     }
 
+    /// @notice The total value locked in this pool.
+    /// @dev TVL is calculated as assets supplied + collateral deposited.
+    /// @return tvl The total value locked in pool.
     function tvl() external view returns (uint256) {
         UD60x18 assetValue = ud(totalAssets()).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256()));
         UD60x18 totalCollateralValue = ud(0);
@@ -526,22 +587,36 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     //////////////////////////////////////////////////////////////////////////
     ///                         Interest rates
     //////////////////////////////////////////////////////////////////////////
+
+    /// @notice Returns the base supply APY.
+    /// @dev This is the interest earned on supplied assets.
+    /// @return apy The interest earned on supplied assets.
     function baseSupplyAPY() external view returns (uint256) {
         return interestRateModel.calculateInterestRate(utilization());
     }
 
+    /// @notice Returns the base borrow APY.
+    /// @dev This is the interest paid on borrowed assets.
+    /// @return apy The interest paid on borrowed assets.
     function baseBorrowAPY() external view returns (uint256) {
         return interestRateModel.calculateInterestRate(utilization());
     }
 
-    function setGauge(address _gauge) external onlyOwner() {
-        gauge = ILiquidityGauge(_gauge);
-    }
-
+    /// @notice The pool asset utilization
+    /// @dev This is the amount of asset borrowed divided by assets supplied.
+    /// @return utilization The pool asset utilization.
     function utilization() public view returns (uint256) {
         // totalDeposits - assetBalance / totalDeposits
         // also account for repayments
         return _simpleUtilization();
+    }
+
+    /// @notice Set the rewards gauge for this pool.
+    /// @dev Can only be called by contract owner
+    /// Emits GaugeSet(gauge, caller).
+    function setGauge(address _gauge) external onlyOwner() {
+        gauge = ILiquidityGauge(_gauge);
+        emit GaugeSet(_gauge, msg.sender);
     }
 
     /// @dev placeholder function for utilization
@@ -570,7 +645,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     }
 
     /// Interest rates
-    function _calculateIntrestRates(uint256 liquidityAdded, uint256 liquidityTaken) internal {
+    function _calculateIntrestRates(uint256 liquidityAdded, uint256 liquidityTaken) private {
         interestRates = interestRateModel.calculateInterestRates(
             liquidityAdded,
             liquidityTaken

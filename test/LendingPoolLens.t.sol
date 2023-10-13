@@ -41,10 +41,18 @@ contract LendingPoolLensTest is Test {
 
     function testRegisterPool() external {
         vm.startPrank(owner);
+        address[] memory registeredPools = lens.registeredPools();
+        assertEq(registeredPools.length, 2);
+        assertEq(registeredPools[0], address(pool1));
+        assertEq(registeredPools[1], address(pool2));
     }
 
     function testUnregister() external {
-
+        vm.startPrank(owner);
+        lens.unregisterPool(address(pool1));
+        address[] memory registeredPools = lens.registeredPools();
+        assertEq(registeredPools.length, 1);
+        assertEq(registeredPools[0], address(pool2));
     }
 
     function testPoolStats() external {

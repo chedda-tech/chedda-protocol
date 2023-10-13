@@ -40,13 +40,18 @@ contract LendingPoolTest is Test {
         priceFeed.setPrice(c1Address, 50e18);
         priceFeed.setPrice(c2Address, 25e18);
 
-        LendingPool.CollateralInfo[] memory collateralTypes = new LendingPool.CollateralInfo[](2);
+        LendingPool.CollateralInfo[] memory collateralTypes = new LendingPool.CollateralInfo[](3);
         collateralTypes[0] = LendingPool.CollateralInfo({
-            token: c1Address,
+            token: address(asset),
             collateralFactor: collateral1Factor,
             tokenType: LendingPool.TokenType.ERC20
         });
         collateralTypes[1] = LendingPool.CollateralInfo({
+            token: c1Address,
+            collateralFactor: collateral1Factor,
+            tokenType: LendingPool.TokenType.ERC20
+        });
+        collateralTypes[2] = LendingPool.CollateralInfo({
             token: c2Address,
             collateralFactor: collateral2Factor,
             tokenType: LendingPool.TokenType.ERC20
@@ -65,13 +70,18 @@ contract LendingPoolTest is Test {
         assertEq(address(priceFeed), address(pool.priceFeed()));
 
         // check collateral
-        assertEq(pool.collateralAllowed(address(asset)), false);
+        assertEq(pool.collateralAllowed(address(asset)), true);
         assertEq(pool.collateralAllowed(c1Address), true);
         assertEq(pool.collateralAllowed(c2Address), true);
         assertEq(pool.collateralFactor(c1Address), collateral1Factor);
         assertEq(pool.collateralFactor(c2Address), collateral2Factor);
     }
 
+    function testGauge() external {
+        address gauge = makeAddr("gauge");
+        pool.setGauge(gauge);
+        assertEq(gauge, address(pool.gauge()));
+    }
 
     function testAddCollateral() external {
         uint256 collateralAmount = 100e18;
@@ -181,7 +191,7 @@ contract LendingPoolTest is Test {
     }
 
     function testPutAmount() external {
-       uint256 assetDeposits = 1000e8;
+        uint256 assetDeposits = 1000e8;
         uint256 amountToTake = 100e8;
         uint256 collateralAmount = 10000e18;
         uint256 excessAssetAmount = 100e8;
@@ -210,4 +220,16 @@ contract LendingPoolTest is Test {
         assertEq(bobAssetBalanceAfter, bobAssetBalanceBefore - assetAmountToRepay); 
     }
 
+    function testTvlAndState() external {
+        uint256 assetAmount = 1000e8;
+
+        // assertEq(0, pool.tvl());
+        asset.transfer(bob, assetAmount);
+        vm.startPrank(bob);
+        asset.approve(poolAddress, assetAmount);
+        pool.supply(assetAmount, bob, true);
+        console.log("^^^tokenCollateralDeposited[%s] = %d", address(asset), pool.tokenCollateralDeposited(address(asset)));
+        uint256 assetValue = ud(assetAmount).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256())).unwrap();
+        assertEq(assetValue, pool.tvl());
+    }
 }

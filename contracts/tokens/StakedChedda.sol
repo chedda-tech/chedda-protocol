@@ -10,7 +10,16 @@ import { IRebaseToken } from "./IRebaseToken.sol";
 /// @dev Must be set as CHEDDA token vault for new token emission.
 contract StakedChedda is ERC4626 {
 
+    /// @notice Emitted when CHEDDA is staked.
+    /// @param account The account that staked.
+    /// @param amount The amount of CHEDDA staked.
+    /// @param shares The amount of xCHEDDA minted.
     event Staked(address indexed account, uint256 amount, uint256 shares);
+
+    /// @notice Emitted when CHEDDA is unstaked.
+    /// @param account The account that unstaked.
+    /// @param amount The amount of CHEDDA unstaked.
+    /// @param shares The amount of xCHEDDA burned.
     event Unstaked(address indexed account, uint256 amount, uint256 shares);
 
     IRebaseToken public chedda;
@@ -21,26 +30,26 @@ contract StakedChedda is ERC4626 {
         chedda = IRebaseToken(_chedda);
     }
 
-    /// @notice Total amount of Chedda staked.
-    /// @return Amount of Chedda staked
+    /// @notice Total amount of CHEDDA staked.
+    /// @return Amount of CHEDDA staked
     function totalAssets() public override view returns (uint256) {
         return IERC20(asset()).balanceOf(address(this));
     }
 
-    /// @notice Stake Chedda.
+    /// @notice Stake CHEDDA.
+    /// @dev mints xCHEDDA
     /// @param amount Amount to stake.
-    /// @dev mints xChedda
-    /// @return shares Amount of xChedda minted.
+    /// @return shares Amount of xCHEDDA minted.
     function stake(uint256 amount) public returns (uint256 shares) {
         shares = deposit(amount, msg.sender);
         chedda.rebase();
         emit Staked(msg.sender, amount, shares);
     }
 
-    /// @notice Unstake Chedda.
-    /// @param shares Shares of xChedda to redeem
-    /// @dev burns xChedda
-    /// @return amount Amount of Chedda retruned by redeeming xChedda.
+    /// @notice Unstake CHEDDA.
+    /// @dev burns xCHEDDA.
+    /// @param shares Shares of xCHEDDA to redeem
+    /// @return amount Amount of CHEDDA retruned by redeeming xCHEDDA.
     function unstake(uint256 shares) public returns (uint256 amount) {
         chedda.rebase();
         amount = redeem(shares, msg.sender, msg.sender);
