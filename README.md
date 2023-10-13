@@ -1,6 +1,8 @@
-# Sample Hardhat Project
+# Chedda Protocol Contracts
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+This repository contains the solidity smart contracts tham implement Chedda lending protocol.
+
+Contract documentation can be found [here](docs)
 
 Try running some of the following tasks:
 
