@@ -572,10 +572,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         for (uint256 i = 0; i < collateralTokenList.length; i++) {
             collateral = collateralTokenList[i];
             uint256 collateralAmount = tokenCollateralDeposited[collateral];
-             if (collateral == address(asset)) {
-                console2.log("*** assetValue = %d, marketValue = %d, assetCollateralDeposited = %d", assetValue.unwrap(), totalCollateralValue.unwrap(), _assetCollateralDeposited);
-                collateralAmount -= _assetCollateralDeposited;
-            }
+            //  if (collateral == address(asset)) {
+            //     console2.log("*** assetValue = %d, marketValue = %d, assetCollateralDeposited = %d", assetValue.unwrap(), totalCollateralValue.unwrap(), _assetCollateralDeposited);
+            //     collateralAmount -= _assetCollateralDeposited;
+            // }
             uint256 marketValue = getTokenMarketValue(collateral, collateralAmount);
             console2.log("*** collateramAmount[%s] = %d, value = %d", collateral, collateralAmount, marketValue);
             totalCollateralValue.add(ud(marketValue));

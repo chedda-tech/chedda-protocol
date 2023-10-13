@@ -232,4 +232,14 @@ contract LendingPoolTest is Test {
         uint256 assetValue = ud(assetAmount).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256())).unwrap();
         assertEq(assetValue, pool.tvl());
     }
+
+    function testSupply() external {
+        uint256 assetAmount = 1000e8;
+        asset.transfer(bob, assetAmount);
+
+        vm.startPrank(bob);
+
+        asset.approve(poolAddress, assetAmount);
+        pool.supply(assetAmount, bob, true);
+    }
 }
