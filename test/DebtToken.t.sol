@@ -46,6 +46,9 @@ contract DebtTokenTest is Test {
         assertEq(bobShares, expectedShares);
         assertEq(bobShares, _debtToken.accountShare(bob));
         assertEq(bobShares, _debtToken.totalSupply());
+
+        // totalBorrowed = borrowed + interest
+        assertGe(_debtToken.totalDebt(), amount);
     }
 
     function testDebtGrows() external {

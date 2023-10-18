@@ -146,7 +146,7 @@ contract DebtToken is ERC4626 {
     /// @notice Returns the total principal amount of debt tracked.
     /// @dev This does not include any future interest payments.
     /// @return borrowed Total amount of debt (principal) tracked.
-    function totalBorrowed() external view returns (uint256 borrowed) {
+    function totalDebt() external view returns (uint256 borrowed) {
         borrowed = totalAssets();
     }
 

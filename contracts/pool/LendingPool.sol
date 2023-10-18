@@ -111,14 +111,36 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     event GaugeSet(address indexed gauge, address indexed caller);
 
     /// Custom errors
+
+    /// @dev Thrown when an invalid price is encountered when reading the asset or collateral price.
     error CheddaPool_InvalidPrice(int256 price, address token);
+
+    /// @dev Thrown when a caller tries to deposit a token for collateral that is not allowed
     error CheddaPool_CollateralNotAllowed(address token);
+
+    /// @dev Thrown when depositing an ERC-20 as ERC-721 or vice veresa.
     error CheddaPool_WrongCollateralType(address token);
+
+    /// @dev Thrown when a caller tries to supply/deposit 0 amount of asset/collateral.
     error CheddaPool_ZeroAmount();
+
+    /// @dev Thrown when a caller tries to withdraw more collateral than they have deposited.
     error CheddaPool_InsufficientCollateral(address account, address token, uint256 amountRequested, uint256 amountDeposited);
+
+    /// @dev Thrown when a withdrawing an amount of collateral would put the account in an insolvent state.
     error CheddaPool_AccountInsolvent(address account, uint256 health);
+
+    /// @dev Thrown when a caller tries withdraw more asset than supplied.
     error CheddaPool_InsufficientAssetBalance(uint256 available,uint256 requested);
+
+    /// @dev Thrown when a caller tries to repay more debt than they owe.
     error CheddaPool_Overpayment();
+
+    /// @dev Thrown when a caller tries to deposit the asset token as collateral.
+    error CheddaPool_AssetMustBeSupplied();
+
+    /// @dev Thrown when a caller tries to remove asset token from collateral. `withdraw` must be used instead.
+    error CheddaPool_AsssetMustBeWithdrawn();
 
     using SafeCast for int256;
     using SafeTransferLib for ERC20;
@@ -157,7 +179,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     // use to be tokenCollateral
     mapping(address => uint256) public tokenCollateralDeposited;
 
+    /// @dev The amount of asset token that has been deposited as collateral
     uint256 private _assetCollateralDeposited;
+
+    /// @dev Flag to determine if collateral being deposited has already been counted as asset.
+    bool private _assetCounted;
 
     ///////////////////////////////////////////////////////////////////////////
     ///                         initialization
@@ -169,16 +195,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         _asset,
         string(abi.encodePacked("CHEDDA Token ", _asset.name())), 
         string(abi.encodePacked("ch", _asset.symbol()))) {
-        // TODO: set interest rates strategy externally
+        // TODO: set interest rates strategy externally and pass in as constructor param
         interestRateModel = new LinearInterestRateModel(
             0.05e18,
             0.1e18,
             0.9e18
-        );
-        interestRateModel = new SimpleInterestRateModel(
-            0.05e18, // linear rate
-            2.0e18, // exponential rate
-            0.94e18 // target utilization
         );
         characterization = _name;
         priceFeed = IPriceFeed(_priceFeed);
@@ -201,6 +222,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         }
     }
 
+    /// @notice Set the rewards gauge for this pool.
+    /// @dev Can only be called by contract owner
+    /// Emits GaugeSet(gauge, caller).
+    function setGauge(address _gauge) external onlyOwner() {
+        gauge = ILiquidityGauge(_gauge);
+        emit GaugeSet(_gauge, msg.sender);
+    }
+
     /*///////////////////////////////////////////////////////////////
                         borrow/repay logic
     //////////////////////////////////////////////////////////////*/
@@ -215,8 +244,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     function supply(uint256 amount, address receiver, bool useAsCollateral) external nonReentrant() returns (uint256) {
         uint256 shares = deposit(amount, receiver);
         if (useAsCollateral) {
+            _assetCounted = true;
             _addCollateral(address(asset), amount, false);
             _assetCollateralDeposited += amount;
+            _assetCounted = false;
         }
         return shares;
     }
@@ -230,10 +261,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @return shares The amount of shares burned by withdrawal.
     function withdraw(uint256 assetAmount, address receiver, address owner) public override nonReentrant() returns (uint256) {
         uint256 shares = super.withdraw(assetAmount, receiver, owner);
-        if (_accountHasCollateral(msg.sender, address(asset))) {
-            // TODO: Handle case where collateral < assetAmount
-            _removeCollateral(address(asset), assetAmount);
-            _assetCollateralDeposited -= assetAmount;
+        uint256 collateralAmount = accountCollateralAmount(owner, address(asset));
+        if (collateralAmount != 0) {
+            uint256 collateralToRemove = assetAmount > collateralAmount ? collateralAmount : assetAmount;
+            _removeCollateral(address(asset), collateralToRemove, false);
+            _assetCollateralDeposited -= collateralToRemove;
         }
         return shares;
     }
@@ -248,7 +280,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     function redeem(uint256 shares, address receiver, address owner) public override nonReentrant() returns (uint256) {
         uint256 assetAmount = super.redeem(shares, receiver, owner);
         if (_accountHasCollateral(msg.sender, address(asset))) {
-            _removeCollateral(address(asset), assetAmount);
+            _removeCollateral(address(asset), assetAmount, false);
         }
         return assetAmount;
     }
@@ -327,6 +359,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @param token The token to deposit as collateral.
     /// @param amount The amount of token to deposit.
     function addCollateral(address token, uint256 amount) external nonReentrant() {
+        if (token == address(asset)) {
+            revert CheddaPool_AssetMustBeSupplied();
+        }
         _addCollateral(token, amount, true);
     }
 
@@ -373,10 +408,13 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @param token The collateral token to remove.
     /// @param amount The amount to remove.
     function removeCollateral(address token, uint256 amount) external nonReentrant() {
-        _removeCollateral(token, amount);
+        if (token == address(asset)) {
+            revert CheddaPool_AsssetMustBeWithdrawn();
+        }
+        _removeCollateral(token, amount, true);
     }
 
-    function _removeCollateral(address token, uint256 amount) private {
+    function _removeCollateral(address token, uint256 amount, bool doTransfer) private {
         address account = msg.sender;
         if (amount <= 0) {
             revert CheddaPool_ZeroAmount();
@@ -396,7 +434,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
         _checkAccountHealth(account);
 
-        ERC20(token).safeTransfer(msg.sender, amount);
+        if (doTransfer) {
+            ERC20(token).safeTransfer(account, amount);
+        }
 
         emit CollateralRemoved(token, account, TokenType.ERC20, amount);
     }
@@ -435,7 +475,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return totalValue;
     }
 
-    /// TODO: remove. Renamed from `accountCollateralCount`.
     /// @notice Returns the amount of a given token an account has deposited as collateral
     /// @param account The account to check collateral for
     /// @param collateral The collateral to check 
@@ -444,7 +483,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return accountCollateralDeposited[account][collateral].amount;
     }
 
-    /// TODO: remove. Renamed from `accountPendingAmount`
     /// @notice Returns the amount of asset an account has borrowed, including any accrued interest.
     /// @param account The account to check for.
     /// @return amount The amount of account borrowed by `account`.
@@ -478,7 +516,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
     /// @dev returns true if account has deposited a given token as collateral
     function _accountHasCollateral(address account, address collateral) private view returns (bool) {
-        return accountCollateralDeposited[account][collateral].token != address(0);
+        return accountCollateralDeposited[account][collateral].amount != 0;
     }
 
     function collaterals() external view returns (address [] memory) {
@@ -572,14 +610,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         for (uint256 i = 0; i < collateralTokenList.length; i++) {
             collateral = collateralTokenList[i];
             uint256 collateralAmount = tokenCollateralDeposited[collateral];
-            //  if (collateral == address(asset)) {
-            //     console2.log("*** assetValue = %d, marketValue = %d, assetCollateralDeposited = %d", assetValue.unwrap(), totalCollateralValue.unwrap(), _assetCollateralDeposited);
-            //     collateralAmount -= _assetCollateralDeposited;
-            // }
-            uint256 marketValue = getTokenMarketValue(collateral, collateralAmount);
-            console2.log("*** collateramAmount[%s] = %d, value = %d", collateral, collateralAmount, marketValue);
-            totalCollateralValue.add(ud(marketValue));
-           
+            UD60x18 marketValue = ud(getTokenMarketValue(collateral, collateralAmount));
+            // console2.log("*** collateramAmount[%s] = %d, value = %d", collateral, collateralAmount, marketValue);
+            if (collateral == address(asset)) {
+                totalCollateralValue = totalCollateralValue.add(
+                    marketValue.sub(ud(getTokenMarketValue(collateral, _assetCollateralDeposited))));
+            } else {
+                totalCollateralValue = totalCollateralValue.add(marketValue);
+            }
         }
         return assetValue.add(totalCollateralValue).unwrap();
     }
@@ -611,13 +649,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return _simpleUtilization();
     }
 
-    /// @notice Set the rewards gauge for this pool.
-    /// @dev Can only be called by contract owner
-    /// Emits GaugeSet(gauge, caller).
-    function setGauge(address _gauge) external onlyOwner() {
-        gauge = ILiquidityGauge(_gauge);
-        emit GaugeSet(_gauge, msg.sender);
-    }
 
     /// @dev placeholder function for utilization
     function _simpleUtilization() private view returns (uint256) {

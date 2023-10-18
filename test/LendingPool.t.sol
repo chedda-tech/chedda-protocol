@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
+import {console2} from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
@@ -61,12 +61,13 @@ contract LendingPoolTest is Test {
 
         poolAddress = address(pool);
         
-        console.log("Addresses {bob=%b, pool=%s, collateral1=%s}", bob, poolAddress, c1Address);
+        console2.log("Addresses {bob=%b, pool=%s, collateral1=%s}", bob, poolAddress, c1Address);
     }
 
     function testPoolConfiguration() external {
         assertEq(POOL_NAME, pool.characterization());
         assertEq(address(asset), address(pool.asset()));
+        assertEq(address(asset), address(pool.poolAsset()));
         assertEq(address(priceFeed), address(pool.priceFeed()));
 
         // check collateral
@@ -114,7 +115,7 @@ contract LendingPoolTest is Test {
         assertEq(bobBalanceAfter, bobBalanceBefore - collateralAmount);
 
         assertEq(pool.accountCollateralAmount(bob, c1Address), collateralAmount);
-        console.log("accountCollateralValue = %d", pool.totalAccountCollateralValue(bob));
+        console2.log("accountCollateralValue = %d", pool.totalAccountCollateralValue(bob));
 
         // collateralValue = amount * price * collateralFactor
         assertEq(pool.totalAccountCollateralValue(bob), 
@@ -146,8 +147,13 @@ contract LendingPoolTest is Test {
         pool.take(amountToTake);
 
         collateral1.transfer(bob, collateralAmount);
+        asset.transfer(alice, assetDeposits);
+        
+        vm.startPrank(alice);
+        asset.approve(poolAddress, assetDeposits);
+        pool.supply(assetDeposits, alice, false);
+        vm.stopPrank();
 
-        asset.transfer(poolAddress, assetDeposits);
         vm.startPrank(bob);
 
         // take without depositing collateral
@@ -163,6 +169,10 @@ contract LendingPoolTest is Test {
         uint256 shares = pool.take(amountToTake);
         assertEq(amountToTake, asset.balanceOf(bob));
         assertEq(shares, pool.debtToken().balanceOf(bob));
+
+        assertEq(pool.totalAssets(), assetDeposits);
+        assertEq(pool.available(), assetDeposits - amountToTake);
+        assertEq(pool.borrowed(), amountToTake);
     }
 
     function testPutShares() external {
@@ -181,7 +191,7 @@ contract LendingPoolTest is Test {
         uint256 shares = pool.take(amountToTake);
         
         uint256 assetAmountToRepay = pool.debtToken().convertToAssets(shares);
-        console.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
+        console2.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
         asset.approve(poolAddress, assetAmountToRepay);
         uint256 bobAssetBalanceBefore = asset.balanceOf(bob);
         pool.putShares(shares);
@@ -207,7 +217,7 @@ contract LendingPoolTest is Test {
         
         uint256 assetAmountToRepay = amountToTake;
         uint256 sharesToRepay = pool.debtToken().convertToShares(assetAmountToRepay);
-        console.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
+        console2.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
         asset.approve(poolAddress, assetAmountToRepay);
         uint256 bobAssetBalanceBefore = asset.balanceOf(bob);
         uint256 sharesRepaid = pool.putAmount(amountToTake);
@@ -228,8 +238,11 @@ contract LendingPoolTest is Test {
         vm.startPrank(bob);
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, bob, true);
-        console.log("^^^tokenCollateralDeposited[%s] = %d", address(asset), pool.tokenCollateralDeposited(address(asset)));
-        uint256 assetValue = ud(assetAmount).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256())).unwrap();
+        console2.log("^^^tokenCollateralDeposited[%s] = %d", address(asset), pool.tokenCollateralDeposited(address(asset)));
+        // uint256 assetValue = ud(assetAmount).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256())).unwrap();
+        uint256 assetValue = _calculateAssetValue(address(asset), assetAmount);
+
+        // /// check tvl when supplying as collateral
         assertEq(assetValue, pool.tvl());
     }
 
