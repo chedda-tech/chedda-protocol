@@ -142,6 +142,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev Thrown when a caller tries to remove asset token from collateral. `withdraw` must be used instead.
     error CheddaPool_AsssetMustBeWithdrawn();
 
+    /// @dev Thrown when withdrawing or depositing zero shares
+    error CheddaPool_ZeroShsares();
+
     using SafeCast for int256;
     using SafeTransferLib for ERC20;
 
@@ -249,6 +252,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             _assetCollateralDeposited += amount;
             _assetCounted = false;
         }
+        if (shares == 0) {
+            revert CheddaPool_ZeroShsares();
+        }
         return shares;
     }
 
@@ -267,6 +273,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             _removeCollateral(address(asset), collateralToRemove, false);
             _assetCollateralDeposited -= collateralToRemove;
         }
+        if (shares == 0) {
+            revert CheddaPool_ZeroShsares();
+        }
         return shares;
     }
 
@@ -281,6 +290,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         uint256 assetAmount = super.redeem(shares, receiver, owner);
         if (_accountHasCollateral(msg.sender, address(asset))) {
             _removeCollateral(address(asset), assetAmount, false);
+        }
+        if (assetAmount == 0) {
+            revert CheddaPool_ZeroAmount();
         }
         return assetAmount;
     }
@@ -463,9 +475,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         for (uint256 i = 0; i < collateralTokenList.length; i++) {
             address token = collateralTokenList[i];
             CollateralDeposited memory collateral = accountCollateralDeposited[account][token];
-            if (_accountHasCollateral(account, token)) {
-                uint256 amount = collateral.amount;
-                uint256 collateralValue = getTokenCollateralValue(token, amount);
+            if (collateral.amount != 0) {
+                uint256 collateralValue = getTokenCollateralValue(token, collateral.amount);
                 if (collateralValue > 0) {
                     totalValue += collateralValue;
                 }
@@ -491,14 +502,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return debtToken.convertToAssets(shares);
     }
 
-    function debtValue(uint256 assetAmount) public view returns (uint256) {
-        int256 assetPrice = priceFeed.readPrice(address(asset), 0);
-        if (assetPrice < 0) {
-            revert CheddaPool_InvalidPrice(assetPrice, address(asset));
-        }
-        return assetAmount * assetPrice.toUint256();
-    }
-
     /// @notice Returns the health ratio of the account
     /// health > 1.0 means the account is solvent.
     /// health <1.0 but != 0 means account is insolvent
@@ -507,11 +510,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @return health The health ration of the account, to 1e18. i.e 1e18 = 1.0 health.
     function accountHealth(address account) public view returns (uint256) {
         uint256 debt = accountAssetsBorrowed(account);
-        if (debt == 0) {
+        uint256 debtValue = ud(debt).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256())).unwrap();
+        if (debtValue == 0) {
             return type(uint256).max;
         }
         uint256 collateral = totalAccountCollateralValue(account); 
-        return ud(collateral).div(ud(debt)).unwrap();
+        return ud(collateral).div(ud(debtValue)).unwrap();
     }
 
     /// @dev returns true if account has deposited a given token as collateral
@@ -545,13 +549,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         // if (price < 0) {
         //     revert CheddaPool_InvalidPrice(price, token);
         // }
-        console2.log("calculating value %d * %d / %d", price.toUint256(), amount, collateralFactor[token]);
         return (ud(price.toUint256()).mul(ud(amount))).mul(ud(collateralFactor[token])).unwrap();
     }
 
     function _checkAccountHealth(address account) private view {
         uint256 health = accountHealth(account);
-        if (health < 1.0e18) { // 0 health means no debt
+        if (health < 1.0e18) {
             revert CheddaPool_AccountInsolvent(account, health);
         }
     }
@@ -585,7 +588,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev This includes assets that have been borrowed.
     /// @return amount The total assets supplied to pool.
     function totalAssets() public override view returns (uint256) {
-        return supplied;
+        return supplied; // TODO: add repaid interest
     }
 
     /// @notice The assets available to be borrowed from pool.
@@ -611,7 +614,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             collateral = collateralTokenList[i];
             uint256 collateralAmount = tokenCollateralDeposited[collateral];
             UD60x18 marketValue = ud(getTokenMarketValue(collateral, collateralAmount));
-            // console2.log("*** collateramAmount[%s] = %d, value = %d", collateral, collateralAmount, marketValue);
             if (collateral == address(asset)) {
                 totalCollateralValue = totalCollateralValue.add(
                     marketValue.sub(ud(getTokenMarketValue(collateral, _assetCollateralDeposited))));
