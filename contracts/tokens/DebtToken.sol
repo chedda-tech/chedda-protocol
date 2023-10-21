@@ -92,6 +92,7 @@ contract DebtToken is ERC4626 {
     /// @param account The account repaying
     /// @return amount The amount of debt repaid
     function repayShare(uint256 shares, address account) external onlyVault returns (uint256 amount) {
+        _accrue();
         // Check for rounding error since we round down in previewRedeem.
         amount = previewRedeem(shares);
         if (amount == 0) {
@@ -100,7 +101,6 @@ contract DebtToken is ERC4626 {
 
         _variableTotalDebt -= amount;
         _burn(account, shares);
-        _accrue();
 
         emit DebtRepaid(account, amount, shares);
     }
@@ -110,6 +110,7 @@ contract DebtToken is ERC4626 {
     /// @param account The account repaying
     /// @return shares The shares burned by repaying this debt.
     function repayAmount(uint256 amount, address account) external onlyVault returns (uint256 shares) {
+        _accrue();
         shares = previewWithdraw(amount); // No need to check for rounding error, previewWithdraw rounds up.
         if (shares == 0) {
             revert ZeroShares();
@@ -117,7 +118,6 @@ contract DebtToken is ERC4626 {
 
         _variableTotalDebt -= amount;
         _burn(account, shares);
-        _accrue();
 
         emit DebtRepaid(account, amount, shares);
     }
