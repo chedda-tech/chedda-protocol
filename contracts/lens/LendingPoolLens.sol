@@ -45,12 +45,6 @@ contract LendingPoolLens is Ownable {
         uint256 collateralFactor;
     }
 
-    struct LendingPoolAccountInfo {
-        uint256 totalSupplied;
-        uint256 totalBorrowed;
-        uint256 healthFactor;
-    }
-
     struct LendingPoolInfo {
         uint256 assetOraclePrice;
         uint256 interestFeePercentage;
