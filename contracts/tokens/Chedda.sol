@@ -34,6 +34,9 @@ contract Chedda  is ERC20, Ownable {
     /// @notice The number of decimals 
     uint8 public constant DECIMALS = 18;
 
+    /// @dev The length of an epoch. Token emission reduces by half each epoch
+    uint256 public constant EPOCH_LENGTH = 182.5 days;
+
     UD60x18 public stakingShare = ud(0.2e18);
 
     /// @notice the token generation event timestamp.
@@ -48,7 +51,7 @@ contract Chedda  is ERC20, Ownable {
     /// @notice The gauge controller address.
     address public gaugeRecipient;
 
-    uint256[5] private _inflationRates = [48e16, 24e16, 12e16, 6e16, 6e16];
+    uint256[5] private _inflationRates = [0.48e18, 0.24e18, 0.12e18, 0.06e18, 0.06e18];
     uint256[5] private _targetBaseSupply = [400_000_000e18, 592_000_000e18, 734_080_000e18, 822_169_600e18, 871_499_766e18];
 
 
@@ -92,8 +95,8 @@ contract Chedda  is ERC20, Ownable {
             return 0;
         }
 
-        lastRebase = block.timestamp;
         uint256 mintAmount = emissionPerSecond() * (block.timestamp - lastRebase);
+        lastRebase = block.timestamp;
         if (mintAmount != 0) {
             uint256 toStakingVault = ud(mintAmount).mul(stakingShare).unwrap();
             uint256 toGaugeVault = mintAmount - toStakingVault;
@@ -109,21 +112,18 @@ contract Chedda  is ERC20, Ownable {
     /// as controlled by the emission schedule.
     /// @return emission The amount of CHEDDA token emitted each second.
     function emissionPerSecond() public view returns (uint256) {
-        if (block.timestamp == lastRebase) {
-            return 0;
-        }
         uint256 e = epoch();
         if (e >= _inflationRates.length) {
             e = _inflationRates.length - 1;
         }
         uint256 currentInflation = _inflationRates[e];
         uint256 baseSupply = _targetBaseSupply[e];
-        return currentInflation / 365.25 days * baseSupply;
+        return ud(currentInflation).mul(ud(baseSupply)).div(ud(365.25 days * 1e18)).unwrap();
     }
 
     /// @notice Returns the number of the current epoch
     /// @return epoch The current epoch
     function epoch() public view returns (uint256) {
-        return (block.timestamp - tge) / 365 days;
+        return (block.timestamp - tge) / EPOCH_LENGTH;
     }
 }
