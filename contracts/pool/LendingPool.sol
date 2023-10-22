@@ -499,7 +499,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @return amount The amount of account borrowed by `account`.
     function accountAssetsBorrowed(address account) public view returns (uint256) {
         uint256 shares = debtToken.accountShare(account);
-        return debtToken.convertToAssets(shares);
+        if (shares == 0) return 0;
+        return debtToken.convertToAssets(shares) + 1; // convertToAssets rounds down. Round up to account for this.
     }
 
     /// @notice Returns the health ratio of the account
