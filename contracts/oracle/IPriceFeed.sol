@@ -2,6 +2,9 @@
 pragma solidity ^0.8.20;
 
 interface IPriceFeed {
+    /// @dev The decimals of values returned by this feed.
+    function decimals() external view returns (uint8);
+
     /// @notice The token this feed returns a price for.
     /// @return address token addrss.
     function token() external view returns (address);

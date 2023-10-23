@@ -569,7 +569,17 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         }
     }
 
-    /// ERC4626 overrides
+    function accrue() public {
+        _accrue();
+    }
+
+    function _accrue() private {
+        debtToken.accrue();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                     ERC4626 overrides
+    ///////////////////////////////////////////////////////////////////////////
 
     /// @notice Returns the asset that can be borrowed from this pool
     /// @return asset The pool asset
@@ -608,7 +618,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev TVL is calculated as assets supplied + collateral deposited.
     /// @return tvl The total value locked in pool.
     function tvl() external view returns (uint256) {
-        UD60x18 assetValue = ud(totalAssets()).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256()));
+        UD60x18 assetValue = ud(totalAssets()).mul(
+            ud(_normalizeDecimals(priceFeed.readPrice(address(asset), 0).toUint256(), priceFeed.decimals(), 18))
+        );
         UD60x18 totalCollateralValue = ud(0);
         address collateral;
         for (uint256 i = 0; i < collateralTokenList.length; i++) {
@@ -623,6 +635,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             }
         }
         return assetValue.add(totalCollateralValue).unwrap();
+    }
+
+    /// @dev convert from `inDecimals` to `outDecimals`.
+    function _normalizeDecimals(uint256 value, uint8 inDecimals, uint8 outDecimals) internal pure returns (uint256) {
+        if (inDecimals == outDecimals) {
+            return value;
+        }
+        return value * 10 ** outDecimals / 10 ** inDecimals;
     }
 
     //////////////////////////////////////////////////////////////////////////

@@ -12,8 +12,12 @@ contract MockPriceFeed is IPriceFeed, Ownable {
     mapping(address => int256) private _prices;
     mapping(address => string) private _symbols;
 
-    constructor() Ownable(msg.sender) {}
+    uint8 public decimals;
+    constructor(uint8 _decimals) Ownable(msg.sender) {
+        decimals = _decimals;
+    }
     
+
     /// @notice Sets the priceed feed for a token
     /// @param _token The token address
     /// @param _price The price of token
