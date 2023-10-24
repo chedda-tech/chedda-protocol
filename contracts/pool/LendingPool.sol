@@ -511,7 +511,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @return health The health ration of the account, to 1e18. i.e 1e18 = 1.0 health.
     function accountHealth(address account) public view returns (uint256) {
         uint256 debt = accountAssetsBorrowed(account);
-        uint256 debtValue = ud(debt).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256())).unwrap();
+        uint256 debtValue = getTokenMarketValue(address(asset), debt);
         if (debtValue == 0) {
             return type(uint256).max;
         }
@@ -537,7 +537,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         // if (price < 0) {
         //     revert CheddaPool_InvalidPrice(price, token);
         // }
-        return price.toUint256() * amount;
+        return ud(_normalizeDecimals(price.toUint256(), priceFeed.decimals(), 18)).mul(ud(amount)).unwrap();
     }
 
     /// @notice Returns the value as collateral for a given amount of token
@@ -550,7 +550,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         // if (price < 0) {
         //     revert CheddaPool_InvalidPrice(price, token);
         // }
-        return (ud(price.toUint256()).mul(ud(amount))).mul(ud(collateralFactor[token])).unwrap();
+        return (ud(_normalizeDecimals(price.toUint256(), priceFeed.decimals(), 18))
+            .mul(ud(amount))).mul(ud(collateralFactor[token])).unwrap();
     }
 
     function _checkAccountHealth(address account) private view {
@@ -569,13 +570,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         }
     }
 
-    function accrue() public {
-        _accrue();
-    }
+    // TODO: Interest accrual
+    // function accrue() public {
+    //     _accrue();
+    // }
 
-    function _accrue() private {
-        debtToken.accrue();
-    }
+    // function _accrue() private {
+    //     debtToken.accrue();
+    // }
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     ERC4626 overrides
@@ -618,18 +620,18 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev TVL is calculated as assets supplied + collateral deposited.
     /// @return tvl The total value locked in pool.
     function tvl() external view returns (uint256) {
-        UD60x18 assetValue = ud(totalAssets()).mul(
-            ud(_normalizeDecimals(priceFeed.readPrice(address(asset), 0).toUint256(), priceFeed.decimals(), 18))
-        );
-        UD60x18 totalCollateralValue = ud(0);
+        UD60x18 assetValue = ud(getTokenMarketValue(address(asset), totalAssets()));
+        UD60x18 totalCollateralValue;
         address collateral;
         for (uint256 i = 0; i < collateralTokenList.length; i++) {
             collateral = collateralTokenList[i];
             uint256 collateralAmount = tokenCollateralDeposited[collateral];
             UD60x18 marketValue = ud(getTokenMarketValue(collateral, collateralAmount));
             if (collateral == address(asset)) {
+                UD60x18 collateralDepositedValue = ud(getTokenMarketValue(collateral, _assetCollateralDeposited)); 
                 totalCollateralValue = totalCollateralValue.add(
-                    marketValue.sub(ud(getTokenMarketValue(collateral, _assetCollateralDeposited))));
+                    marketValue.sub(collateralDepositedValue)
+                );
             } else {
                 totalCollateralValue = totalCollateralValue.add(marketValue);
             }
