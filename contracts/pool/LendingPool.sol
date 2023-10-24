@@ -252,9 +252,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             _assetCollateralDeposited += amount;
             _assetCounted = false;
         }
-        if (shares == 0) {
-            revert CheddaPool_ZeroShsares();
-        }
+        // zero_shares handled in ERC-4626
         return shares;
     }
 
@@ -291,9 +289,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         if (_accountHasCollateral(msg.sender, address(asset))) {
             _removeCollateral(address(asset), assetAmount, false);
         }
-        if (assetAmount == 0) {
-            revert CheddaPool_ZeroAmount();
-        }
+        // zero_assets handled in ERC-4626
         return assetAmount;
     }
 
