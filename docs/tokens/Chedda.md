@@ -74,6 +74,14 @@ uint8 DECIMALS
 
 The number of decimals
 
+### EPOCH_LENGTH
+
+```solidity
+uint256 EPOCH_LENGTH
+```
+
+_The length of an epoch. Token emission reduces by half each epoch_
+
 ### stakingShare
 
 ```solidity

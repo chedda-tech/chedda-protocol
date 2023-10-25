@@ -2,6 +2,14 @@
 
 ## IPriceFeed
 
+### decimals
+
+```solidity
+function decimals() external view returns (uint8)
+```
+
+_The decimals of values returned by this feed._
+
 ### token
 
 ```solidity

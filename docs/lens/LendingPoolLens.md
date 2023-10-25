@@ -50,16 +50,6 @@ struct PoolCollateralInfo {
 }
 ```
 
-### LendingPoolAccountInfo
-
-```solidity
-struct LendingPoolAccountInfo {
-  uint256 totalSupplied;
-  uint256 totalBorrowed;
-  uint256 healthFactor;
-}
-```
-
 ### LendingPoolInfo
 
 ```solidity

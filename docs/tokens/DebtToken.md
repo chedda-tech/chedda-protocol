@@ -208,10 +208,10 @@ Returns total owed (amount borrowed + outstanding interest payments).
 | ---- | ---- | ----------- |
 | [0] | uint256 | totalDebt Total outstanding debt todo: change to totalDebt |
 
-### totalBorrowed
+### totalDebt
 
 ```solidity
-function totalBorrowed() external view returns (uint256 borrowed)
+function totalDebt() external view returns (uint256 borrowed)
 ```
 
 TODO: Change asset references besides underlying `asset` to debt.

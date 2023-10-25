@@ -168,7 +168,7 @@ Emitted when the rewards gauge is set
 error CheddaPool_InvalidPrice(int256 price, address token)
 ```
 
-Custom errors
+_Thrown when an invalid price is encountered when reading the asset or collateral price._
 
 ### CheddaPool_CollateralNotAllowed
 
@@ -176,11 +176,15 @@ Custom errors
 error CheddaPool_CollateralNotAllowed(address token)
 ```
 
+_Thrown when a caller tries to deposit a token for collateral that is not allowed_
+
 ### CheddaPool_WrongCollateralType
 
 ```solidity
 error CheddaPool_WrongCollateralType(address token)
 ```
+
+_Thrown when depositing an ERC-20 as ERC-721 or vice veresa._
 
 ### CheddaPool_ZeroAmount
 
@@ -188,11 +192,15 @@ error CheddaPool_WrongCollateralType(address token)
 error CheddaPool_ZeroAmount()
 ```
 
+_Thrown when a caller tries to supply/deposit 0 amount of asset/collateral._
+
 ### CheddaPool_InsufficientCollateral
 
 ```solidity
 error CheddaPool_InsufficientCollateral(address account, address token, uint256 amountRequested, uint256 amountDeposited)
 ```
+
+_Thrown when a caller tries to withdraw more collateral than they have deposited._
 
 ### CheddaPool_AccountInsolvent
 
@@ -200,17 +208,47 @@ error CheddaPool_InsufficientCollateral(address account, address token, uint256 
 error CheddaPool_AccountInsolvent(address account, uint256 health)
 ```
 
+_Thrown when a withdrawing an amount of collateral would put the account in an insolvent state._
+
 ### CheddaPool_InsufficientAssetBalance
 
 ```solidity
 error CheddaPool_InsufficientAssetBalance(uint256 available, uint256 requested)
 ```
 
+_Thrown when a caller tries withdraw more asset than supplied._
+
 ### CheddaPool_Overpayment
 
 ```solidity
 error CheddaPool_Overpayment()
 ```
+
+_Thrown when a caller tries to repay more debt than they owe._
+
+### CheddaPool_AssetMustBeSupplied
+
+```solidity
+error CheddaPool_AssetMustBeSupplied()
+```
+
+_Thrown when a caller tries to deposit the asset token as collateral._
+
+### CheddaPool_AsssetMustBeWithdrawn
+
+```solidity
+error CheddaPool_AsssetMustBeWithdrawn()
+```
+
+_Thrown when a caller tries to remove asset token from collateral. `withdraw` must be used instead._
+
+### CheddaPool_ZeroShsares
+
+```solidity
+error CheddaPool_ZeroShsares()
+```
+
+_Thrown when withdrawing or depositing zero shares_
 
 ### supplied
 
@@ -310,6 +348,17 @@ constructor(string _name, contract ERC20 _asset, address _priceFeed, struct Lend
 
 initialization
 
+### setGauge
+
+```solidity
+function setGauge(address _gauge) external
+```
+
+Set the rewards gauge for this pool.
+
+_Can only be called by contract owner
+Emits GaugeSet(gauge, caller)._
+
 ### supply
 
 ```solidity
@@ -317,6 +366,9 @@ function supply(uint256 amount, address receiver, bool useAsCollateral) external
 ```
 
 Supplies assets to pool
+
+_if `useAsCollateral` is true, and `receiver != msg.sender`, collateral is added to
+`msg.sender`'s collateral balance._
 
 #### Parameters
 
@@ -341,7 +393,7 @@ function withdraw(uint256 assetAmount, address receiver, address owner) public r
 Withdraws a specified amount of assets from pool
 
 _If user has added this asset as collateral a collateral amount will be removed.
-if owner != msg.sender there must be an existing approval >= assetAmount_
+if `owner != msg.sender` there must be an existing approval >= assetAmount_
 
 #### Parameters
 
@@ -533,7 +585,6 @@ Returns the total value of collateral deposited by an account.
 function accountCollateralAmount(address account, address collateral) public view returns (uint256)
 ```
 
-TODO: remove. Renamed from `accountCollateralCount`.
 Returns the amount of a given token an account has deposited as collateral
 
 #### Parameters
@@ -555,7 +606,6 @@ Returns the amount of a given token an account has deposited as collateral
 function accountAssetsBorrowed(address account) public view returns (uint256)
 ```
 
-TODO: remove. Renamed from `accountPendingAmount`
 Returns the amount of asset an account has borrowed, including any accrued interest.
 
 #### Parameters
@@ -569,12 +619,6 @@ Returns the amount of asset an account has borrowed, including any accrued inter
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | amount The amount of account borrowed by `account`. |
-
-### debtValue
-
-```solidity
-function debtValue(uint256 assetAmount) public view returns (uint256)
-```
 
 ### accountHealth
 
@@ -745,6 +789,14 @@ _TVL is calculated as assets supplied + collateral deposited._
 | ---- | ---- | ----------- |
 | [0] | uint256 | tvl The total value locked in pool. |
 
+### _normalizeDecimals
+
+```solidity
+function _normalizeDecimals(uint256 value, uint8 inDecimals, uint8 outDecimals) internal pure returns (uint256)
+```
+
+_convert from `inDecimals` to `outDecimals`._
+
 ### baseSupplyAPY
 
 ```solidity
@@ -792,17 +844,6 @@ _This is the amount of asset borrowed divided by assets supplied._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | utilization The pool asset utilization. |
-
-### setGauge
-
-```solidity
-function setGauge(address _gauge) external
-```
-
-Set the rewards gauge for this pool.
-
-_Can only be called by contract owner
-Emits GaugeSet(gauge, caller)._
 
 ### beforeWithdraw
 
