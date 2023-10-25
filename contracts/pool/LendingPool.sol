@@ -244,6 +244,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @param receiver The account to mint share tokens to
     /// @param useAsCollateral Whethe this deposit should be marked as collateral
     /// @return shares The amount of shares minted.
+    /// @dev if `useAsCollateral` is true, and `receiver != msg.sender`, collateral is added to
+    /// `msg.sender`'s collateral balance.
     function supply(uint256 amount, address receiver, bool useAsCollateral) external nonReentrant() returns (uint256) {
         uint256 shares = deposit(amount, receiver);
         if (useAsCollateral) {
@@ -258,7 +260,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
     /// @notice Withdraws a specified amount of assets from pool
     /// @dev If user has added this asset as collateral a collateral amount will be removed.
-    /// if owner != msg.sender there must be an existing approval >= assetAmount
+    /// if `owner != msg.sender` there must be an existing approval >= assetAmount
     /// @param assetAmount The amount to withdraw
     /// @param receiver The account to receive withdrawn assets
     /// @param owner The account to withdraw assets from.
@@ -373,6 +375,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         _addCollateral(token, amount, true);
     }
 
+    // TODO: add parameter for receiver
     function _addCollateral(address token, uint256 amount, bool doTransfer) private {
         // check collateral is allowed
         if (!collateralAllowed[token]) {
@@ -597,7 +600,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev This includes assets that have been borrowed.
     /// @return amount The total assets supplied to pool.
     function totalAssets() public override view returns (uint256) {
-        return supplied; // TODO: add repaid interest
+        return supplied; // TODO: add accrued interest
     }
 
     /// @notice The assets available to be borrowed from pool.
