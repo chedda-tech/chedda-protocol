@@ -536,7 +536,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         // if (price < 0) {
         //     revert CheddaPool_InvalidPrice(price, token);
         // }
-        return ud(_normalizeDecimals(price.toUint256(), priceFeed.decimals(), 18)).mul(ud(amount)).unwrap();
+        return ud(_normalizeDecimals(price.toUint256(), priceFeed.decimals(), 18))
+        .mul(ud(_normalizeDecimals(amount, ERC20(token).decimals(), 18))).unwrap();
     }
 
     /// @notice Returns the value as collateral for a given amount of token
@@ -550,7 +551,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         //     revert CheddaPool_InvalidPrice(price, token);
         // }
         return (ud(_normalizeDecimals(price.toUint256(), priceFeed.decimals(), 18))
-            .mul(ud(amount))).mul(ud(collateralFactor[token])).unwrap();
+            .mul(ud(_normalizeDecimals(amount, ERC20(token).decimals(), 18))))
+            .mul(ud(collateralFactor[token])).unwrap();
     }
 
     function _checkAccountHealth(address account) private view {
