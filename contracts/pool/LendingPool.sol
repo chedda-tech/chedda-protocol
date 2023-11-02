@@ -15,6 +15,7 @@ import { LinearInterestRateModel } from "./LinearInterestRateModel.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { ILendingPool } from "./ILendingPool.sol";
 import { ILiquidityGauge } from "../gauge/ILiquidityGauge.sol";
+import { MathLib } from "../library/MathLib.sol";
 import { console2 } from "forge-std/console2.sol";
 
 /// @title LendingPool
@@ -44,22 +45,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         address token;
         uint256 collateralFactor;
         TokenType tokenType;
-    }
-
-    /// Custom errors
-    /// @notice This is the current state of vault key stats, returned as a view.
-    /// Some fields are computed.
-    /// @dev move to LendingPoolView?
-    struct VaultStateView {
-        uint256 supplied;
-        uint256 borrowed; // this is debt including interest
-        uint256 available;
-        uint256 utilization;
-        uint256 baseSupplyApr;
-        uint256 baseBorrowApr;
-        uint256 maxSupplyRewardsApr;
-        uint256 maxBorrowRewardsApr;
-        uint256 max;
     }
 
     /// @dev Information about collateral deposited to the pool.
@@ -145,6 +130,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev Thrown when withdrawing or depositing zero shares
     error CheddaPool_ZeroShsares();
 
+    using MathLib for uint256;
     using SafeCast for int256;
     using SafeTransferLib for ERC20;
 
@@ -535,8 +521,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         // if (price < 0) {
         //     revert CheddaPool_InvalidPrice(price, token);
         // }
-        return ud(_normalizeDecimals(price.toUint256(), priceFeed.decimals(), 18))
-        .mul(ud(_normalizeDecimals(amount, ERC20(token).decimals(), 18))).unwrap();
+        return ud(price.toUint256().normalized(priceFeed.decimals(), 18))
+        .mul(ud(amount.normalized(ERC20(token).decimals(), 18))).unwrap();
     }
 
     /// @notice Returns the value as collateral for a given amount of token
@@ -549,8 +535,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         // if (price < 0) {
         //     revert CheddaPool_InvalidPrice(price, token);
         // }
-        return (ud(_normalizeDecimals(price.toUint256(), priceFeed.decimals(), 18))
-            .mul(ud(_normalizeDecimals(amount, ERC20(token).decimals(), 18))))
+        return (ud(price.toUint256().normalized(priceFeed.decimals(), 18))
+            .mul(ud(amount.normalized(ERC20(token).decimals(), 18))))
             .mul(ud(collateralFactor[token])).unwrap();
     }
 
@@ -637,14 +623,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             }
         }
         return assetValue.add(totalCollateralValue).unwrap();
-    }
-
-    /// @dev convert from `inDecimals` to `outDecimals`.
-    function _normalizeDecimals(uint256 value, uint8 inDecimals, uint8 outDecimals) internal pure returns (uint256) {
-        if (inDecimals == outDecimals) {
-            return value;
-        }
-        return value * 10 ** outDecimals / 10 ** inDecimals;
     }
 
     //////////////////////////////////////////////////////////////////////////

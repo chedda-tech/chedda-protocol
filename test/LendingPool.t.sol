@@ -8,6 +8,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
 import {LendingPool} from "../contracts/pool/LendingPool.sol";
+import {MathLib} from "../contracts/library/MathLib.sol";
 
 contract LendingPoolTest is Test {
     // Test can...
@@ -29,6 +30,7 @@ contract LendingPoolTest is Test {
     string public constant POOL_NAME = "Test Pool";
 
     using SafeCast for int256;
+    using MathLib for uint256;
 
     function setUp() external {
         asset = new MockERC20("Asset", "AST", 8, 1_000_000e8);
@@ -475,8 +477,8 @@ contract LendingPoolTest is Test {
 
     function _calculateAssetValue(address assetAddress, uint256 amount) internal view returns (uint256) {
         return ud(
-            _normalizeDecimals(amount, MockERC20(assetAddress).decimals(), 18))
-            .mul(ud(_normalizeDecimals(priceFeed.readPrice(assetAddress, 0).toUint256(), priceFeed.decimals(), 18))).unwrap();
+            amount.normalized(MockERC20(assetAddress).decimals(), 18))
+            .mul(ud(priceFeed.readPrice(assetAddress, 0).toUint256().normalized(priceFeed.decimals(), 18))).unwrap();
     }
 
     function _calculateCollateralValue(
@@ -486,12 +488,4 @@ contract LendingPoolTest is Test {
     ) internal view returns (uint256) {
         return ud(_calculateAssetValue(assetAddress, amount)).mul(ud(collateralFactor)).unwrap();
     }
-
-    function _normalizeDecimals(uint256 value, uint8 inDecimals, uint8 outDecimals) internal pure returns (uint256) {
-        if (inDecimals == outDecimals) {
-            return value;
-        }
-        return value * 10 ** outDecimals / 10 ** inDecimals;
-    }
-
 }

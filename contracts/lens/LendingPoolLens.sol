@@ -15,6 +15,7 @@ contract LendingPoolLens is Ownable {
     struct PoolStats {
         address pool;
         address asset;
+        uint8 decimals;
         string characterization;
         uint256 supplied;
         uint256 suppliedValue;
@@ -41,6 +42,7 @@ contract LendingPoolLens is Ownable {
 
     struct PoolCollateralInfo {
         address collateral;
+        uint8 decimals;
         uint256 amountDeposited;
         uint256 value;
         uint256 collateralFactor;
@@ -55,6 +57,7 @@ contract LendingPoolLens is Ownable {
 
     struct AccountCollateralDeposited {
         address token;
+        uint8 decimals;
         uint256 amount;
         uint256 value;
         uint256[] tokenIds;
@@ -257,6 +260,7 @@ contract LendingPoolLens is Ownable {
         PoolStats memory stats = PoolStats({
             pool: address(this),
             asset: address(pool.poolAsset()),
+            decimals: assetDecimals,
             characterization: pool.characterization(),
             supplied: supplied,
             borrowed: borrowed,
@@ -289,9 +293,11 @@ contract LendingPoolLens is Ownable {
         address collateral;
         for (uint256 i = 0; i < collaterals.length; i++) {
             collateral = collaterals[i];
+            uint8 collateralDecimals = ERC20(collateral).decimals;
             uint256 collateralAmount = pool.accountCollateralAmount(account, collateral);
             AccountCollateralDeposited memory deposited = AccountCollateralDeposited({
                 token: collateral,
+                decimals: collateralDecimals,
                 amount: collateralAmount,
                 value: pool.getTokenCollateralValue(collateral, collateralAmount),
                 tokenIds: new uint256[](0)
@@ -299,6 +305,7 @@ contract LendingPoolLens is Ownable {
             collateralDeposited[i] = deposited;
         }
         AccountInfo memory accountInfo = AccountInfo({
+            decimals: ERC20(pool.poolAsset()).decimals(),
             supplied: supplied,
             borrowed: borrowed,
             healthFactor: healthFactor,
@@ -321,6 +328,7 @@ contract LendingPoolLens is Ownable {
             uint256 collateralAmount = pool.tokenCollateralDeposited(collateral);
             infoList[i] = PoolCollateralInfo({
                 collateral: collateral,
+                decimals: ERC20(collateral).decimals(),
                 amountDeposited: collateralAmount,
                 value: pool.getTokenCollateralValue(collateral, collateralAmount),
                 collateralFactor: pool.collateralFactor(collateral)
