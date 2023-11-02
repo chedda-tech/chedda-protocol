@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { ILendingPool } from "../pool/ILendingPool.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { MathLib } from "../library/MathLib.sol";
@@ -66,6 +67,7 @@ contract LendingPoolLens is Ownable {
     struct AccountInfo {
         uint256 supplied;
         uint256 borrowed;
+        uint8 decimals;
         uint256 healthFactor;
         uint256 totalCollateralValue;
         AccountCollateralDeposited[] collateralDeposited;
@@ -293,7 +295,7 @@ contract LendingPoolLens is Ownable {
         address collateral;
         for (uint256 i = 0; i < collaterals.length; i++) {
             collateral = collaterals[i];
-            uint8 collateralDecimals = ERC20(collateral).decimals;
+            uint8 collateralDecimals = ERC20(collateral).decimals();
             uint256 collateralAmount = pool.accountCollateralAmount(account, collateral);
             AccountCollateralDeposited memory deposited = AccountCollateralDeposited({
                 token: collateral,
@@ -305,9 +307,9 @@ contract LendingPoolLens is Ownable {
             collateralDeposited[i] = deposited;
         }
         AccountInfo memory accountInfo = AccountInfo({
-            decimals: ERC20(pool.poolAsset()).decimals(),
             supplied: supplied,
             borrowed: borrowed,
+            decimals: ERC20(pool.poolAsset()).decimals(),
             healthFactor: healthFactor,
             totalCollateralValue: collateralValue,
             collateralDeposited: collateralDeposited

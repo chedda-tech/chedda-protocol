@@ -685,4 +685,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             liquidityTaken
         );
     }
+
+    /// @notice Returns the version of the vault
+    /// @return The version
+    function version() external pure returns (uint16) {
+        return 1;
+    }
 }

@@ -488,4 +488,5 @@ contract LendingPoolTest is Test {
     ) internal view returns (uint256) {
         return ud(_calculateAssetValue(assetAddress, amount)).mul(ud(collateralFactor)).unwrap();
     }
+
 }
