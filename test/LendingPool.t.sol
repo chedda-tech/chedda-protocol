@@ -39,7 +39,7 @@ contract LendingPoolTest is Test {
         bob = makeAddr("bob");
         alice = makeAddr("alice");
         priceFeed = new MockPriceFeed(8);
-        priceFeed.setPrice(address(asset), 100e8);
+        priceFeed.setPrice(address(asset), 1e8);
         priceFeed.setPrice(c1Address, 50e8);
         priceFeed.setPrice(c2Address, 25e8);
 
@@ -95,11 +95,16 @@ contract LendingPoolTest is Test {
         uint256 collateralAmount = 100e18;
         collateral1.transfer(bob, collateralAmount * 2);
 
+        // adding unapproved collateral fails
         address notCollateral = makeAddr("not collateral");
         vm.expectRevert(
             abi.encodeWithSelector(LendingPool.CheddaPool_CollateralNotAllowed.selector, notCollateral)
         );
         pool.addCollateral(notCollateral, collateralAmount);
+
+        // adding asset as collateral fails, must be supplied with collateral option
+        vm.expectRevert(LendingPool.CheddaPool_AssetMustBeSupplied.selector);
+        pool.addCollateral(address(asset), collateralAmount);
 
         vm.startPrank(bob);
         vm.expectRevert(); // not approved
@@ -108,11 +113,9 @@ contract LendingPoolTest is Test {
 
         collateral1.approve(poolAddress, collateralAmount);
 
+        // zero amount fails
         vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
         pool.addCollateral(c1Address, 0);
-
-        // vm.expectEmit(true, true, true, true, address(pool));
-        // emit LendingPool.CollateralAdded(c1Address, bob, LendingPool.TokenType.ERC20, collateralAmount);
 
         pool.addCollateral(c1Address, collateralAmount);
         uint256 bobBalanceAfter = collateral1.balanceOf(bob);
@@ -136,8 +139,21 @@ contract LendingPoolTest is Test {
         vm.startPrank(bob);
         uint256 bobBalanceBefore = collateral1.balanceOf(bob);
         collateral1.approve(poolAddress, collateralAmount);
-
         pool.addCollateral(c1Address, collateralAmount); 
+
+        // // remove asset collateral fails
+        // vm.expectRevert(LendingPool.CheddaPool_AsssetMustBeWithdrawn.selector);
+        // pool.removeCollateral(address(asset), collateralAmount);
+
+        // // remove 0 collateral fails
+        // vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
+        // pool.removeCollateral(c1Address, collateralAmount);
+
+        // // remove more collateral than deposited fails
+        // vm.expectRevert(LendingPool.CheddaPool_InsufficientCollateral.selector);
+        // pool.removeCollateral(c1Address, collateralAmount * 2);
+
+        // remove correct amount of collateral succeeds
         pool.removeCollateral(c1Address, collateralAmount);
         uint256 bobBalanceAfter = collateral1.balanceOf(bob);
         assertEq(bobBalanceBefore, bobBalanceAfter);
@@ -219,6 +235,12 @@ contract LendingPoolTest is Test {
         pool.addCollateral(c1Address, collateralAmount);
         uint256 shares = pool.take(amountToTake);
         
+        vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
+        pool.putAmount(0);
+
+        // vm.expectRevert(LendingPool.CheddaPool_Overpayment.selector);
+        // pool.putAmount(pool.accountAssetsBorrowed(bob) + 1e18);
+
         uint256 assetAmountToRepay = amountToTake;
         uint256 sharesToRepay = pool.debtToken().convertToShares(assetAmountToRepay);
         console2.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
@@ -235,7 +257,7 @@ contract LendingPoolTest is Test {
     }
 
     function testTvlAndState() external {
-        uint256 assetAmount = 1e8;
+        uint256 assetAmount = 100e8;
 
         // assertEq(0, pool.tvl());
         asset.transfer(bob, assetAmount);
@@ -323,7 +345,8 @@ contract LendingPoolTest is Test {
         asset.transfer(bob, assetAmount);
 
         vm.startPrank(bob);
-
+        vm.expectRevert(LendingPool.CheddaPool_ZeroShsares.selector);
+        pool.withdraw(0, bob, bob);
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, bob, true);
         assertEq(pool.totalAssets(), assetAmount);
@@ -451,8 +474,9 @@ contract LendingPoolTest is Test {
     }
 
     function _calculateAssetValue(address assetAddress, uint256 amount) internal view returns (uint256) {
-        return ud(amount).mul(ud(
-            _normalizeDecimals(priceFeed.readPrice(assetAddress, 0).toUint256(), priceFeed.decimals(), 18))).unwrap();
+        return ud(
+            _normalizeDecimals(amount, MockERC20(assetAddress).decimals(), 18))
+            .mul(ud(_normalizeDecimals(priceFeed.readPrice(assetAddress, 0).toUint256(), priceFeed.decimals(), 18))).unwrap();
     }
 
     function _calculateCollateralValue(

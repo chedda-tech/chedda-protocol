@@ -27,7 +27,7 @@ contract LendingPoolLensTest is Test {
         owner = makeAddr("owner");
         bob = makeAddr("bob");
 
-        priceFeed = new MockPriceFeed();
+        priceFeed = new MockPriceFeed(18);
         asset1 = new MockERC20("Asset 1", "AST1", 18, 1_000_000e18);
         asset2 = new MockERC20("Asset 2", "AST2", 18, 1_000_000e18);
         lens = new LendingPoolLens(owner);
@@ -47,7 +47,22 @@ contract LendingPoolLensTest is Test {
         assertEq(registeredPools[1], address(pool2));
     }
 
-    function testUnregister() external {
+    function testSetActive() external {
+        vm.startPrank(owner);
+
+        address[] memory active = lens.activePools();
+        assertEq(active.length, 1);
+
+        lens.setActive(address(pool2), true);
+        active = lens.activePools();
+        assertEq(active.length, 2);
+        lens.setActive(address(pool1), false);
+        lens.setActive(address(pool2), false);
+        active = lens.activePools();
+        assertEq(active.length, 0);
+    }
+
+    function testUnregisterPool() external {
         vm.startPrank(owner);
         lens.unregisterPool(address(pool1));
         address[] memory registeredPools = lens.registeredPools();
@@ -89,7 +104,12 @@ contract LendingPoolLensTest is Test {
         assertEq(info.healthFactor, bobHealth);
     }
 
-    function testLendingPoolCollateral() external {}
+    function testLendingPoolCollateral() external {
+        // deposit asset as colateral
+
+        // deposit collateral 1 + 2
+        // check
+    }
 
     function testAggregateStats() external {
         uint256 tvl1 = 100e18;

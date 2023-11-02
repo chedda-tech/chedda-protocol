@@ -375,7 +375,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         _addCollateral(token, amount, true);
     }
 
-    // TODO: add parameter for receiver
     function _addCollateral(address token, uint256 amount, bool doTransfer) private {
         // check collateral is allowed
         if (!collateralAllowed[token]) {
