@@ -6,6 +6,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { ILendingPool } from "../pool/ILendingPool.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
+import { MathLib } from "../library/MathLib.sol";
 
 /// @title LendingPoolLens
 /// @notice Provides utility functions to view the state of LendingPools
@@ -74,6 +75,7 @@ contract LendingPoolLens is Ownable {
     error NotRegistered(address pool);
 
     using SafeCast for int256;
+    using MathLib for uint256;
 
     address[] private _pools;
     mapping (address => bool) private _activePools;
@@ -186,16 +188,18 @@ contract LendingPoolLens is Ownable {
         uint256 totalAvailableValue = 0;
         uint256 totalFeesPaid = 0;
         uint256 tvl = 0;
+        uint8 assetDecimals;
         ILendingPool pool;
         IPriceFeed priceFeed;
 
         for (uint256 i = 0; i < _pools.length; i++) {
             pool = ILendingPool(_pools[i]);
             priceFeed = pool.priceFeed();
-            UD60x18 assetPrice = ud(priceFeed.readPrice(address(pool.poolAsset()), 0).toUint256());
-            totalSuppliedValue += ud(pool.supplied()).mul(assetPrice).unwrap();
-            totalBorrowedValue += ud(pool.borrowed()).mul(assetPrice).unwrap();
-            totalAvailableValue += ud(pool.available()).mul(assetPrice).unwrap();
+            assetDecimals = pool.poolAsset().decimals();
+            UD60x18 assetPrice = ud(priceFeed.readPrice(address(pool.poolAsset()), 0).toUint256().normalized(priceFeed.decimals(), 18));
+            totalSuppliedValue += ud(pool.supplied().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
+            totalBorrowedValue += ud(pool.borrowed().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
+            totalAvailableValue += ud(pool.available().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
             totalFeesPaid += pool.feesPaid();
             tvl += pool.tvl();
         }
@@ -245,16 +249,19 @@ contract LendingPoolLens is Ownable {
         ILendingPool pool = ILendingPool(poolAddress);
         uint256 supplied = pool.supplied();
         uint256 borrowed = pool.borrowed();
-        uint256 assetPrice = pool.priceFeed().readPrice(address(pool.poolAsset()), 0).toUint256();
+        uint8 assetDecimals = pool.poolAsset().decimals();
+        IPriceFeed priceFeed = pool.priceFeed();
+        uint256 normalizedAssetPrice = priceFeed.readPrice(address(pool.poolAsset()), 0).toUint256()
+            .normalized(priceFeed.decimals(), 18);
 
         PoolStats memory stats = PoolStats({
             pool: address(this),
             asset: address(pool.poolAsset()),
             characterization: pool.characterization(),
-            supplied: pool.supplied(),
-            borrowed: pool.borrowed(),
-            suppliedValue: ud(supplied).mul(ud(assetPrice)).unwrap(),
-            borrowedValue: ud(borrowed).mul(ud(assetPrice)).unwrap(),
+            supplied: supplied,
+            borrowed: borrowed,
+            suppliedValue: ud(supplied.normalized(assetDecimals, 18)).mul(ud(normalizedAssetPrice)).unwrap(),
+            borrowedValue: ud(borrowed.normalized(assetDecimals, 18)).mul(ud(normalizedAssetPrice)).unwrap(),
             baseSupplyAPY: pool.baseSupplyAPY(),
             baseBorrowAPY: pool.baseBorrowAPY(),
             maxSupplyAPY: pool.baseSupplyAPY(), // TODO: base + reward rate from gauge
