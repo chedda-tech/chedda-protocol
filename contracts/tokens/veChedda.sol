@@ -378,7 +378,7 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         * @param oldLocked Previous locked amount / end lock time for the user
         * @param newLocked New locked amount / end lock time for the user
     */
-    function _checkpoint(address addr, LockedBalance memory oldLocked, LockedBalance memory newLocked) internal {
+    function _checkpoint(address addr, LockedBalance memory oldLocked, LockedBalance memory newLocked) internal returns (Point memory) {
         Point memory uOld = EMPTY_POINT_FACTORY();
         Point memory uNew = EMPTY_POINT_FACTORY();
         uint oldSlope = 0;
@@ -512,26 +512,30 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
 
             // Now handle user history
             // Second function needed for 'stack too deep' issues
-            _checkpointPartTwo(addr, uNew.bias, uNew.slope);
+            return _checkpointPartTwo(addr, uNew.bias, uNew.slope);
+        } else {
+            return lastPoint;
         }
-
     }
+
     /**
         * @notice Needed for 'stack too deep' issues in _checkpoint()
         * @param addr User's wallet address. No user checkpoint if 0x0
         * @param _bias from unew
         * @param _slope from unew
     */
-    function _checkpointPartTwo(address addr, uint256 _bias, uint256 _slope) internal {
+    function _checkpointPartTwo(address addr, uint256 _bias, uint256 _slope) internal returns (Point memory) {
         uint256 userEpoch = userPointEpoch[addr] + 1;
 
-        userPointEpoch[addr] = userEpoch;
-        userPointHistory[addr][userEpoch] = Point({
+        Point memory newPoint = Point({
             bias: _bias, 
             slope: _slope, 
             ts: _blockTimestamp(), 
             blk: _blockNumber()
         });
+        userPointEpoch[addr] = userEpoch;
+        userPointHistory[addr][userEpoch] = newPoint;
+        return newPoint;
     }
 
     /**
@@ -541,7 +545,7 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         * @param unlockTime New time when to unlock the tokens, or 0 if unchanged
         * @param lockedBalance Previous locked amount / timestamp
     */
-    function _depositFor(address _addr, uint256 _value, uint256 unlockTime, LockedBalance memory lockedBalance, int128 _type) internal {
+    function _depositFor(address _addr, uint256 _value, uint256 unlockTime, LockedBalance memory lockedBalance, int128 _type) internal returns (Point memory newPoint) {
         LockedBalance memory _locked = lockedBalance;
         uint256 supplyBefore = supply;
 
@@ -558,7 +562,7 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         // Both oldLocked.end could be current or expired (>/< _blockTimestamp())
         // value == 0 (extend lock) or value > 0 (add to lock or extend lock)
         // _locked.end > _blockTimestamp() (always)
-        _checkpoint(_addr, oldLocked, _locked);
+        newPoint = _checkpoint(_addr, oldLocked, _locked);
 
         if (_value != 0) {
             assert(ERC20(token).transferFrom(_addr, address(this), _value));
@@ -662,7 +666,7 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         * @param _value Amount to deposit
         * @param _unlockTime Epoch time when tokens unlock, rounded down to whole weeks
     */
-    function createLock(uint256 _value, uint256 _unlockTime) external nonReentrant {
+    function createLock(uint256 _value, uint256 _unlockTime) external nonReentrant returns (Point memory) {
         _assertNotContract(msg.sender);
         uint256 blockTimestamp = _blockTimestamp();
         uint256 unlockTime = (_unlockTime / WEEK) * WEEK ; // Locktime is rounded down to weeks
@@ -672,7 +676,7 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         require (_locked.amount == 0, "Withdraw old tokens first");
         require (unlockTime > blockTimestamp, "Unlock time must be future");
         require (unlockTime <= blockTimestamp + MAXTIME, "Voting lock can be 3 years max");
-        _depositFor(msg.sender, _value, unlockTime, _locked, CREATE_LOCK_TYPE);
+        return _depositFor(msg.sender, _value, unlockTime, _locked, CREATE_LOCK_TYPE);
     }
 
     /**
@@ -680,7 +684,7 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         without modifying the unlock time
         * @param _value Amount of tokens to deposit and add to the lock
     */
-    function increaseAmount(uint256 _value) external nonReentrant {
+    function increaseAmount(uint256 _value) external nonReentrant returns (Point memory) {
         _assertNotContract(msg.sender);
         LockedBalance memory _locked = locked[msg.sender];
 
@@ -688,14 +692,14 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         require(_locked.amount > 0, "No existing lock found");
         require(_locked.end > _blockTimestamp(), "Cannot add to expired lock.");
 
-        _depositFor(msg.sender, _value, 0, _locked, INCREASE_LOCK_AMOUNT);
+        return _depositFor(msg.sender, _value, 0, _locked, INCREASE_LOCK_AMOUNT);
     }
 
     /**
         * @notice Extend the unlock time for `msg.sender` to `_unlockTime`
         * @param _unlockTime New epoch time for unlocking
     */
-    function increaseUnlockTime(uint256 _unlockTime) external nonReentrant {
+    function increaseUnlockTime(uint256 _unlockTime) external nonReentrant returns (Point memory) {
         _assertNotContract(msg.sender);
         LockedBalance memory _locked = locked[msg.sender];
         uint256 unlockTime = (_unlockTime / WEEK) * WEEK; // Locktime is rounded down to weeks
@@ -705,14 +709,14 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         require(unlockTime > _locked.end, "Can only increase lock duration");
         require(unlockTime <= _blockTimestamp() + MAXTIME, "Voting lock can be 3 years max");
 
-        _depositFor(msg.sender, 0, unlockTime, _locked, INCREASE_UNLOCK_TIME);
+        return _depositFor(msg.sender, 0, unlockTime, _locked, INCREASE_UNLOCK_TIME);
     }
 
     /**
         * @notice Withdraw all tokens for `msg.sender`ime`
         * @dev Only possible if the lock has expired
     */
-    function withdraw() external nonReentrant {
+    function withdraw() external nonReentrant returns (Point memory) {
         LockedBalance memory _locked = locked[msg.sender];
         uint256 blockTimestamp = _blockTimestamp();
         require(blockTimestamp >= _locked.end, "The lock didn't expire");
@@ -728,12 +732,14 @@ contract VEChedda is ReentrancyGuard, Pausable, Ownable {
         // oldLocked can have either expired <= timestamp or zero end
         // _locked has only 0 end
         // Both can have >= 0 amount
-        _checkpoint(msg.sender, oldLocked, _locked);
+        Point memory point = _checkpoint(msg.sender, oldLocked, _locked);
 
         require(ERC20(token).transfer(msg.sender, value), "VEToken: Transfer failed");
 
         emit Withdraw(msg.sender, value, blockTimestamp);
         emit Supply(supplyBefore, supplyBefore - value);
+
+        return point;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
