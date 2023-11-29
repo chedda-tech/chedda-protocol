@@ -76,6 +76,7 @@ contract LendingPoolLensTest is Test {
         pool1.setTvl(tvl);
         pool1.setFeesPaid(feesPaid);
         LendingPoolLens.PoolStats memory stats = lens.getPoolStats(address(pool1));
+        assertEq(stats.pool, address(pool1));
         assertEq(stats.asset, address(asset1));
         assertEq(stats.characterization, name1);
         assertEq(stats.tvl, tvl);

@@ -228,7 +228,7 @@ contract LendingPoolLens is Ownable {
     /// Reverts with NotRegistered(pool) error if a pool in the list is not registered.
     /// @param pools The list of pools to return stats for.
     /// @return poolStats An array of `PoolStats` objects, containing the stats for specified pools.
-    function getPoolStatsList(address[] memory pools) external view returns (PoolStats[] memory) {
+    function getPoolStatsList(address[] calldata pools) external view returns (PoolStats[] memory) {
         for (uint256 i = 0; i < pools.length; i++) {
             if (!_poolAlreadyRegistered(pools[i])) {
                 revert NotRegistered(pools[i]);
@@ -260,7 +260,7 @@ contract LendingPoolLens is Ownable {
             .normalized(priceFeed.decimals(), 18);
 
         PoolStats memory stats = PoolStats({
-            pool: address(this),
+            pool: poolAddress,
             asset: address(pool.poolAsset()),
             decimals: assetDecimals,
             characterization: pool.characterization(),
