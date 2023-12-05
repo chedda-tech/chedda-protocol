@@ -364,4 +364,9 @@ contract LendingPoolLens is Ownable {
         });
         return info;
     }
+    
+    /// @dev returns the version of the lens
+    function version() external pure returns (uint16) {
+        return 1;
+    }
 }
