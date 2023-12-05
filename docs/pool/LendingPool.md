@@ -34,28 +34,6 @@ struct CollateralInfo {
 }
 ```
 
-### VaultStateView
-
-Custom errors
-This is the current state of vault key stats, returned as a view.
-Some fields are computed.
-
-_move to LendingPoolView?_
-
-```solidity
-struct VaultStateView {
-  uint256 supplied;
-  uint256 borrowed;
-  uint256 available;
-  uint256 utilization;
-  uint256 baseSupplyApr;
-  uint256 baseBorrowApr;
-  uint256 maxSupplyRewardsApr;
-  uint256 maxBorrowRewardsApr;
-  uint256 max;
-}
-```
-
 ### CollateralDeposited
 
 _Information about collateral deposited to the pool._
@@ -789,14 +767,6 @@ _TVL is calculated as assets supplied + collateral deposited._
 | ---- | ---- | ----------- |
 | [0] | uint256 | tvl The total value locked in pool. |
 
-### _normalizeDecimals
-
-```solidity
-function _normalizeDecimals(uint256 value, uint8 inDecimals, uint8 outDecimals) internal pure returns (uint256)
-```
-
-_convert from `inDecimals` to `outDecimals`._
-
 ### baseSupplyAPY
 
 ```solidity
@@ -858,4 +828,18 @@ deposit/withdraw hooks
 ```solidity
 function afterDeposit(uint256 assets, uint256 shares) internal
 ```
+
+### version
+
+```solidity
+function version() external pure returns (uint16)
+```
+
+Returns the version of the vault
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint16 | The version |
 

@@ -10,6 +10,7 @@ Provides utility functions to view the state of LendingPools
 struct PoolStats {
   address pool;
   address asset;
+  uint8 decimals;
   string characterization;
   uint256 supplied;
   uint256 suppliedValue;
@@ -44,6 +45,7 @@ struct AggregateStats {
 ```solidity
 struct PoolCollateralInfo {
   address collateral;
+  uint8 decimals;
   uint256 amountDeposited;
   uint256 value;
   uint256 collateralFactor;
@@ -66,6 +68,7 @@ struct LendingPoolInfo {
 ```solidity
 struct AccountCollateralDeposited {
   address token;
+  uint8 decimals;
   uint256 amount;
   uint256 value;
   uint256[] tokenIds;
@@ -78,9 +81,23 @@ struct AccountCollateralDeposited {
 struct AccountInfo {
   uint256 supplied;
   uint256 borrowed;
+  uint8 decimals;
   uint256 healthFactor;
   uint256 totalCollateralValue;
   struct LendingPoolLens.AccountCollateralDeposited[] collateralDeposited;
+}
+```
+
+### MarketInfo
+
+```solidity
+struct MarketInfo {
+  int256 oraclePrice;
+  uint256 oraclePriceDecimals;
+  uint256 interestFee;
+  uint256 supplyCap;
+  uint256 liquidationThreshold;
+  uint256 liquidationPenalty;
 }
 ```
 
@@ -296,4 +313,24 @@ Returns information about colalteral in the pool
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | struct LendingPoolLens.PoolCollateralInfo[] | info The `PoolCollateralInfo` about collateral in the specified pool. |
+
+### getMarketInfo
+
+```solidity
+function getMarketInfo(address poolAddress) external view returns (struct LendingPoolLens.MarketInfo)
+```
+
+Returns market information about the pool
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| poolAddress | address | The pool to return market info for. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | struct LendingPoolLens.MarketInfo | info The `MarketInfo` about collateral in the specified pool. |
 

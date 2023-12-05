@@ -73,6 +73,15 @@ contract LendingPoolLens is Ownable {
         AccountCollateralDeposited[] collateralDeposited;
     }
 
+    struct MarketInfo {
+        int256 oraclePrice;
+        uint256 oraclePriceDecimals;
+        uint256 interestFee;
+        uint256 supplyCap;
+        uint256 liquidationThreshold;
+        uint256 liquidationPenalty;
+    }
+
     event PoolRegistered(address indexed pool, address indexed caller);
     event PoolUnregistered(address indexed pool, address indexed caller);
 
@@ -337,5 +346,22 @@ contract LendingPoolLens is Ownable {
             });
         }
         return infoList;
+    }
+
+    /// @notice Returns market information about the pool
+    /// @param poolAddress The pool to return market info for.
+    /// @return info The `MarketInfo` about collateral in the specified pool.
+    function getMarketInfo(address poolAddress) external view returns (MarketInfo memory) {
+        ILendingPool pool = ILendingPool(poolAddress);
+
+        MarketInfo memory info = MarketInfo({
+            oraclePrice: pool.priceFeed().readPrice(address(pool.poolAsset()), 0),
+            oraclePriceDecimals: pool.priceFeed().decimals(),
+            interestFee: 0.002e18,// Todo: set fee in pool, pool.feePercentage()
+            supplyCap: 10_000_000e18, // pool.supplyCap()
+            liquidationThreshold: 0.95e18, // get from pool
+            liquidationPenalty: 0.05e18 // get from pool
+        });
+        return info;
     }
 }
