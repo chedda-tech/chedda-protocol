@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: BUSL-1.3
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPriceFeed } from "../../contracts/oracle/IPriceFeed.sol";
 import { ILendingPool } from "../../contracts/pool/ILendingPool.sol";
-import { IInterestRateModel } from "../../contracts/pool/IInterestRateModel.sol";
+import { IInterestRatesModel } from "../../contracts/pool/IInterestRatesModel.sol";
 import { ILiquidityGauge } from "../../contracts/gauge/ILiquidityGauge.sol";
 import { DebtToken } from "../../contracts/tokens/DebtToken.sol";
 import { MockERC20 } from "./MockERC20.sol";
@@ -95,8 +95,8 @@ contract MockLendingPool is ILendingPool {
         return ILiquidityGauge(address(0));
     }
 
-    function interestRateModel() external pure returns (IInterestRateModel) {
-        return IInterestRateModel(address(0));
+    function interestRatesModel() external pure returns (IInterestRatesModel) {
+        return IInterestRatesModel(address(0));
     }
 
     function collaterals() external pure returns (address [] memory) {
