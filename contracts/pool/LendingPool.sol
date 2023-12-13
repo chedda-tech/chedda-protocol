@@ -9,9 +9,8 @@ import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { DebtToken } from "../tokens/DebtToken.sol";
-import { IInterestRateModel, InterestRates } from "./IInterestRateModel.sol";
-import { SimpleInterestRateModel } from "./SimpleInterestRateModel.sol";
-import { LinearInterestRateModel } from "./LinearInterestRateModel.sol";
+import { IInterestRatesModel, InterestRates } from "./IInterestRatesModel.sol";
+import { LinearInterestRatesModel } from "./LinearInterestRatesModel.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { ILendingPool } from "./ILendingPool.sol";
 import { ILiquidityGauge } from "../gauge/ILiquidityGauge.sol";
@@ -95,6 +94,15 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @param caller The account that set the gauge.
     event GaugeSet(address indexed gauge, address indexed caller);
 
+    /// @notice Emitted any time the pool state changes
+    /// @dev Pool state changes on supply, withdraw, take or put
+    /// @param pool The pool address emitting this event. This is indexed.
+    /// @param supplied The total amount supplied to the pool.
+    /// @param borrowed The total amount borrowed from the pool.
+    /// @param supplyRate The base supply APY.
+    /// @param borrowRate The base borrow APR.
+    event PoolState(address indexed pool, uint256 supplied, uint256 borrowed, uint256 supplyRate, uint256 borrowRate);
+
     /// Custom errors
 
     /// @dev Thrown when an invalid price is encountered when reading the asset or collateral price.
@@ -144,7 +152,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     DebtToken public immutable debtToken;
     IPriceFeed public immutable priceFeed;
     InterestRates public interestRates;
-    IInterestRateModel public interestRateModel;
+    IInterestRatesModel public interestRatesModel;
     ILiquidityGauge public gauge;
 
     /// Collateral
@@ -185,7 +193,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         string(abi.encodePacked("CHEDDA Token ", _asset.name())), 
         string(abi.encodePacked("ch", _asset.symbol()))) {
         // TODO: set interest rates strategy externally and pass in as constructor param
-        interestRateModel = new LinearInterestRateModel(
+        interestRatesModel = new LinearInterestRatesModel(
+            0,
             0.05e18,
             0.1e18,
             0.9e18
@@ -241,6 +250,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             _assetCounted = false;
         }
         // zero_shares handled in ERC-4626
+        _updatePoolState();
         return shares;
     }
 
@@ -262,6 +272,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         if (shares == 0) {
             revert CheddaPool_ZeroShsares();
         }
+        _updatePoolState();
         return shares;
     }
 
@@ -278,6 +289,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             _removeCollateral(address(asset), assetAmount, false);
         }
         // zero_assets handled in ERC-4626
+        _updatePoolState();
         return assetAmount;
     }
 
@@ -287,15 +299,16 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// Emits AssetBorrowed(account, amount, debt) event.
     /// @param amount The amount to borrow
     /// @return debt The amount of debt token minted.
-    function take(uint256 amount) external returns (uint256) {
+    function take(uint256 amount) external nonReentrant() returns (uint256) {
         address account = msg.sender;
         _validateBorrow(account, amount);
     
         uint256 debt = debtToken.createDebt(amount, account);
-        _calculateIntrestRates(0, amount);
         _checkAccountHealth(account);
 
         asset.safeTransfer(account, amount);
+        _updatePoolState();
+
         emit AssetBorrowed(account, amount, debt);
 
         return debt;
@@ -306,7 +319,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev Emits AssetRepaid(account, amount, debtBurned).
     /// @param amount amount to repay. Must be > 0 and <= amount borrowed by sender
     /// @return The amount of debt shares burned by this repayment.
-    function putAmount(uint256 amount) external returns (uint256) {
+    function putAmount(uint256 amount) external nonReentrant() returns (uint256) {
         address account = msg.sender;
         if (amount == 0) {
             revert CheddaPool_ZeroAmount();
@@ -314,9 +327,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         if (amount > accountAssetsBorrowed(account)) {
             revert CheddaPool_Overpayment();
         }
-        _calculateIntrestRates(amount, 0);
         asset.safeTransferFrom(account, address(this), amount);
         uint256 debtBurned = debtToken.repayAmount(amount, account);
+        _updatePoolState();
 
         emit AssetRepaid(account, amount, debtBurned);
 
@@ -328,7 +341,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev Emits AssetRepaid(account, amountRepaid, shares).
     /// @param shares The share of debt token to repay.
     /// @return amountRepaid the amount repaid.
-    function putShares(uint256 shares) external returns (uint256) {
+    function putShares(uint256 shares) external nonReentrant() returns (uint256) {
         address account = msg.sender;
         
         if (shares == 0) {
@@ -340,6 +353,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         uint256 amountToTransfer = debtToken.convertToAssets(shares);
         asset.safeTransferFrom(msg.sender, address(this), amountToTransfer);
         uint256 amountRepaid = debtToken.repayShare(shares, account);
+        _updatePoolState();
 
         emit AssetRepaid(account, amountRepaid, shares);
 
@@ -633,14 +647,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev This is the interest earned on supplied assets.
     /// @return apy The interest earned on supplied assets.
     function baseSupplyAPY() external view returns (uint256) {
-        return interestRateModel.calculateInterestRate(utilization());
+        return interestRates.supplyRate;
     }
 
     /// @notice Returns the base borrow APY.
     /// @dev This is the interest paid on borrowed assets.
     /// @return apy The interest paid on borrowed assets.
     function baseBorrowAPY() external view returns (uint256) {
-        return interestRateModel.calculateInterestRate(utilization());
+        return interestRates.borrowRate;
     }
 
     /// @notice The pool asset utilization
@@ -668,23 +682,33 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     function beforeWithdraw(uint256 assets, uint256 shares) internal override {
         shares;
         supplied -= assets;
-        _calculateIntrestRates(0, assets);
+        // _updatePoolState();
     }
 
     // solhint-disable-next-line private-vars-leading-underscore
     function afterDeposit(uint256 assets, uint256 shares) internal override {
         shares;
         supplied += assets;
-        _calculateIntrestRates(assets, 0);
+        // _updatePoolState();
     }
 
     /// Interest rates
-    function _calculateIntrestRates(uint256 liquidityAdded, uint256 liquidityTaken) private {
-        interestRates = interestRateModel.calculateInterestRates(
-            liquidityAdded,
-            liquidityTaken
+    function _calculateIntrestRates() private {
+        interestRates = interestRatesModel.calculateInterestRates(
+            utilization()
         );
     }
+
+
+    function _updatePoolState() private {
+        _calculateIntrestRates();
+        _emitPoolState();
+    }
+
+    function _emitPoolState() private {
+        emit PoolState(address(this), supplied, borrowed(), interestRates.supplyRate, interestRates.borrowRate);
+    }
+
 
     /// @notice Returns the version of the vault
     /// @return The version
