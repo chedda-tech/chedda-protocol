@@ -208,10 +208,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     // use to be tokenCollateral
     mapping(address => uint256) public tokenCollateralDeposited;
 
+    /// @dev The max value for account health. This is returned if user has no debt.
+    uint256 public constant maxAccountHealth = 100e18;
+
     /// @dev The amount of asset token that has been deposited as collateral
     uint256 private _assetCollateralDeposited;
 
-    uint256 private constant _maxAccountHealth = 100e18;
 
     /// @dev Flag to determine if collateral being deposited has already been counted as asset.
     bool private _assetCounted;
@@ -611,7 +613,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
                 .div(ud(debtValue))
                 .unwrap();
         }
-        return health > _maxAccountHealth ? _maxAccountHealth : health;
+        return health > maxAccountHealth ? maxAccountHealth : health;
     }
 
     /// @dev returns true if account has deposited a given token as collateral

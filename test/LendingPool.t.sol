@@ -402,7 +402,7 @@ contract LendingPoolTest is Test {
 
     function testAccountHealth() external {
         uint256 health = pool.accountHealth(bob);
-        assertEq(health, type(uint256).max);
+        assertEq(health, pool.maxAccountHealth());
 
         uint256 assetAmount = 1000e8;
         asset.transfer(bob, assetAmount);
