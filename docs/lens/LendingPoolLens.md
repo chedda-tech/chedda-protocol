@@ -334,3 +334,11 @@ Returns market information about the pool
 | ---- | ---- | ----------- |
 | [0] | struct LendingPoolLens.MarketInfo | info The `MarketInfo` about collateral in the specified pool. |
 
+### version
+
+```solidity
+function version() external pure returns (uint16)
+```
+
+_returns the version of the lens_
+

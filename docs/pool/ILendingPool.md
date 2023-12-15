@@ -80,10 +80,10 @@ function priceFeed() external view returns (contract IPriceFeed)
 function gauge() external view returns (contract ILiquidityGauge)
 ```
 
-### interestRateModel
+### interestRatesModel
 
 ```solidity
-function interestRateModel() external view returns (contract IInterestRateModel)
+function interestRatesModel() external view returns (contract IInterestRatesModel)
 ```
 
 ### collaterals

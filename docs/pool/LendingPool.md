@@ -140,6 +140,26 @@ Emitted when the rewards gauge is set
 | gauge | address | The gauge address. |
 | caller | address | The account that set the gauge. |
 
+### PoolState
+
+```solidity
+event PoolState(address pool, uint256 supplied, uint256 borrowed, uint256 supplyRate, uint256 borrowRate)
+```
+
+Emitted any time the pool state changes
+
+_Pool state changes on supply, withdraw, take or put_
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| pool | address | The pool address emitting this event. This is indexed. |
+| supplied | uint256 | The total amount supplied to the pool. |
+| borrowed | uint256 | The total amount borrowed from the pool. |
+| supplyRate | uint256 | The base supply APY. |
+| borrowRate | uint256 | The base borrow APR. |
+
 ### CheddaPool_InvalidPrice
 
 ```solidity
@@ -268,10 +288,10 @@ contract IPriceFeed priceFeed
 struct InterestRates interestRates
 ```
 
-### interestRateModel
+### interestRatesModel
 
 ```solidity
-contract IInterestRateModel interestRateModel
+contract IInterestRatesModel interestRatesModel
 ```
 
 ### gauge
