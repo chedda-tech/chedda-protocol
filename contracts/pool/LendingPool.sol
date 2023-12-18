@@ -667,6 +667,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             ).mul(ud(collateralFactor[token])).unwrap();
     }
 
+    /// @dev take a snapshot of the current pool state.
+    function updatePoolState() external {
+        _updatePoolState();
+    }
+
     function _checkAccountHealth(address account) private view {
         uint256 health = accountHealth(account);
         if (health < 1.0e18) {
