@@ -19,6 +19,7 @@ contract MockLendingPool is ILendingPool {
 
     uint256 private _tvl;
     uint256 private _feesPaid;
+    uint256 public supplyCap = 1_000_000e18;
     mapping (address => uint) private _accountSupplied;
     mapping (address => uint) private _accountBorrowed;
     mapping (address => uint) private _accountHealth;
@@ -51,6 +52,10 @@ contract MockLendingPool is ILendingPool {
 
     function setAccountHealth(address account, uint256 health) external {
         _accountHealth[account] = health;
+    }
+
+    function setTokenCollateralDeposited(address token, uint256 amount) external {
+        
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -129,5 +134,9 @@ contract MockLendingPool is ILendingPool {
 
     function getTokenCollateralValue(address, uint256) external pure returns (uint256) {
         return 200e18;
+    }
+
+    function getTokenMarketValue(address, uint256) external pure returns (uint256) {
+        return 250e18;
     }
 }

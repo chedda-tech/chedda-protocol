@@ -111,6 +111,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @param caller The account that set the gauge.
     event GaugeSet(address indexed gauge, address indexed caller);
 
+    /// @notice Emitted when the supply cap is set.
+    /// @param cap The new supply cap.
+    /// @param caller The account that set the gauge.
+    event SupplyCapSet(uint256 cap, address indexed caller);
+
     /// @notice Emitted any time the pool state changes
     /// @dev Pool state changes on supply, withdraw, take or put
     /// @param pool The pool address emitting this event. This is indexed.
@@ -139,6 +144,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
     /// @dev Thrown when a caller tries to supply/deposit 0 amount of asset/collateral.
     error CheddaPool_ZeroAmount();
+
+    /// @dev Thrown when the supply cap is exceeded.
+    error CheddaPool_SupplyCapExceeded(uint256 cap, uint256 supplied);
 
     /// @dev Thrown when a caller tries to withdraw more collateral than they have deposited.
     error CheddaPool_InsufficientCollateral(
@@ -211,6 +219,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev The max value for account health. This is returned if user has no debt.
     uint256 public constant maxAccountHealth = 100e18;
 
+    /// @dev pool asset supply cap
+    uint256 public supplyCap;
+
     /// @dev The amount of asset token that has been deposited as collateral
     uint256 private _assetCollateralDeposited;
 
@@ -271,6 +282,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         emit GaugeSet(_gauge, msg.sender);
     }
 
+    function setSupplyCap(uint256 _supplyCap) external onlyOwner {
+        supplyCap = _supplyCap;
+        emit SupplyCapSet(_supplyCap, msg.sender);
+    }
     /*///////////////////////////////////////////////////////////////
                         borrow/repay logic
     //////////////////////////////////////////////////////////////*/
@@ -679,6 +694,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         }
     }
 
+    function _checkSupplyCap() private view {
+        if (supplied > supplyCap) {
+            revert CheddaPool_SupplyCapExceeded(supplyCap, supplied);
+        }
+    }
+
     /// To validate borrow
     /// 1. Check that funds are available.
     function _validateBorrow(address, uint256 amount) private view {
@@ -815,6 +836,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     function afterDeposit(uint256 assets, uint256 shares) internal override {
         shares;
         supplied += assets;
+        _checkSupplyCap();
         // _updatePoolState();
     }
 
@@ -843,6 +865,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @notice Returns the version of the vault
     /// @return The version
     function version() external pure returns (uint16) {
-        return 1;
+        return 2;
     }
 }

@@ -11,6 +11,7 @@ interface ILendingPool {
     function poolAsset() external view returns (ERC20);
     function debtToken() external view returns (DebtToken);
     function characterization() external view returns (string memory);
+    function supplyCap() external view returns (uint256);
     function supplied() external view returns (uint256);
     function borrowed() external view returns (uint256);
     function available() external view returns (uint256);
@@ -30,4 +31,6 @@ interface ILendingPool {
     function totalAccountCollateralValue(address account) external view returns (uint256);
     function accountCollateralAmount(address account, address collateral) external view returns (uint256);
     function getTokenCollateralValue(address token, uint256 amount) external view returns (uint256);
+    function getTokenMarketValue(address token, uint256 amount) external view returns (uint256);
+    
 }

@@ -341,7 +341,7 @@ contract LendingPoolLens is Ownable {
                 collateral: collateral,
                 decimals: ERC20(collateral).decimals(),
                 amountDeposited: collateralAmount,
-                value: pool.getTokenCollateralValue(collateral, collateralAmount),
+                value: pool.getTokenMarketValue(collateral, collateralAmount),
                 collateralFactor: pool.collateralFactor(collateral)
             });
         }
@@ -358,13 +358,13 @@ contract LendingPoolLens is Ownable {
             oraclePrice: pool.priceFeed().readPrice(address(pool.poolAsset()), 0),
             oraclePriceDecimals: pool.priceFeed().decimals(),
             interestFee: 0.002e18,// Todo: set fee in pool, pool.feePercentage()
-            supplyCap: 10_000_000e18, // pool.supplyCap()
+            supplyCap: pool.supplyCap(),
             liquidationThreshold: 0.95e18, // get from pool
             liquidationPenalty: 0.05e18 // get from pool
         });
         return info;
     }
-    
+
     /// @dev returns the version of the lens
     function version() external pure returns (uint16) {
         return 1;
