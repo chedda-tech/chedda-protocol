@@ -140,10 +140,25 @@ Emitted when the rewards gauge is set
 | gauge | address | The gauge address. |
 | caller | address | The account that set the gauge. |
 
+### SupplyCapSet
+
+```solidity
+event SupplyCapSet(uint256 cap, address caller)
+```
+
+Emitted when the supply cap is set.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| cap | uint256 | The new supply cap. |
+| caller | address | The account that set the gauge. |
+
 ### PoolState
 
 ```solidity
-event PoolState(address pool, uint256 supplied, uint256 borrowed, uint256 supplyRate, uint256 borrowRate)
+event PoolState(address pool, uint256 timestamp, uint256 supplied, uint256 borrowed, uint256 supplyRate, uint256 borrowRate)
 ```
 
 Emitted any time the pool state changes
@@ -155,6 +170,7 @@ _Pool state changes on supply, withdraw, take or put_
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | pool | address | The pool address emitting this event. This is indexed. |
+| timestamp | uint256 | The timestamp of the event. This is indexed. |
 | supplied | uint256 | The total amount supplied to the pool. |
 | borrowed | uint256 | The total amount borrowed from the pool. |
 | supplyRate | uint256 | The base supply APY. |
@@ -191,6 +207,14 @@ error CheddaPool_ZeroAmount()
 ```
 
 _Thrown when a caller tries to supply/deposit 0 amount of asset/collateral._
+
+### CheddaPool_SupplyCapExceeded
+
+```solidity
+error CheddaPool_SupplyCapExceeded(uint256 cap, uint256 supplied)
+```
+
+_Thrown when the supply cap is exceeded._
 
 ### CheddaPool_InsufficientCollateral
 
@@ -338,6 +362,22 @@ mapping(address => mapping(address => struct LendingPool.CollateralDeposited)) a
 mapping(address => uint256) tokenCollateralDeposited
 ```
 
+### maxAccountHealth
+
+```solidity
+uint256 maxAccountHealth
+```
+
+_The max value for account health. This is returned if user has no debt._
+
+### supplyCap
+
+```solidity
+uint256 supplyCap
+```
+
+_pool asset supply cap_
+
 ### constructor
 
 ```solidity
@@ -356,6 +396,12 @@ Set the rewards gauge for this pool.
 
 _Can only be called by contract owner
 Emits GaugeSet(gauge, caller)._
+
+### setSupplyCap
+
+```solidity
+function setSupplyCap(uint256 _supplyCap) external
+```
 
 ### supply
 
@@ -690,6 +736,14 @@ _This takes into account the collateral factor of the token._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | value The collateral value of `amount` of `token`. |
+
+### updatePoolState
+
+```solidity
+function updatePoolState() external
+```
+
+_take a snapshot of the current pool state._
 
 ### poolAsset
 

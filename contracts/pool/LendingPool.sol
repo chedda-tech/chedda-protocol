@@ -119,12 +119,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @notice Emitted any time the pool state changes
     /// @dev Pool state changes on supply, withdraw, take or put
     /// @param pool The pool address emitting this event. This is indexed.
+    /// @param timestamp The timestamp of the event. This is indexed.
     /// @param supplied The total amount supplied to the pool.
     /// @param borrowed The total amount borrowed from the pool.
     /// @param supplyRate The base supply APY.
     /// @param borrowRate The base borrow APR.
     event PoolState(
         address indexed pool,
+        uint256 indexed timestamp,
         uint256 supplied,
         uint256 borrowed,
         uint256 supplyRate,
@@ -855,6 +857,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     function _emitPoolState() private {
         emit PoolState(
             address(this),
+            block.timestamp,
             supplied,
             borrowed(),
             interestRates.supplyRate,

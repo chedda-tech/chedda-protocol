@@ -20,6 +20,12 @@ function debtToken() external view returns (contract DebtToken)
 function characterization() external view returns (string)
 ```
 
+### supplyCap
+
+```solidity
+function supplyCap() external view returns (uint256)
+```
+
 ### supplied
 
 ```solidity
@@ -132,5 +138,11 @@ function accountCollateralAmount(address account, address collateral) external v
 
 ```solidity
 function getTokenCollateralValue(address token, uint256 amount) external view returns (uint256)
+```
+
+### getTokenMarketValue
+
+```solidity
+function getTokenMarketValue(address token, uint256 amount) external view returns (uint256)
 ```
 
