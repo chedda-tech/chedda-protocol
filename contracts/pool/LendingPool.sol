@@ -117,7 +117,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     event SupplyCapSet(uint256 cap, address indexed caller);
 
     /// @notice Emitted any time the pool state changes
-    /// @dev Pool state changes on supply, withdraw, take or put
+    /// @dev Pool state changes on supply, withdraw, take or put. 
+    /// Also called from the `updatePoolState()` function.
     /// @param pool The pool address emitting this event. This is indexed.
     /// @param timestamp The timestamp of the event. This is indexed.
     /// @param supplied The total amount supplied to the pool.
