@@ -20,6 +20,8 @@ contract LendingPoolTest is Test {
     uint256 public assetFactor = 0.9e18;
     uint256 public c1Factor = 0.8e18;
     uint256 public c2Factor = 0.7e18;
+    uint256 public supplyCap = 1_000_000e8;
+
     address public poolAddress;
     address public c1Address;
     address public c2Address;
@@ -64,8 +66,9 @@ contract LendingPoolTest is Test {
 
         pool = new LendingPool(POOL_NAME, asset, address(priceFeed), collateralTypes);
 
+        pool.setSupplyCap(supplyCap);
         poolAddress = address(pool);
-        
+
         console2.log("Addresses {bob=%b, pool=%s, collateral1=%s}", bob, poolAddress, c1Address);
     }
 
@@ -85,6 +88,7 @@ contract LendingPoolTest is Test {
         assertEq(collaterals[0], address(asset));
         assertEq(collaterals[1], c1Address);
         assertEq(collaterals[2], c2Address);
+        assertEq(pool.supplyCap(), supplyCap);
     }
 
     function testGauge() external {
@@ -228,7 +232,13 @@ contract LendingPoolTest is Test {
         uint256 collateralAmount = 10000e18;
         uint256 excessAssetAmount = 100e8;
 
-        asset.transfer(poolAddress, assetDeposits);
+        asset.transfer(alice, assetDeposits);
+        
+        vm.startPrank(alice);
+        asset.approve(poolAddress, assetDeposits);
+        pool.supply(assetDeposits, alice, false);
+        vm.stopPrank();
+
         asset.transfer(bob, excessAssetAmount);
         collateral1.transfer(bob, collateralAmount);
 
@@ -240,14 +250,16 @@ contract LendingPoolTest is Test {
         vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
         pool.putAmount(0);
 
-        // vm.expectRevert(LendingPool.CheddaPool_Overpayment.selector);
-        // pool.putAmount(pool.accountAssetsBorrowed(bob) + 1e18);
+        uint256 bobAssetsBorrowed = pool.accountAssetsBorrowed(bob);
+        vm.expectRevert(LendingPool.CheddaPool_Overpayment.selector);
+        pool.putAmount(bobAssetsBorrowed + 100e8);
 
         uint256 assetAmountToRepay = amountToTake;
         uint256 sharesToRepay = pool.debtToken().convertToShares(assetAmountToRepay);
         console2.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
         asset.approve(poolAddress, assetAmountToRepay);
         uint256 bobAssetBalanceBefore = asset.balanceOf(bob);
+
         uint256 sharesRepaid = pool.putAmount(amountToTake);
         uint256 bobAssetBalanceAfter = asset.balanceOf(bob);
         assertEq(shares - sharesRepaid, pool.debtToken().balanceOf(bob));
