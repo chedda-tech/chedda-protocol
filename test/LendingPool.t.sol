@@ -205,10 +205,16 @@ contract LendingPoolTest is Test {
         uint256 assetDeposits = 1000e8;
         uint256 amountToTake = 100e8;
         uint256 collateralAmount = 10000e18;
-        uint256 excessAssetAmount = 100e8;
+        uint256 approvalAmount = 200e8;
 
-        asset.transfer(poolAddress, assetDeposits);
-        asset.transfer(bob, excessAssetAmount);
+        asset.transfer(alice, assetDeposits);
+        
+        vm.startPrank(alice);
+        asset.approve(poolAddress, assetDeposits);
+        pool.supply(assetDeposits, alice, false);
+        vm.stopPrank();
+
+        asset.transfer(bob, approvalAmount);
         collateral1.transfer(bob, collateralAmount);
 
         vm.startPrank(bob);
@@ -217,7 +223,6 @@ contract LendingPoolTest is Test {
         uint256 shares = pool.take(amountToTake);
         
         uint256 assetAmountToRepay = pool.debtToken().convertToAssets(shares);
-        console2.log("borrowed=%d, to repay = %d", amountToTake, assetAmountToRepay);
         asset.approve(poolAddress, assetAmountToRepay);
         uint256 bobAssetBalanceBefore = asset.balanceOf(bob);
         pool.putShares(shares);

@@ -15,7 +15,6 @@ import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {ILendingPool} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
 import {MathLib} from "../library/MathLib.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title LendingPool
 /// @notice Implements supply and borrow functionality.
@@ -289,6 +288,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         supplyCap = _supplyCap;
         emit SupplyCapSet(_supplyCap, msg.sender);
     }
+    
     /*///////////////////////////////////////////////////////////////
                         borrow/repay logic
     //////////////////////////////////////////////////////////////*/
@@ -634,6 +634,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return health > maxAccountHealth ? maxAccountHealth : health;
     }
 
+    // todo: projected health by change
+
     /// @dev returns true if account has deposited a given token as collateral
     function _accountHasCollateral(
         address account,
@@ -755,7 +757,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @notice The assets borrowed from pool.
     /// @return assetAmount The amount of asset borrowed from pool.
     function borrowed() public view returns (uint256) {
-        return supplied - available();
+        uint256 balance = available();
+        return supplied > balance ? supplied - balance : 0;
     }
 
     /// @notice The total value locked in this pool.
@@ -820,7 +823,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             return 0;
         }
         return
-            ud(supplied - asset.balanceOf(address(this)))
+            ud(borrowed())
                 .div(ud(supplied))
                 .unwrap();
     }
