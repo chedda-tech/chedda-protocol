@@ -15,6 +15,7 @@ contract LendingPoolLensTest is Test {
     LendingPoolLens public lens;
     MockLendingPool public pool1;
     MockLendingPool public pool2;
+    MockLendingPool public unregistered;
     MockPriceFeed public priceFeed;
     address public owner;
     address public bob;
@@ -22,6 +23,7 @@ contract LendingPoolLensTest is Test {
     MockERC20 public asset2;
     string public name1 = "pool1";
     string public name2 = "pool2";
+    string public name3 = "unregistered";
 
     function setUp() external {
         owner = makeAddr("owner");
@@ -33,10 +35,17 @@ contract LendingPoolLensTest is Test {
         lens = new LendingPoolLens(owner);
         pool1 = new MockLendingPool(name1, address(asset1), address(priceFeed));
         pool2 = new MockLendingPool(name2, address(asset2), address(priceFeed));
+        unregistered = new MockLendingPool(name3, address(asset1), address(priceFeed));
 
         vm.startPrank(owner);
         lens.registerPool(address(pool1), true);
         lens.registerPool(address(pool2), false);
+    }
+
+    function testPoolSetup() external {
+        assertEq(lens.version(), 1);
+        assertEq(lens.registeredPools().length, 2);
+        assertEq(lens.activePools().length, 1);
     }
 
     function testRegisterPool() external {
@@ -45,6 +54,11 @@ contract LendingPoolLensTest is Test {
         assertEq(registeredPools.length, 2);
         assertEq(registeredPools[0], address(pool1));
         assertEq(registeredPools[1], address(pool2));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(LendingPoolLens.AlreadyRegistered.selector, address(pool1))
+        );
+        lens.registerPool(address(pool1), true);
     }
 
     function testSetActive() external {
@@ -60,6 +74,11 @@ contract LendingPoolLensTest is Test {
         lens.setActive(address(pool2), false);
         active = lens.activePools();
         assertEq(active.length, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(LendingPoolLens.NotRegistered.selector, address(unregistered))
+        );
+        lens.setActive(address(unregistered), true);
     }
 
     function testUnregisterPool() external {
@@ -68,6 +87,11 @@ contract LendingPoolLensTest is Test {
         address[] memory registeredPools = lens.registeredPools();
         assertEq(registeredPools.length, 1);
         assertEq(registeredPools[0], address(pool2));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(LendingPoolLens.NotRegistered.selector, address(unregistered))
+        );
+        lens.unregisterPool(address(unregistered));
     }
 
     function testPoolStats() external {
@@ -82,6 +106,11 @@ contract LendingPoolLensTest is Test {
         assertEq(stats.tvl, tvl);
         assertEq(stats.feesPaid, feesPaid);
         console2.log("Stats asset is %s ", stats.asset);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(LendingPoolLens.NotRegistered.selector, address(unregistered))
+        );
+        lens.getPoolStats(address(unregistered));
     }
 
     function testPoolStatsList() external {
@@ -92,6 +121,13 @@ contract LendingPoolLensTest is Test {
         console2.log("stats[0] name is %s", statsList[0].characterization);
         assertEq(statsList[0].characterization, name1);
         assertEq(statsList[1].characterization, name2);
+
+        address[] memory unregisteredPools = new address[](1);
+        unregisteredPools[0] = address(unregistered);
+        vm.expectRevert(
+            abi.encodeWithSelector(LendingPoolLens.NotRegistered.selector, address(unregistered))
+        );
+        lens.getPoolStatsList(unregisteredPools);
     }
 
     function testAccountInfoInPool() external {
