@@ -20,7 +20,7 @@ contract LendingPoolTest is Test {
     uint256 public assetFactor = 0.9e18;
     uint256 public c1Factor = 0.8e18;
     uint256 public c2Factor = 0.7e18;
-    uint256 public supplyCap = 1_000_000e8;
+    uint256 public supplyCap = 100_000e8;
 
     address public poolAddress;
     address public c1Address;
@@ -74,6 +74,7 @@ contract LendingPoolTest is Test {
 
     function testPoolConfiguration() external {
         assertEq(POOL_NAME, pool.characterization());
+        assertEq(2, pool.version());
         assertEq(address(asset), address(pool.asset()));
         assertEq(address(asset), address(pool.poolAsset()));
         assertEq(address(priceFeed), address(pool.priceFeed()));
@@ -137,6 +138,30 @@ contract LendingPoolTest is Test {
             _calculateCollateralValue(c1Address, collateralAmount, c1Factor)); 
     }
 
+    function testAddMoreCollateral() external {
+        uint256 collateralAmount = 100e18;
+        collateral1.transfer(bob, collateralAmount * 2);
+
+        vm.startPrank(bob);
+        collateral1.approve(poolAddress, collateralAmount * 2);
+        pool.addCollateral(c1Address, collateralAmount);
+        assertEq(pool.accountCollateralAmount(bob, c1Address), collateralAmount);
+
+        pool.addCollateral(c1Address, collateralAmount);
+        assertEq(pool.accountCollateralAmount(bob, c1Address), collateralAmount * 2);
+    }
+
+    function testRemovePartCollateral() external {
+        uint256 collateralAmount = 100e18;
+        collateral1.transfer(bob, collateralAmount * 2);
+
+        vm.startPrank(bob);
+        collateral1.approve(poolAddress, collateralAmount * 2);
+        pool.addCollateral(c1Address, collateralAmount * 2);
+        pool.removeCollateral(c1Address, collateralAmount);
+        assertEq(pool.accountCollateralAmount(bob, c1Address), collateralAmount);
+    }
+
     function testRemoveCollateral() external {
         uint256 collateralAmount = 100e18;
 
@@ -147,17 +172,20 @@ contract LendingPoolTest is Test {
         collateral1.approve(poolAddress, collateralAmount);
         pool.addCollateral(c1Address, collateralAmount); 
 
-        // // remove asset collateral fails
-        // vm.expectRevert(LendingPool.CheddaPool_AsssetMustBeWithdrawn.selector);
-        // pool.removeCollateral(address(asset), collateralAmount);
+        // remove asset collateral fails
+        vm.expectRevert(LendingPool.CheddaPool_AsssetMustBeWithdrawn.selector);
+        pool.removeCollateral(address(asset), collateralAmount);
 
-        // // remove 0 collateral fails
-        // vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
-        // pool.removeCollateral(c1Address, collateralAmount);
+        // remove 0 collateral fails
+        vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
+        pool.removeCollateral(c1Address, 0);
 
         // // remove more collateral than deposited fails
-        // vm.expectRevert(LendingPool.CheddaPool_InsufficientCollateral.selector);
-        // pool.removeCollateral(c1Address, collateralAmount * 2);
+        vm.expectRevert(
+            abi.encodeWithSelector(LendingPool.CheddaPool_InsufficientCollateral.selector,
+            bob, c1Address, collateralAmount * 2, collateralAmount)
+        );
+        pool.removeCollateral(c1Address, collateralAmount * 2);
 
         // remove correct amount of collateral succeeds
         pool.removeCollateral(c1Address, collateralAmount);
@@ -304,6 +332,18 @@ contract LendingPoolTest is Test {
         assertEq(pool.totalAssets(), assetAmount);
         assertEq(pool.available(), assetAmount);
         assertEq(pool.borrowed(), 0);
+        vm.stopPrank();
+
+        // test reverts
+        uint256 supplyAmount = supplyCap + 1;
+        asset.transfer(bob, supplyAmount);
+        vm.startPrank(bob);
+        asset.approve(poolAddress, supplyAmount);
+        vm.expectRevert(
+            abi.encodeWithSelector(LendingPool.CheddaPool_SupplyCapExceeded.selector, supplyCap, assetAmount + supplyAmount)
+        );
+        pool.supply(supplyAmount, bob, true);
+        vm.stopPrank();
     }
 
     function testRedeem() external {
@@ -446,7 +486,7 @@ contract LendingPoolTest is Test {
         // health should be 1.0
     }
 
-    function  testTotalAccountCollateralValue() external {
+    function testTotalAccountCollateralValue() external {
         uint256 bobC1Amount = 1000e18;
         uint256 bobC2Amount = 2000e18;
         uint256 aliceAssetAmount = 500e8;
@@ -491,6 +531,12 @@ contract LendingPoolTest is Test {
         assertEq(amount, pool.assetBalance(bob));
         vm.stopPrank();
     }
+
+    // function testUpdatePoolState() external {
+    //     vm.expectEmit();
+    //     emit LendingPool.PoolState(address(pool), uint(0), uint(0), uint(0), uint(0), uint(0));
+    //     pool.updatePoolState();
+    // }
 
     function _calculateAssetValue(address assetAddress, uint256 amount) internal view returns (uint256) {
         return ud(

@@ -21,6 +21,8 @@ contract LendingPoolLensTest is Test {
     address public bob;
     MockERC20 public asset1;
     MockERC20 public asset2;
+    MockERC20 public collateral1;
+    MockERC20 public collateral2;
     string public name1 = "pool1";
     string public name2 = "pool2";
     string public name3 = "unregistered";
@@ -32,10 +34,16 @@ contract LendingPoolLensTest is Test {
         priceFeed = new MockPriceFeed(18);
         asset1 = new MockERC20("Asset 1", "AST1", 18, 1_000_000e18);
         asset2 = new MockERC20("Asset 2", "AST2", 18, 1_000_000e18);
+
+        collateral1 = new MockERC20("Collateral 1", "C1", 18, 1_000_000e18);
+        collateral2 = new MockERC20("Collateral 2", "C2", 18, 1_000_000e18);
         lens = new LendingPoolLens(owner);
-        pool1 = new MockLendingPool(name1, address(asset1), address(priceFeed));
-        pool2 = new MockLendingPool(name2, address(asset2), address(priceFeed));
-        unregistered = new MockLendingPool(name3, address(asset1), address(priceFeed));
+        address[] memory collaterals = new address[](2);//[address(0x1), address(0x2)];
+        collaterals[0] = address(collateral1);
+        collaterals[1] = address(collateral2);
+        pool1 = new MockLendingPool(name1, address(asset1), address(priceFeed), collaterals);
+        pool2 = new MockLendingPool(name2, address(asset2), address(priceFeed), collaterals);
+        unregistered = new MockLendingPool(name3, address(asset1), address(priceFeed), collaterals);
 
         vm.startPrank(owner);
         lens.registerPool(address(pool1), true);
@@ -133,19 +141,40 @@ contract LendingPoolLensTest is Test {
     function testAccountInfoInPool() external {
         uint256 bobSupplied = 120e18;
         uint256 bobHealth = 1.25e18;
-        pool1.setAccountHealth(bob, bobHealth);
         pool1.setAccountSupplied(bob, bobSupplied);
+        pool1.setAccountHealth(bob, bobHealth);
         LendingPoolLens.AccountInfo memory info = lens.getPoolAccountInfo(address(pool1), bob);
-        console2.log("info.supplied = %d", info.supplied);
         assertEq(info.supplied, bobSupplied);
         assertEq(info.healthFactor, bobHealth);
+        assertEq(info.decimals, pool1.poolAsset().decimals());
     }
 
-    function testLendingPoolCollateral() external {
+    function testPoolCollateral() external {
         // deposit asset as colateral
 
         // deposit collateral 1 + 2
-        // check
+        // checkt
+        LendingPoolLens.PoolCollateralInfo[] memory collateralInfo = lens.getPoolCollateral(address(pool1));
+        assertEq(collateralInfo[0].collateral, address(collateral1));
+        assertEq(collateralInfo[0].decimals, collateral1.decimals());
+        assertEq(collateralInfo[0].amountDeposited, pool1.tokenCollateralDeposited(address(collateral1)));
+        assertEq(collateralInfo[0].value, 
+        pool1.getTokenMarketValue(address(collateral1), pool1.tokenCollateralDeposited(address(collateral1))));
+        assertEq(collateralInfo[0].collateralFactor, pool1.collateralFactor(address(collateral1)));
+
+        assertEq(collateralInfo[1].collateral, address(collateral2));
+        assertEq(collateralInfo[1].decimals, collateral2.decimals());
+        assertEq(collateralInfo[1].amountDeposited, pool1.tokenCollateralDeposited(address(collateral2)));
+        assertEq(collateralInfo[1].value, 
+        pool1.getTokenMarketValue(address(collateral2), pool1.tokenCollateralDeposited(address(collateral2))));
+        assertEq(collateralInfo[1].collateralFactor, pool1.collateralFactor(address(collateral2)));
+    }
+
+    function testPoolMarketInfo() external {
+        LendingPoolLens.MarketInfo memory marketInfo = lens.getMarketInfo(address(pool1));
+        assertEq(marketInfo.oraclePrice, pool1.priceFeed().readPrice(address(pool1.poolAsset()), 0));
+        assertEq(marketInfo.oraclePriceDecimals, pool1.priceFeed().decimals());
+        assertEq(marketInfo.supplyCap, pool1.supplyCap());
     }
 
     function testAggregateStats() external {
@@ -157,4 +186,5 @@ contract LendingPoolLensTest is Test {
         assertEq(stats.tvl, tvl1 + tvl2);
         console2.log("aggregate tvl = %d", stats.tvl);
     }
+
 }
