@@ -126,6 +126,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @param borrowRate The base borrow APR.
     event PoolState(
         address indexed pool,
+        address indexed caller,
         uint256 indexed timestamp,
         uint256 supplied,
         uint256 borrowed,
@@ -861,6 +862,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     function _emitPoolState() private {
         emit PoolState(
             address(this),
+            msg.sender,
             block.timestamp,
             supplied,
             borrowed(),
