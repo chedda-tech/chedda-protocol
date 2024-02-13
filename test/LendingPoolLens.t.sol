@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockERC20, ERC20} from "./mocks/MockERC20.sol";
 import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
 import {MockLendingPool} from "./mocks/MockLendingPool.sol";
 import {LendingPoolLens} from "../contracts/lens/LendingPoolLens.sol";
@@ -147,6 +147,7 @@ contract LendingPoolLensTest is Test {
         assertEq(info.supplied, bobSupplied);
         assertEq(info.healthFactor, bobHealth);
         assertEq(info.decimals, pool1.poolAsset().decimals());
+        assertEq(info.walletAssetBalance, ERC20(pool1.poolAsset()).balanceOf(bob));
     }
 
     function testPoolCollateral() external {
@@ -175,6 +176,8 @@ contract LendingPoolLensTest is Test {
         assertEq(marketInfo.oraclePrice, pool1.priceFeed().readPrice(address(pool1.poolAsset()), 0));
         assertEq(marketInfo.oraclePriceDecimals, pool1.priceFeed().decimals());
         assertEq(marketInfo.supplyCap, pool1.supplyCap());
+        assertEq(marketInfo.utilization, pool1.utilization());
+        assertEq(marketInfo.liquidity, pool1.available());
     }
 
     function testAggregateStats() external {

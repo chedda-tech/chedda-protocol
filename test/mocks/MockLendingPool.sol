@@ -20,15 +20,18 @@ contract MockLendingPool is ILendingPool {
     uint256 private _tvl;
     uint256 private _feesPaid;
     uint256 public supplyCap = 1_000_000e18;
+    address[] private _collaterals;
     mapping (address => uint) private _accountSupplied;
     mapping (address => uint) private _accountBorrowed;
     mapping (address => uint) private _accountHealth;
 
-    constructor(string memory _characterization, address _asset, address _priceFeed) {
+
+    constructor(string memory _characterization, address _asset, address _priceFeed, address[] memory c) {
         asset = MockERC20(_asset);
         debtToken = new DebtToken(asset, address(this));
         priceFeed = IPriceFeed(_priceFeed);
         characterization = _characterization;
+        _collaterals = c;
     }
     
     ///////////////////////////////////////////////////////////////////////////
@@ -104,8 +107,8 @@ contract MockLendingPool is ILendingPool {
         return IInterestRatesModel(address(0));
     }
 
-    function collaterals() external pure returns (address [] memory) {
-        return new address[](0);
+    function collaterals() external view returns (address [] memory) {
+        return _collaterals;
     }
 
     function collateralFactor(address) external pure returns (uint256) {
@@ -133,7 +136,7 @@ contract MockLendingPool is ILendingPool {
     }
 
     function getTokenCollateralValue(address, uint256) external pure returns (uint256) {
-        return 200e18;
+        return 100e18;
     }
 
     function getTokenMarketValue(address, uint256) external pure returns (uint256) {

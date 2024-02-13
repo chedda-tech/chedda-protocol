@@ -65,6 +65,7 @@ contract LendingPoolLens is Ownable {
     }
 
     struct AccountInfo {
+        uint256 walletAssetBalance;
         uint256 supplied;
         uint256 borrowed;
         uint8 decimals;
@@ -78,6 +79,8 @@ contract LendingPoolLens is Ownable {
         uint256 oraclePriceDecimals;
         uint256 interestFee;
         uint256 supplyCap;
+        uint256 liquidity;
+        uint256 utilization;
         uint256 liquidationThreshold;
         uint256 liquidationPenalty;
     }
@@ -295,10 +298,10 @@ contract LendingPoolLens is Ownable {
     /// @return info An `AccountInfo` obect about `account` position in the pool.
     function getPoolAccountInfo(address poolAddress, address account) external view returns (AccountInfo memory) {
         ILendingPool pool = ILendingPool(poolAddress);
-        uint256 supplied = pool.assetBalance(account);
-        uint256 borrowed = pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account));
-        uint256 healthFactor = pool.accountHealth(account);
-        uint256 collateralValue = pool.totalAccountCollateralValue(account);
+        // uint256 supplied = pool.assetBalance(account);
+        // uint256 borrowed = pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account));
+        // uint256 healthFactor = pool.accountHealth(account);
+        // uint256 collateralValue = pool.totalAccountCollateralValue(account);
         address[] memory collaterals = pool.collaterals();
         AccountCollateralDeposited[] memory collateralDeposited = new AccountCollateralDeposited[](collaterals.length);
         address collateral;
@@ -316,13 +319,15 @@ contract LendingPoolLens is Ownable {
             collateralDeposited[i] = deposited;
         }
         AccountInfo memory accountInfo = AccountInfo({
-            supplied: supplied,
-            borrowed: borrowed,
+            walletAssetBalance: ERC20(pool.poolAsset()).balanceOf(account),
+            supplied: pool.assetBalance(account),
+            borrowed: pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account)),
             decimals: ERC20(pool.poolAsset()).decimals(),
-            healthFactor: healthFactor,
-            totalCollateralValue: collateralValue,
+            healthFactor: pool.accountHealth(account),
+            totalCollateralValue: pool.totalAccountCollateralValue(account),
             collateralDeposited: collateralDeposited
         });
+        
         return accountInfo;
     }
 
@@ -359,6 +364,8 @@ contract LendingPoolLens is Ownable {
             oraclePriceDecimals: pool.priceFeed().decimals(),
             interestFee: 0.002e18,// Todo: set fee in pool, pool.feePercentage()
             supplyCap: pool.supplyCap(),
+            liquidity: pool.available(),
+            utilization: pool.utilization(),
             liquidationThreshold: 0.95e18, // get from pool
             liquidationPenalty: 0.05e18 // get from pool
         });
