@@ -43,7 +43,7 @@ contract LendingPoolTest is Test {
         bob = makeAddr("bob");
         alice = makeAddr("alice");
         priceFeed = new MockPriceFeed(8);
-        priceFeed.setPrice(address(asset), 1e8);
+        priceFeed.setPrice(address(asset), 12e8);
         priceFeed.setPrice(c1Address, 50e8);
         priceFeed.setPrice(c2Address, 25e8);
 
@@ -68,8 +68,6 @@ contract LendingPoolTest is Test {
 
         pool.setSupplyCap(supplyCap);
         poolAddress = address(pool);
-
-        console2.log("Addresses {bob=%b, pool=%s, collateral1=%s}", bob, poolAddress, c1Address);
     }
 
     function testPoolConfiguration() external {
@@ -136,6 +134,7 @@ contract LendingPoolTest is Test {
 
         assertEq(pool.totalAccountCollateralValue(bob), 
             _calculateCollateralValue(c1Address, collateralAmount, c1Factor)); 
+        vm.stopPrank();
     }
 
     function testAddMoreCollateral() external {
@@ -149,6 +148,7 @@ contract LendingPoolTest is Test {
 
         pool.addCollateral(c1Address, collateralAmount);
         assertEq(pool.accountCollateralAmount(bob, c1Address), collateralAmount * 2);
+        vm.stopPrank();
     }
 
     function testRemovePartCollateral() external {
@@ -160,6 +160,7 @@ contract LendingPoolTest is Test {
         pool.addCollateral(c1Address, collateralAmount * 2);
         pool.removeCollateral(c1Address, collateralAmount);
         assertEq(pool.accountCollateralAmount(bob, c1Address), collateralAmount);
+        vm.stopPrank();
     }
 
     function testRemoveCollateral() external {
@@ -191,6 +192,7 @@ contract LendingPoolTest is Test {
         pool.removeCollateral(c1Address, collateralAmount);
         uint256 bobBalanceAfter = collateral1.balanceOf(bob);
         assertEq(bobBalanceBefore, bobBalanceAfter);
+        vm.stopPrank();
     }
 
     function testTake() external {
@@ -227,6 +229,7 @@ contract LendingPoolTest is Test {
         assertEq(pool.totalAssets(), assetDeposits);
         assertEq(pool.available(), assetDeposits - amountToTake);
         assertEq(pool.borrowed(), amountToTake);
+        vm.stopPrank();
     }
 
     function testPutShares() external {
@@ -257,6 +260,7 @@ contract LendingPoolTest is Test {
         uint256 bobAssetBalanceAfter = asset.balanceOf(bob);
         assertEq(0, pool.debtToken().balanceOf(bob));
         assertEq(bobAssetBalanceAfter, bobAssetBalanceBefore - assetAmountToRepay);
+        vm.stopPrank();
     }
 
     function testPutAmount() external {
@@ -301,6 +305,7 @@ contract LendingPoolTest is Test {
         // computing convertToShares and putAmount
         assertGe(sharesRepaid, sharesToRepay); 
         assertEq(bobAssetBalanceAfter, bobAssetBalanceBefore - assetAmountToRepay); 
+        vm.stopPrank();
     }
 
     function testTvlAndState() external {
@@ -318,6 +323,7 @@ contract LendingPoolTest is Test {
         // /// check tvl when supplying as collateral
         console2.log("pool tvl = %d", pool.tvl());
         assertEq(assetValue, pool.tvl());
+        vm.stopPrank();
     }
 
     function testSupply() external {
@@ -416,6 +422,33 @@ contract LendingPoolTest is Test {
         vm.stopPrank();
     }
 
+    function testFreeAccountCollateral() external {
+        uint256 assetAmount = 10000e8;
+        uint256 borrowAmount = 4000e8;
+
+        asset.transfer(bob, assetAmount);
+
+        vm.startPrank(bob);
+        asset.approve(poolAddress, assetAmount);
+        pool.supply(assetAmount, bob, true);
+
+        uint256 cAmount = pool.accountCollateralAmount(bob, address(asset));
+        assertEq(assetAmount, cAmount);
+
+        // before borrow
+        // total borrow is free
+        uint256 freeAssetCollateral = pool.freeAccountCollateralAmount(bob, address(asset));
+        assertEq(freeAssetCollateral, assetAmount);
+
+        pool.take(borrowAmount);
+
+        freeAssetCollateral = pool.freeAccountCollateralAmount(bob, address(asset));
+        assertGt(freeAssetCollateral, 0);
+        assertGt(assetAmount, freeAssetCollateral);
+
+        vm.stopPrank();
+    }
+
     function testUtilization() external {
        uint256 assetAmount = 1000e8;
         asset.transfer(bob, assetAmount);
@@ -432,6 +465,7 @@ contract LendingPoolTest is Test {
         pool.take(ud(takePercentage).mul(ud(assetAmount)).unwrap());
         utilization = pool.utilization();
         assertEq(utilization, takePercentage);
+        vm.stopPrank();
     }
 
     function testAccountAssetsBorrowed() external {
@@ -455,6 +489,7 @@ contract LendingPoolTest is Test {
         pool.supply(assetAmount, alice, true);
         pool.take(aliceBorrowAmount);
         assertGe(pool.accountAssetsBorrowed(alice), aliceBorrowAmount); //Ge to account for interest
+        vm.stopPrank();
     }
 
     function testAccountHealth() external {
@@ -484,6 +519,7 @@ contract LendingPoolTest is Test {
         assertEq(health, newHealth);
         console2.log("new health = %d", newHealth);
         // health should be 1.0
+        vm.stopPrank();
     }
 
     function testTotalAccountCollateralValue() external {

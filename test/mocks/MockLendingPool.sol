@@ -127,6 +127,10 @@ contract MockLendingPool is ILendingPool {
         return _accountSupplied[account];
     }
 
+    function accountAssetsBorrowed(address account) external view returns (uint256) {
+        return _accountBorrowed[account];
+    }
+
     function totalAccountCollateralValue(address) external pure returns (uint256) {
         return 500e18;
     }

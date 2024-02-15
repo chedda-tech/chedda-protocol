@@ -28,9 +28,9 @@ interface ILendingPool {
     function tokenCollateralDeposited(address) external view returns (uint256);
     function accountHealth(address account) external view returns (uint256);
     function assetBalance(address account) external view returns (uint256);
+    function accountAssetsBorrowed(address account) external view returns (uint256);
     function totalAccountCollateralValue(address account) external view returns (uint256);
     function accountCollateralAmount(address account, address collateral) external view returns (uint256);
     function getTokenCollateralValue(address token, uint256 amount) external view returns (uint256);
     function getTokenMarketValue(address token, uint256 amount) external view returns (uint256);
-    
 }

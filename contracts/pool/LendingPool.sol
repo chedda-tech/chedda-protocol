@@ -601,6 +601,30 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return accountCollateralDeposited[account][collateral].amount;
     }
 
+    function freeAccountCollateralAmount(
+        address account,
+        address token
+    ) public view returns (uint256) {
+        uint256 debtValue = getTokenMarketValue(
+            address(asset),
+            accountAssetsBorrowed(account)
+        );
+        uint256 maxCollateralAmount = accountCollateralAmount(account, token);
+        if (debtValue == 0) {
+            return maxCollateralAmount;
+        }
+        uint256 collateralValue = totalAccountCollateralValue(account);
+        if (collateralValue == 0 || debtValue >= collateralValue) {
+            return 0;
+        }
+        uint256 freeCollateralValue = collateralValue - debtValue;
+        uint256 collateralUnitValue = priceFeed.readPrice(token, 0).toUint256();
+        uint256 freeCollateralAmountE18 = ud(freeCollateralValue)
+            .div(ud(collateralUnitValue.normalized(priceFeed.decimals(), 18))).unwrap();
+        uint256 collateralAmount = freeCollateralAmountE18.normalized(18, ERC20(token).decimals());
+        return maxCollateralAmount > collateralAmount ? collateralAmount : maxCollateralAmount;
+    }
+
     /// @notice Returns the amount of asset an account has borrowed, including any accrued interest.
     /// @param account The account to check for.
     /// @return amount The amount of account borrowed by `account`.
