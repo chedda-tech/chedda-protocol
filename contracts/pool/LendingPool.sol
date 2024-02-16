@@ -15,6 +15,7 @@ import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {ILendingPool} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
 import {MathLib} from "../library/MathLib.sol";
+import {console2} from "forge-std/console2.sol";
 
 /// @title LendingPool
 /// @notice Implements supply and borrow functionality.
@@ -659,8 +660,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         return health > maxAccountHealth ? maxAccountHealth : health;
     }
 
-    // todo: projected health by change
-
     /// @dev returns true if account has deposited a given token as collateral
     function _accountHasCollateral(
         address account,
@@ -898,6 +897,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @notice Returns the version of the vault
     /// @return The version
     function version() external pure returns (uint16) {
-        return 2;
+        return 3;
     }
 }

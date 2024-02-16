@@ -331,6 +331,39 @@ contract LendingPoolLens is Ownable {
         return accountInfo;
     }
 
+    /// @notice Returns the fre
+    /// @dev Explain to a developer any extra details
+    /// @param poolAddress address of pool
+    /// @param account The account to check for.
+    /// @param token The collateral token to check.
+    /// @return The amount of specified collateral token that is free for withdrawal.
+    function getAccountFreeCollateralInPool(
+        address poolAddress,
+        address account,
+        address token
+    ) public view returns (uint256) {
+        ILendingPool pool = ILendingPool(poolAddress);
+        IPriceFeed priceFeed = pool.priceFeed();
+        uint256 debtValue = pool.getTokenMarketValue(
+            address(pool.poolAsset()),
+            pool.accountAssetsBorrowed(account)
+        );
+        uint256 maxCollateralAmount = pool.accountCollateralAmount(account, token);
+        if (debtValue == 0) {
+            return maxCollateralAmount;
+        }
+        uint256 collateralValue = pool.totalAccountCollateralValue(account);
+        if (collateralValue == 0 || debtValue >= collateralValue) {
+            return 0;
+        }
+        uint256 freeCollateralValue = collateralValue - debtValue;
+        uint256 collateralUnitValue = priceFeed.readPrice(token, 0).toUint256();
+        uint256 freeCollateralAmountE18 = ud(freeCollateralValue)
+            .div(ud(collateralUnitValue.normalized(priceFeed.decimals(), 18))).unwrap();
+        uint256 collateralAmount = freeCollateralAmountE18.normalized(18, ERC20(token).decimals());
+        return maxCollateralAmount > collateralAmount ? collateralAmount : maxCollateralAmount;
+    }
+
     /// @notice Returns information about colalteral in the pool
     /// @param poolAddress The pool to return collateral info for.
     /// @return info The `PoolCollateralInfo` about collateral in the specified pool.
@@ -374,6 +407,6 @@ contract LendingPoolLens is Ownable {
 
     /// @dev returns the version of the lens
     function version() external pure returns (uint16) {
-        return 1;
+        return 2;
     }
 }
