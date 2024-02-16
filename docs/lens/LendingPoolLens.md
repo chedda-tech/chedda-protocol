@@ -79,6 +79,7 @@ struct AccountCollateralDeposited {
 
 ```solidity
 struct AccountInfo {
+  uint256 walletAssetBalance;
   uint256 supplied;
   uint256 borrowed;
   uint8 decimals;
@@ -96,6 +97,8 @@ struct MarketInfo {
   uint256 oraclePriceDecimals;
   uint256 interestFee;
   uint256 supplyCap;
+  uint256 liquidity;
+  uint256 utilization;
   uint256 liquidationThreshold;
   uint256 liquidationPenalty;
 }
@@ -293,6 +296,30 @@ Returns information about a given account in a specified pool.
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | struct LendingPoolLens.AccountInfo | info An `AccountInfo` obect about `account` position in the pool. |
+
+### getAccountFreeCollateralInPool
+
+```solidity
+function getAccountFreeCollateralInPool(address poolAddress, address account, address token) public view returns (uint256)
+```
+
+Returns the fre
+
+_Explain to a developer any extra details_
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| poolAddress | address | address of pool |
+| account | address | The account to check for. |
+| token | address | The collateral token to check. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The amount of specified collateral token that is free for withdrawal. |
 
 ### getPoolCollateral
 

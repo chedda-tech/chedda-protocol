@@ -158,18 +158,20 @@ Emitted when the supply cap is set.
 ### PoolState
 
 ```solidity
-event PoolState(address pool, uint256 timestamp, uint256 supplied, uint256 borrowed, uint256 supplyRate, uint256 borrowRate)
+event PoolState(address pool, address caller, uint256 timestamp, uint256 supplied, uint256 borrowed, uint256 supplyRate, uint256 borrowRate)
 ```
 
 Emitted any time the pool state changes
 
-_Pool state changes on supply, withdraw, take or put_
+_Pool state changes on supply, withdraw, take or put. 
+Also called from the `updatePoolState()` function._
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | pool | address | The pool address emitting this event. This is indexed. |
+| caller | address |  |
 | timestamp | uint256 | The timestamp of the event. This is indexed. |
 | supplied | uint256 | The total amount supplied to the pool. |
 | borrowed | uint256 | The total amount borrowed from the pool. |
@@ -643,6 +645,12 @@ Returns the amount of a given token an account has deposited as collateral
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | amount The amount of `collateral` token `account` has deposited. |
+
+### freeAccountCollateralAmount
+
+```solidity
+function freeAccountCollateralAmount(address account, address token) public view returns (uint256)
+```
 
 ### accountAssetsBorrowed
 

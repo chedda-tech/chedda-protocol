@@ -122,6 +122,12 @@ function accountHealth(address account) external view returns (uint256)
 function assetBalance(address account) external view returns (uint256)
 ```
 
+### accountAssetsBorrowed
+
+```solidity
+function accountAssetsBorrowed(address account) external view returns (uint256)
+```
+
 ### totalAccountCollateralValue
 
 ```solidity
