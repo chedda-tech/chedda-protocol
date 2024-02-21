@@ -30,7 +30,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
         emit RewardsDistributorSet(msg.sender, distributor);
     }
 
-    function setChedda(address chedda) external onlyOwner() {
+    function setCheddaToken(address chedda) external onlyOwner() {
         _chedda = chedda;
 
         emit CheddaSet(msg.sender, chedda);
