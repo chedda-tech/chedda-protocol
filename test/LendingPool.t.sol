@@ -8,6 +8,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
 import {LendingPool} from "../contracts/pool/LendingPool.sol";
+import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 import {MathLib} from "../contracts/library/MathLib.sol";
 
 contract LendingPoolTest is Test {
@@ -64,7 +65,8 @@ contract LendingPoolTest is Test {
             tokenType: LendingPool.TokenType.ERC20
         });
 
-        pool = new LendingPool(POOL_NAME, asset, address(priceFeed), collateralTypes);
+        MockAddressRegistry registry = new MockAddressRegistry();
+        pool = new LendingPool(POOL_NAME, asset, address(priceFeed), address(registry), collateralTypes);
 
         pool.setSupplyCap(supplyCap);
         poolAddress = address(pool);
@@ -72,7 +74,7 @@ contract LendingPoolTest is Test {
 
     function testPoolConfiguration() external {
         assertEq(POOL_NAME, pool.characterization());
-        assertEq(2, pool.version());
+        assertEq(3, pool.version());
         assertEq(address(asset), address(pool.asset()));
         assertEq(address(asset), address(pool.poolAsset()));
         assertEq(address(priceFeed), address(pool.priceFeed()));

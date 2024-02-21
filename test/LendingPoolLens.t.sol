@@ -51,7 +51,7 @@ contract LendingPoolLensTest is Test {
     }
 
     function testPoolSetup() external {
-        assertEq(lens.version(), 1);
+        assertEq(lens.version(), 2);
         assertEq(lens.registeredPools().length, 2);
         assertEq(lens.activePools().length, 1);
     }
@@ -190,4 +190,30 @@ contract LendingPoolLensTest is Test {
         console2.log("aggregate tvl = %d", stats.tvl);
     }
 
+    // function testAccountFreeCollateral() external {
+    //     uint256 assetAmount = 10000e8;
+    //     uint256 borrowAmount = 4000e8;
+
+    //     asset1.transfer(bob, assetAmount);
+
+    //     vm.startPrank(bob);
+    //     asset1.approve(address(pool1), assetAmount);
+    //     pool1.supply(assetAmount, bob, true);
+
+    //     uint256 cAmount = pool1.accountCollateralAmount(bob, address(asset1));
+    //     assertEq(assetAmount, cAmount);
+
+    //     // before borrow
+    //     // total borrow is free
+    //     uint256 freeAssetCollateral = pool1.freeAccountCollateralAmount(bob, address(asset1));
+    //     assertEq(freeAssetCollateral, assetAmount);
+
+    //     pool1.take(borrowAmount);
+
+    //     freeAssetCollateral = pool1.freeAccountCollateralAmount(bob, address(asset1));
+    //     assertGt(freeAssetCollateral, 0);
+    //     assertGt(assetAmount, freeAssetCollateral);
+
+    //     vm.stopPrank();
+    // }
 }

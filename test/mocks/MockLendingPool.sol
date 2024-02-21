@@ -146,4 +146,12 @@ contract MockLendingPool is ILendingPool {
     function getTokenMarketValue(address, uint256) external pure returns (uint256) {
         return 250e18;
     }
+
+    function stakingPool() external pure returns (address) {
+        return address(0);
+    }
+
+    function cheddaGauge() external pure returns (address) {
+        return address(0);
+    }
 }
