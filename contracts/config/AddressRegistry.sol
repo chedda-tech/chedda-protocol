@@ -16,20 +16,30 @@ contract AddressRegistry is Ownable, IAddressRegistry {
 
     constructor() Ownable(msg.sender) {}
 
+    /// @inheritdoc	IAddressRegistry
     function rewardsDistributor() external view returns (address) {
         return _rewardsDistributor;
     }
 
+    /// @inheritdoc	IAddressRegistry
     function cheddaToken() external view returns (address) {
         return _chedda;
     }
 
+    /// @notice Sets the rewards distributor
+    /// @dev Can only be called by the owner. 
+    /// emits RewardsDistributorSet(address caller, address distributor) event
+    /// @param distributor The new rewards distributor
     function setRewardsDistributor(address distributor) external onlyOwner() {
         _rewardsDistributor = distributor;
 
         emit RewardsDistributorSet(msg.sender, distributor);
     }
 
+    /// @notice Explain to an end user what this does
+    /// @dev Can only be called by the owner. 
+    /// emits CheddaSet(address caller, address cheddaToken) event
+    /// @param chedda New chedda token address 
     function setCheddaToken(address chedda) external onlyOwner() {
         _chedda = chedda;
 
