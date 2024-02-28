@@ -5,11 +5,22 @@ import {IAddressRegistry} from "../../contracts/config/IAddressRegistry.sol";
 
 contract MockAddressRegistry is IAddressRegistry {
     
-    function cheddaToken() external pure returns (address) {
-        return address(1);
+    address private _chedda;
+    address private _distributor;
+
+    function cheddaToken() external view returns (address) {
+        return _chedda;
     }
 
-    function rewardsDistributor() external pure returns (address) {
-        return address(2);
+    function rewardsDistributor() external view returns (address) {
+        return _distributor;
+    }
+
+    function setCheddaToken(address chedda) external {
+        _chedda = chedda;
+    }
+
+    function setRewardsDistributor(address distributor) external {
+        _distributor = distributor;
     }
 }
