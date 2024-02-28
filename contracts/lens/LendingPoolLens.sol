@@ -196,8 +196,7 @@ contract LendingPoolLens is Ownable {
     ///                     Aggregate stats
     ///////////////////////////////////////////////////////////////////////////
 
-    /// @notice Explain to an end user what this does
-    /// @dev Explain to a developer any extra details
+    /// @notice Returns the combined stats for all pools monitored by lens.
     /// @return aggregateStats The aggregated stats of the all registred pools
     function getAggregateStats() external view returns (AggregateStats memory) {
         uint256 totalSuppliedValue = 0;
@@ -331,8 +330,7 @@ contract LendingPoolLens is Ownable {
         return accountInfo;
     }
 
-    /// @notice Returns the fre
-    /// @dev Explain to a developer any extra details
+    /// @notice Returns the free collateral in pool
     /// @param poolAddress address of pool
     /// @param account The account to check for.
     /// @param token The collateral token to check.

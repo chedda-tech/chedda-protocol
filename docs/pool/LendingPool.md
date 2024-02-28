@@ -302,6 +302,18 @@ contract DebtToken debtToken
 
 Debt and interest
 
+### registry
+
+```solidity
+contract IAddressRegistry registry
+```
+
+### stakePool
+
+```solidity
+contract StakingPool stakePool
+```
+
 ### priceFeed
 
 ```solidity
@@ -383,7 +395,7 @@ _pool asset supply cap_
 ### constructor
 
 ```solidity
-constructor(string _name, contract ERC20 _asset, address _priceFeed, struct LendingPool.CollateralInfo[] _collateralTokens) public
+constructor(string _name, contract ERC20 _asset, address _priceFeed, address _registry, struct LendingPool.CollateralInfo[] _collateralTokens) public
 ```
 
 initialization
@@ -909,6 +921,18 @@ deposit/withdraw hooks
 
 ```solidity
 function afterDeposit(uint256 assets, uint256 shares) internal
+```
+
+### stakingPool
+
+```solidity
+function stakingPool() external pure returns (address)
+```
+
+### cheddaGauge
+
+```solidity
+function cheddaGauge() external pure returns (address)
 ```
 
 ### version

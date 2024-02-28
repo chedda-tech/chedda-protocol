@@ -152,3 +152,15 @@ function getTokenCollateralValue(address token, uint256 amount) external view re
 function getTokenMarketValue(address token, uint256 amount) external view returns (uint256)
 ```
 
+### stakingPool
+
+```solidity
+function stakingPool() external view returns (address)
+```
+
+### cheddaGauge
+
+```solidity
+function cheddaGauge() external view returns (address)
+```
+
