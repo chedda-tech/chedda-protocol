@@ -33,4 +33,6 @@ interface ILendingPool {
     function accountCollateralAmount(address account, address collateral) external view returns (uint256);
     function getTokenCollateralValue(address token, uint256 amount) external view returns (uint256);
     function getTokenMarketValue(address token, uint256 amount) external view returns (uint256);
+    function stakingPool() external view returns (address);
+    function cheddaGauge() external view returns (address);
 }

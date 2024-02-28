@@ -15,6 +15,8 @@ import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {ILendingPool} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
 import {MathLib} from "../library/MathLib.sol";
+import {StakingPool} from "../rewards/StakingPool.sol";
+import {IAddressRegistry} from "../config/IAddressRegistry.sol";
 import {console2} from "forge-std/console2.sol";
 
 /// @title LendingPool
@@ -193,6 +195,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
 
     /// Debt and interest
     DebtToken public immutable debtToken;
+    IAddressRegistry public immutable registry;
+    StakingPool public immutable stakePool;
     IPriceFeed public immutable priceFeed;
     InterestRates public interestRates;
     IInterestRatesModel public interestRatesModel;
@@ -241,12 +245,13 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         string memory _name,
         ERC20 _asset,
         address _priceFeed,
+        address _registry,
         CollateralInfo[] memory _collateralTokens
     )
         Ownable(msg.sender) // TODO: pass owner as admin
         ERC4626(
             _asset,
-            string(abi.encodePacked("CHEDDA Token ", _asset.name())),
+            string(abi.encodePacked("CHEDDA Pool ", _asset.name())),
             string(abi.encodePacked("ch", _asset.symbol()))
         )
     {
@@ -259,7 +264,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         );
         characterization = _name;
         priceFeed = IPriceFeed(_priceFeed);
+        registry = IAddressRegistry(_registry);
         debtToken = new DebtToken(_asset, address(this));
+        stakePool = new StakingPool(address(this), address(registry.cheddaToken()));
         _initialize(_collateralTokens);
     }
 
@@ -892,6 +899,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             interestRates.supplyRate,
             interestRates.borrowRate
         );
+    }
+
+    function stakingPool() external pure returns (address) {
+        return address(0);
+    }
+
+    function cheddaGauge() external pure returns (address) {
+        return address(0);
     }
 
     /// @notice Returns the version of the vault
