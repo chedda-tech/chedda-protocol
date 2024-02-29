@@ -221,9 +221,7 @@ Returns a list of all the active pools
 function getAggregateStats() external view returns (struct LendingPoolLens.AggregateStats)
 ```
 
-Explain to an end user what this does
-
-_Explain to a developer any extra details_
+Returns the combined stats for all pools monitored by lens.
 
 #### Return Values
 
@@ -303,9 +301,7 @@ Returns information about a given account in a specified pool.
 function getAccountFreeCollateralInPool(address poolAddress, address account, address token) public view returns (uint256)
 ```
 
-Returns the fre
-
-_Explain to a developer any extra details_
+Returns the free collateral in pool
 
 #### Parameters
 
