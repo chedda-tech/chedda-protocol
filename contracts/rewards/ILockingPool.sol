@@ -9,6 +9,7 @@ struct Lock {
     uint256 rewardDebt;
 }
 
+/// @notice Enum representing the possible lock times
 enum LockTime {
     thirtyDays,
     ninetyDays,

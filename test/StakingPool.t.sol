@@ -51,6 +51,10 @@ contract StakingPoolTest is Test {
         vm.expectRevert(StakingPool.ZeroAmount.selector);
         pool.addRewards(0);
 
+        uint256 rewardAmount = 1e8;
+        vm.expectRevert(abi.encodeWithSelector(StakingPool.InvalidAmount.selector, rewardAmount));
+        pool.addRewards(rewardAmount);
+
         pool.addRewards(amount);
         vm.stopPrank();
 
