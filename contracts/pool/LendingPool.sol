@@ -30,8 +30,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// 2. collateralize/uncollateralize after supply
 
     /// @dev The type of the collateral.
-    /// Options are ERC20, ERC721 and ERC1155.
+    /// Options are Invalid, ERC20, ERC721 and ERC1155.
     enum TokenType {
+        Invalid,
         ERC20,
         ERC721,
         ERC155
@@ -543,7 +544,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         tokenCollateralDeposited[token] -= amount;
 
         if (accountCollateral == amount) {
-            delete accountCollateralDeposited[account][token];
+            accountCollateralDeposited[account][token].token = address(0);
+            accountCollateralDeposited[account][token].tokenType = TokenType.Invalid;
+            accountCollateralDeposited[account][token].amount = 0;
+            delete accountCollateralDeposited[account][token].tokenIds;
         } else {
             accountCollateralDeposited[account][token].amount -= amount;
         }

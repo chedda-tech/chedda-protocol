@@ -194,6 +194,7 @@ contract LendingPoolTest is Test {
         pool.removeCollateral(c1Address, collateralAmount);
         uint256 bobBalanceAfter = collateral1.balanceOf(bob);
         assertEq(bobBalanceBefore, bobBalanceAfter);
+        assertEq(pool.accountCollateralAmount(bob, c1Address), 0);
         vm.stopPrank();
     }
 
