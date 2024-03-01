@@ -5,9 +5,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ILockingPool, Lock, LockTime} from "./ILockingPool.sol";
+import {ILockingGauge, Lock, LockTime} from "./ILockingGauge.sol";
 
-contract CheddaLock is ILockingPool, ReentrancyGuard {
+contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
 
@@ -34,7 +34,7 @@ contract CheddaLock is ILockingPool, ReentrancyGuard {
     uint256 public totalLocked;
     uint256 public totalClaimed;
     uint256 public totalRewards;
-    uint256 public totalTimeWeighted;
+    uint256 public totalLockedWeighted;
     uint256 public numberOfLocks;
 
     uint256 constant private MAXBOOST = 400;
@@ -44,7 +44,7 @@ contract CheddaLock is ILockingPool, ReentrancyGuard {
         token = IERC20(_token);
     }
 
-    /// @inheritdoc	ILockingPool
+    /// @inheritdoc	ILockingGauge
     function createLock(uint256 amount, LockTime time) external returns (uint256) {
         if (amount == 0) {
             revert ZeroAmount();
@@ -78,11 +78,11 @@ contract CheddaLock is ILockingPool, ReentrancyGuard {
         lock.timeWeighted += weight;
         lock.rewardDebt = lock.timeWeighted * rewardPerShare / 1e12;
         totalLocked += amount;
-        totalTimeWeighted += weight;
+        totalLockedWeighted += weight;
         return lock.expiry;
     }
 
-    /// @inheritdoc	ILockingPool
+    /// @inheritdoc	ILockingGauge
     function withdraw() external nonReentrant() returns (uint256) {
         Lock storage lock = locks[msg.sender];
         uint256 amount = lock.amount;
@@ -96,7 +96,7 @@ contract CheddaLock is ILockingPool, ReentrancyGuard {
         _claim(msg.sender);
 
         totalLocked -= amount;
-        totalTimeWeighted -= lock.timeWeighted;
+        totalLockedWeighted -= lock.timeWeighted;
         numberOfLocks -= 1;
 
         lock.amount = 0;
@@ -110,16 +110,17 @@ contract CheddaLock is ILockingPool, ReentrancyGuard {
         return amount;
     }
 
-    /// @inheritdoc	ILockingPool
+    /// @inheritdoc	ILockingGauge
     function getLock(address account) external view returns (Lock memory) {
         return locks[account];
     }
 
-    /// @inheritdoc	ILockingPool
+    /// @inheritdoc	ILockingGauge
     function claim() external returns (uint256) {
         return _claim(msg.sender);
     }
 
+    /// @dev Internal claim function.
     function _claim(address account) internal returns (uint256) {
         uint256 amount = claimable(account);
         if (amount != 0) {
@@ -132,13 +133,13 @@ contract CheddaLock is ILockingPool, ReentrancyGuard {
         return amount;
     }
 
-    /// @inheritdoc	ILockingPool
+    /// @inheritdoc	ILockingGauge
     function claimable(address account) public view returns (uint256) {
         Lock storage lock = locks[account];
         return (lock.timeWeighted * rewardPerShare) / 1e12 - lock.rewardDebt;
     }
 
-    /// @inheritdoc	ILockingPool
+    /// @inheritdoc	ILockingGauge
     function addRewards(uint256 amount) external {
         if (amount == 0) {
             revert ZeroAmount();
@@ -172,6 +173,6 @@ contract CheddaLock is ILockingPool, ReentrancyGuard {
         if (totalLocked == 0 || amount == 0) {
             return;
         }
-        rewardPerShare += (amount * 1e12) / totalTimeWeighted;
+        rewardPerShare += (amount * 1e12) / totalLockedWeighted;
     }
 }

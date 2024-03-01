@@ -15,8 +15,12 @@ import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {ILendingPool} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
 import {MathLib} from "../library/MathLib.sol";
-import {StakingPool} from "../rewards/StakingPool.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
+import {ICheddaPool} from "../rewards/ICheddaPool.sol";
+import {IStakingPool} from "../rewards/IStakingPool.sol";
+import {StakingPool} from "../rewards/StakingPool.sol";
+import {ILockingGauge} from "../rewards/ILockingGauge.sol";
+import {CheddaLockingGauge} from "../rewards/CheddaLockingGauge.sol";
 import {console2} from "forge-std/console2.sol";
 
 /// @title LendingPool
@@ -24,7 +28,7 @@ import {console2} from "forge-std/console2.sol";
 /// @dev Implements ERC4626 interface.
 
 /// TODO: check prices are positive and no overflow/underflow when using prices
-contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
+contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, ICheddaPool {
     /// TODO:
     /// 1. collateralize while supplying.
     /// 2. collateralize/uncollateralize after supply
@@ -201,7 +205,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     IPriceFeed public immutable priceFeed;
     InterestRates public interestRates;
     IInterestRatesModel public interestRatesModel;
-    ILiquidityGauge public gauge;
+    ILockingGauge public gauge;
+    IStakingPool public stakingPool;
 
     /// Collateral
 
@@ -268,6 +273,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
         registry = IAddressRegistry(_registry);
         debtToken = new DebtToken(_asset, address(this));
         stakePool = new StakingPool(address(this), address(registry.cheddaToken()));
+        gauge = new CheddaLockingGauge(address(registry.cheddaToken()));
         _initialize(_collateralTokens);
     }
 
@@ -290,7 +296,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
     /// @dev Can only be called by contract owner
     /// Emits GaugeSet(gauge, caller).
     function setGauge(address _gauge) external onlyOwner {
-        gauge = ILiquidityGauge(_gauge);
+        gauge = ILockingGauge(_gauge);
         emit GaugeSet(_gauge, msg.sender);
     }
 
@@ -903,14 +909,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool {
             interestRates.supplyRate,
             interestRates.borrowRate
         );
-    }
-
-    function stakingPool() external pure returns (address) {
-        return address(0);
-    }
-
-    function cheddaGauge() external pure returns (address) {
-        return address(0);
     }
 
     /// @notice Returns the version of the vault

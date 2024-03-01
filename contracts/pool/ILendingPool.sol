@@ -21,7 +21,6 @@ interface ILendingPool {
     function tvl() external view returns (uint256);
     function feesPaid() external view returns (uint256);
     function priceFeed() external view returns (IPriceFeed);
-    function gauge() external view returns (ILiquidityGauge);
     function interestRatesModel() external view returns (IInterestRatesModel);
     function collaterals() external view returns (address [] memory);
     function collateralFactor(address) external view returns (uint256);
@@ -33,6 +32,4 @@ interface ILendingPool {
     function accountCollateralAmount(address account, address collateral) external view returns (uint256);
     function getTokenCollateralValue(address token, uint256 amount) external view returns (uint256);
     function getTokenMarketValue(address token, uint256 amount) external view returns (uint256);
-    function stakingPool() external view returns (address);
-    function cheddaGauge() external view returns (address);
 }

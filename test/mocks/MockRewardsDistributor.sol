@@ -8,4 +8,9 @@ contract MockRewardsDistributor is IRewardsDistributor {
     function sendRewards(address pool, uint256 amount) external {
         IStakingPool(pool).addRewards(amount);
     }
+    
+    function distribute() external pure returns (uint256) {
+        return 0;
+    }
+
 }

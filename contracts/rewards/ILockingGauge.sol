@@ -17,7 +17,7 @@ enum LockTime {
     threeSixtyDays
 }
     
-interface ILockingPool {
+interface ILockingGauge {
     
     /// @notice Locks CHEDDA token for the given lock time.
     /// @dev Explain to a developer any extra details

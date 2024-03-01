@@ -122,9 +122,9 @@ contract StakingPool is IStakingPool {
 
     /// @inheritdoc IStakingPool
     function claim() public returns (uint256) {
-        UserInfo storage user = userInfo[msg.sender];
         uint256 claimAmount = claimable(msg.sender);
         if (claimAmount != 0) {
+            UserInfo storage user = userInfo[msg.sender];
             user.rewardDebt = user.amountStaked * rewardPerShare / 1e12;
             IERC20(rewardToken).safeTransfer(msg.sender, claimAmount);
 
