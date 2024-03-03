@@ -21,7 +21,7 @@ interface ILockingGauge {
     
     /// @notice Returns the total amount of time weighted locked tokens.
     /// @return The time weighted locked tokens.
-    function totalLockedWeighted() external returns (uint256);
+    function weight() external returns (uint256);
     
     /// @notice Locks CHEDDA token for the given lock time.
     /// @dev Explain to a developer any extra details

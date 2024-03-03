@@ -11,7 +11,7 @@ import {IStakingPool} from "./IStakingPool.sol";
 
 /// @title LockingGaugeRewardsDistributor
 /// @notice Distributes token rewards to pools proportionally based on the pool's
-/// `totalLockedWeighted`.
+/// `weight`.
 contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
 
     using SafeERC20 for IERC20;
@@ -21,12 +21,15 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
 
     event PoolRegistered(address indexed pool);
     event PoolUnregistered(address indexed pool);
+    event RewardsDistributed(uint256 amount);
 
     IERC20 public token;
 
     ICheddaPool[] public pools;
 
-    constructor(address admin) Ownable(admin) {}
+    constructor(address admin, address _token) Ownable(admin) {
+        token = IERC20(_token);
+    }
 
     /// @notice Registers a pool to receive rewards.
     /// @dev Can only be called by contract owner.
@@ -78,13 +81,13 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
         for (uint256 i = 0; i < length; i++) {
             // get weights and total weight of pools
             ILockingGauge gauge = pools[i].gauge();
-            totalWeight += gauge.totalLockedWeighted();
+            totalWeight += gauge.weight();
         }
 
         for (uint256 i = 0; i < length; i++) {
             // -> distribute to pools based on weights.
             ILockingGauge gauge = pools[i].gauge();
-            uint256 poolRewards = available * gauge.totalLockedWeighted() / totalWeight;
+            uint256 poolRewards = available * gauge.weight() / totalWeight;
             if (poolRewards > 0) {
                 IStakingPool pool = pools[i].stakingPool();
                 uint256 stakingRewards = poolRewards * 0.4e8 / 1.0e8;
@@ -96,6 +99,9 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
                 gauge.addRewards(lockingRewards);
             }
         }
+
+        emit RewardsDistributed(available);
+
         return available;
     }
 }

@@ -14,7 +14,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     /// @notice Emitted when a lock is created or updated.
     /// @param account The account creating a lock.
     /// @param amount The amount locked. 
-    event LockCreated(address indexed account, uint256 amount);
+    event LockCreated(address indexed account, uint256 amount, uint256 expiry);
     
     event Withdrawn(address indexed account, uint256 amount);
     
@@ -34,7 +34,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     uint256 public totalLocked;
     uint256 public totalClaimed;
     uint256 public totalRewards;
-    uint256 public totalLockedWeighted;
+    uint256 public weight;
     uint256 public numberOfLocks;
 
     uint256 constant private MAXBOOST = 400;
@@ -71,14 +71,16 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         }
 
         token.safeTransferFrom(msg.sender, address(this), amount);
-        uint256 weight = amount * _boostFactor(time) / MAXBOOST;
+        uint256 weightedAmount = amount * _boostFactor(time) / MAXBOOST;
         lock.amount += amount;
         lock.expiry = endTime;
 
-        lock.timeWeighted += weight;
+        lock.timeWeighted += weightedAmount;
         lock.rewardDebt = lock.timeWeighted * rewardPerShare / 1e12;
         totalLocked += amount;
-        totalLockedWeighted += weight;
+        weight += weightedAmount;
+
+        emit LockCreated(msg.sender, amount, lock.expiry);
         return lock.expiry;
     }
 
@@ -96,7 +98,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         _claim(msg.sender);
 
         totalLocked -= amount;
-        totalLockedWeighted -= lock.timeWeighted;
+        weight -= lock.timeWeighted;
         numberOfLocks -= 1;
 
         lock.amount = 0;
@@ -173,6 +175,6 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         if (totalLocked == 0 || amount == 0) {
             return;
         }
-        rewardPerShare += (amount * 1e12) / totalLockedWeighted;
+        rewardPerShare += (amount * 1e12) / weight;
     }
 }
