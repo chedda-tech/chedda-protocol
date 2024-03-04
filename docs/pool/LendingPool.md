@@ -7,10 +7,11 @@ TODO: check prices are positive and no overflow/underflow when using prices
 ### TokenType
 
 _The type of the collateral.
-Options are ERC20, ERC721 and ERC1155._
+Options are Invalid, ERC20, ERC721 and ERC1155._
 
 ```solidity
 enum TokenType {
+  Invalid,
   ERC20,
   ERC721,
   ERC155
@@ -335,7 +336,13 @@ contract IInterestRatesModel interestRatesModel
 ### gauge
 
 ```solidity
-contract ILiquidityGauge gauge
+contract ILockingGauge gauge
+```
+
+### stakingPool
+
+```solidity
+contract IStakingPool stakingPool
 ```
 
 ### collateralTokenList
@@ -921,18 +928,6 @@ deposit/withdraw hooks
 
 ```solidity
 function afterDeposit(uint256 assets, uint256 shares) internal
-```
-
-### stakingPool
-
-```solidity
-function stakingPool() external pure returns (address)
-```
-
-### cheddaGauge
-
-```solidity
-function cheddaGauge() external pure returns (address)
 ```
 
 ### version

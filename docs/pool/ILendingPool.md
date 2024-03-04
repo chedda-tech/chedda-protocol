@@ -80,12 +80,6 @@ function feesPaid() external view returns (uint256)
 function priceFeed() external view returns (contract IPriceFeed)
 ```
 
-### gauge
-
-```solidity
-function gauge() external view returns (contract ILiquidityGauge)
-```
-
 ### interestRatesModel
 
 ```solidity
@@ -150,17 +144,5 @@ function getTokenCollateralValue(address token, uint256 amount) external view re
 
 ```solidity
 function getTokenMarketValue(address token, uint256 amount) external view returns (uint256)
-```
-
-### stakingPool
-
-```solidity
-function stakingPool() external view returns (address)
-```
-
-### cheddaGauge
-
-```solidity
-function cheddaGauge() external view returns (address)
 ```
 

@@ -27,7 +27,7 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
 
     ICheddaPool[] public pools;
 
-    constructor(address admin, address _token) Ownable(admin) {
+    constructor(address _token, address admin) Ownable(admin) {
         token = IERC20(_token);
     }
 
