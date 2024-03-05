@@ -26,6 +26,9 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
     IERC20 public token;
 
     ICheddaPool[] public pools;
+    uint256 public stakingPortion = 0.6e18;
+    uint256 public lockingPortion = 0.4e18;
+    uint256 public constant Konstant = 1.0e18;
 
     constructor(address _token, address admin) Ownable(admin) {
         token = IERC20(_token);
@@ -90,11 +93,11 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
             uint256 poolRewards = available * gauge.weight() / totalWeight;
             if (poolRewards > 0) {
                 IStakingPool pool = pools[i].stakingPool();
-                uint256 stakingRewards = poolRewards * 0.4e8 / 1.0e8;
+                uint256 stakingRewards = poolRewards * stakingPortion / Konstant;
                 token.safeIncreaseAllowance(address(pool), stakingRewards);
                 pool.addRewards(stakingRewards);
 
-                uint256 lockingRewards = poolRewards * 0.6e8 / 1.0e8;
+                uint256 lockingRewards = poolRewards * lockingPortion / Konstant;
                 token.safeIncreaseAllowance(address(gauge), lockingRewards);
                 gauge.addRewards(lockingRewards);
             }

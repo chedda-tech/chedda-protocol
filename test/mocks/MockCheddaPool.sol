@@ -25,4 +25,7 @@ contract MockCheddaPool is ICheddaPool {
     function stakingPool() external view returns (IStakingPool) {
         return IStakingPool(_pool);
     }
+
+    function addRewards(uint256) external pure {
+    }
 }
