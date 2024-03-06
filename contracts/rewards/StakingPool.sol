@@ -63,6 +63,9 @@ contract StakingPool is IStakingPool {
     /// @notice Total amount of tokens staked
     uint256 public totalStaked;
 
+    /// @notice The number of stakers
+    uint256 public stakers;
+
     /// @notice Current reward per share
     uint256 public rewardPerShare;
 
@@ -88,6 +91,8 @@ contract StakingPool is IStakingPool {
             if (pendingReward > 0) {
                 amountClaimed = claim();
             }
+        } else {
+            stakers += 1;
         }
         user.amountStaked += amount;
         user.rewardDebt = user.amountStaked * rewardPerShare / 1e12;
@@ -114,6 +119,10 @@ contract StakingPool is IStakingPool {
         user.rewardDebt = user.amountStaked * rewardPerShare / 1e12;
         totalStaked -= amount;
         IERC20(stakingToken).safeTransfer(msg.sender, amount);
+
+        if (user.amountStaked == 0) {
+            stakers -= 1;
+        }
 
         emit Unstaked(msg.sender, amount);
 

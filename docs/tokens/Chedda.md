@@ -20,25 +20,10 @@ Emitted when the new token is minted in a rebase
 | amountMinted | uint256 | The increase in token supply |
 | newTotalSupply | uint256 | The `totalSupply` after the rebase. |
 
-### StakingVaultSet
+### TokenReceiverSet
 
 ```solidity
-event StakingVaultSet(address caller, address vault)
-```
-
-emitted when the stkaing vault address is set.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| caller | address | The caller of the function that triggered this event. |
-| vault | address | The new staking vault address. |
-
-### GaugeRecipientSet
-
-```solidity
-event GaugeRecipientSet(address caller, address recipient)
+event TokenReceiverSet(address caller, address receiver)
 ```
 
 emitted when the gauge recipient address is set.
@@ -48,7 +33,7 @@ emitted when the gauge recipient address is set.
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | caller | address | The caller of the function that triggered this event. |
-| recipient | address | The new gauge recipient address. |
+| receiver | address | The new receiver address. |
 
 ### ZeroAddress
 
@@ -65,6 +50,12 @@ uint256 INITIAL_SUPPLY
 ```
 
 The inital total supply
+
+### MAX_TOTAL_SUPPLY
+
+```solidity
+uint256 MAX_TOTAL_SUPPLY
+```
 
 ### DECIMALS
 
@@ -104,21 +95,13 @@ uint256 lastRebase
 
 The timestamp of the last rebase.
 
-### stakingVault
+### tokenReceiver
 
 ```solidity
-address stakingVault
+address tokenReceiver
 ```
 
-The staking vault address that receive staking rewards.
-
-### gaugeRecipient
-
-```solidity
-address gaugeRecipient
-```
-
-The gauge controller address.
+The receiver for new token emissions.
 
 ### constructor
 
@@ -134,37 +117,21 @@ Construct a new Chedda token.
 | ---- | ---- | ----------- |
 | custodian | address | The token custodian to mint initial supply to. |
 
-### setStakingVault
+### setTokenReceiver
 
 ```solidity
-function setStakingVault(address _vault) external
+function setTokenReceiver(address _receiver) external
 ```
 
-Sets the staking vault address to recieve staking rewards
+Sets the address to recieve token emission.
 
-_Can only be called by `owner`. Emits StakingVaultSet(caller, vault) event_
+_Can only be called by `owner`. Emits TokenReceiverSet(caller, _receiver) event_
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _vault | address | The new staking vault |
-
-### setGaugeRecipient
-
-```solidity
-function setGaugeRecipient(address _recipient) external
-```
-
-Sets the gauge recipient address to recieve token emission rewards
-
-_Can only be called by `owner`. Emits GaugeRecipientSet(caller, _recipient) event_
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| _recipient | address | The new gauge recipient |
+| _receiver | address | The new token recipient |
 
 ### rebase
 
