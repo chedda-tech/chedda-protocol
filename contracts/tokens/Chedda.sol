@@ -44,9 +44,24 @@ contract Chedda  is ERC20, Ownable {
 
     /// @notice The receiver for new token emissions.
     address public tokenReceiver;
-
-    uint256[5] private _inflationRates = [0.48e18, 0.24e18, 0.12e18, 0.06e18, 0.06e18];
-    uint256[5] private _targetBaseSupply = [400_000_000e18, 592_000_000e18, 734_080_000e18, 822_169_600e18, 871_499_766e18];
+    
+    // TODO: Start at 32% inflation
+    uint256[6] private _inflationRates = [
+        0.32e18, 
+        0.24e18, 
+        0.16e18, 
+        0.12e18, 
+        0.08e18, 
+        0.04e18
+    ];
+    uint256[6] private _targetBaseSupply = [
+        400_000_000e18, 
+        464_000_000e18, 
+        519_680_000e18, 
+        561_254_400e18, 
+        594_929_664e18,
+        618_726_850.056e18
+    ];
 
 
     /// @notice Construct a new Chedda token.
