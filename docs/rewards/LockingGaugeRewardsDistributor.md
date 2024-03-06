@@ -47,11 +47,38 @@ contract IERC20 token
 contract ICheddaPool[] pools
 ```
 
+### stakingPortion
+
+```solidity
+uint256 stakingPortion
+```
+
+### lockingPortion
+
+```solidity
+uint256 lockingPortion
+```
+
+### Konstant
+
+```solidity
+uint256 Konstant
+```
+
 ### constructor
 
 ```solidity
-constructor(address _token, address admin) public
+constructor(address _token, address _admin) public
 ```
+
+Constructor
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _token | address | The address of token to be distributed |
+| _admin | address | The contract admin. This account can register and unregister pools. |
 
 ### registerPool
 
