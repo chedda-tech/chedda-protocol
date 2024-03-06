@@ -571,11 +571,21 @@ contract LendingPoolTest is Test {
         vm.stopPrank();
     }
 
-    // function testUpdatePoolState() external {
-    //     vm.expectEmit();
-    //     emit LendingPool.PoolState(address(pool), uint(0), uint(0), uint(0), uint(0), uint(0));
-    //     pool.updatePoolState();
-    // }
+    event PoolState(
+        address indexed pool,
+        address indexed caller,
+        uint256 indexed timestamp,
+        uint256 supplied,
+        uint256 borrowed,
+        uint256 supplyRate,
+        uint256 borrowRate
+    );
+
+    function testUpdatePoolState() external {
+        vm.expectEmit(true, false, false, false);
+        emit PoolState(address(pool), address(0), uint(0), uint(0), uint(0), uint(0), uint(0));
+        pool.updatePoolState();
+    }
 
     function _calculateAssetValue(address assetAddress, uint256 amount) internal view returns (uint256) {
         return ud(
