@@ -7,6 +7,7 @@ import { UD60x18, ud } from "prb-math/UD60x18.sol";
 
 /// @title Chedda
 /// @notice Chedda token
+// TODO: Create emission controller that controls emissions.
 contract Chedda  is ERC20, Ownable {
 
     /// @notice Emitted when the new token is minted in a rebase
@@ -15,21 +16,17 @@ contract Chedda  is ERC20, Ownable {
     /// @param newTotalSupply The `totalSupply` after the rebase.
     event TokenRebased(address indexed caller, uint256 amountMinted, uint256 newTotalSupply);
 
-    /// @notice emitted when the stkaing vault address is set.
-    /// @param caller The caller of the function that triggered this event.
-    /// @param vault The new staking vault address.
-    event StakingVaultSet(address indexed caller, address indexed vault);
-
     /// @notice emitted when the gauge recipient address is set.
     /// @param caller The caller of the function that triggered this event.
-    /// @param recipient The new gauge recipient address.
-    event GaugeRecipientSet(address indexed caller, address indexed recipient);
+    /// @param receiver The new receiver address.
+    event TokenReceiverSet(address indexed caller, address indexed receiver);
 
     /// @dev thrown if zero-address is used where it should not be
     error ZeroAddress();
 
     /// @notice The inital total supply
     uint256 public constant INITIAL_SUPPLY = 400_000_000e18;
+    uint256 public constant MAX_TOTAL_SUPPLY = 800_000_000e18;
 
     /// @notice The number of decimals 
     uint8 public constant DECIMALS = 18;
@@ -45,11 +42,8 @@ contract Chedda  is ERC20, Ownable {
     /// @notice The timestamp of the last rebase.
     uint256 public lastRebase;
 
-    /// @notice The staking vault address that receive staking rewards.
-    address public stakingVault;
-
-    /// @notice The gauge controller address.
-    address public gaugeRecipient;
+    /// @notice The receiver for new token emissions.
+    address public tokenReceiver;
 
     uint256[5] private _inflationRates = [0.48e18, 0.24e18, 0.12e18, 0.06e18, 0.06e18];
     uint256[5] private _targetBaseSupply = [400_000_000e18, 592_000_000e18, 734_080_000e18, 822_169_600e18, 871_499_766e18];
@@ -65,26 +59,15 @@ contract Chedda  is ERC20, Ownable {
         _mint(custodian, INITIAL_SUPPLY);
     }
 
-    /// @notice Sets the staking vault address to recieve staking rewards
-    /// @dev Can only be called by `owner`. Emits StakingVaultSet(caller, vault) event 
-    /// @param _vault The new staking vault
-    function setStakingVault(address _vault) external onlyOwner() {
-        if (_vault == address(0)) {
+    /// @notice Sets the address to recieve token emission. 
+    /// @dev Can only be called by `owner`. Emits TokenReceiverSet(caller, _receiver) event 
+    /// @param _receiver The new token recipient
+    function setTokenReceiver(address _receiver) external onlyOwner() {
+        if (_receiver == address(0)) {
             revert ZeroAddress();
         }
-        stakingVault = _vault;
-        emit StakingVaultSet(msg.sender, _vault);
-    }
-
-    /// @notice Sets the gauge recipient address to recieve token emission rewards
-    /// @dev Can only be called by `owner`. Emits GaugeRecipientSet(caller, _recipient) event 
-    /// @param _recipient The new gauge recipient
-    function setGaugeRecipient(address _recipient) external onlyOwner() {
-        if (_recipient == address(0)) {
-            revert ZeroAddress();
-        }
-        gaugeRecipient = _recipient;
-        emit GaugeRecipientSet(msg.sender, _recipient);
+        tokenReceiver = _receiver;
+        emit TokenReceiverSet(msg.sender, _receiver);
     }
 
     /// @notice Increases the total supply of CHEDDA token according to the emission schedule.
@@ -96,12 +79,9 @@ contract Chedda  is ERC20, Ownable {
         }
 
         uint256 mintAmount = emissionPerSecond() * (block.timestamp - lastRebase);
-        lastRebase = block.timestamp;
         if (mintAmount != 0) {
-            uint256 toStakingVault = ud(mintAmount).mul(stakingShare).unwrap();
-            uint256 toGaugeVault = mintAmount - toStakingVault;
-            _mint(stakingVault, toStakingVault);
-            _mint(gaugeRecipient, toGaugeVault);
+            lastRebase = block.timestamp;
+            _mint(tokenReceiver, mintAmount);
 
             emit TokenRebased(msg.sender, mintAmount, totalSupply());
         }

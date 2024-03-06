@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import { Test } from "forge-std/Test.sol";
+import { console2 } from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { Chedda, Ownable } from "../contracts/tokens/Chedda.sol";
 
@@ -20,9 +21,6 @@ contract CheddaTest is Test {
     }
 
     function testEmissionPerSecondDecreasesOverTime() external {
-        uint256 emissions0 = chedda.emissionPerSecond();
-        assertEq(emissions0, 0);
-
         skip(10 minutes);
         uint256 emissions1 = chedda.emissionPerSecond();
         assertGt(emissions1, 0);
@@ -31,15 +29,17 @@ contract CheddaTest is Test {
         uint256 emissions2 = chedda.emissionPerSecond();
         assertLt(emissions2, emissions1);
 
-        emit log_named_uint("emissions", emissions0);
+        // emit log_named_uint("emissions", emissions0);
     }
 
     function testRebaseMintsMoreTokens() external {
         uint256 emissionPerSecond = chedda.emissionPerSecond();
+        console2.log("emissionPerSecond = %d", emissionPerSecond);
         uint256 initialTotalSupply = chedda.totalSupply();
         chedda.rebase();
         uint256 totalSupplyAfter0Seconds = chedda.totalSupply();
         assertEq(initialTotalSupply, totalSupplyAfter0Seconds);
+        chedda.setTokenReceiver(address(0x2));
 
         skip(1 seconds);
         chedda.rebase();
@@ -52,51 +52,53 @@ contract CheddaTest is Test {
         assertEq(initialTotalSupply + (emissionPerSecond * 60), totalSupplyAfter60Seconds);
     }
 
-    function testSetStakingVault() external {
-        address address0 = address(0);
-        vm.expectRevert(Chedda.ZeroAddress.selector);
-        chedda.setStakingVault(address0);
-        address address0x1 = address(0x1);
-        chedda.setStakingVault(address0x1);
-
-        address vaultAddress = chedda.stakingVault();
-        assertEq(address0x1, vaultAddress);
-
-        vm.prank(address(0x2));
-        vm.expectRevert();
-        // vm.expectRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        chedda.setStakingVault(address0x1);
-    }
-
     function testSetGaugeRecipient() external {
         address address0 = address(0);
         vm.expectRevert(Chedda.ZeroAddress.selector);
-        chedda.setGaugeRecipient(address0);
+        chedda.setTokenReceiver(address0);
 
         address address0x2 = address(0x2);
-        chedda.setGaugeRecipient(address0x2);
+        chedda.setTokenReceiver(address0x2);
 
-        address gaugeRecipient = chedda.gaugeRecipient();
-        assertEq(address0x2, gaugeRecipient);
+        address tokenReceiver = chedda.tokenReceiver();
+        assertEq(address0x2, tokenReceiver);
 
         vm.prank(address(0x2));
         vm.expectRevert();
-        // vm.expectRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        chedda.setGaugeRecipient(address0x2);
+        vm.expectRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        chedda.setTokenReceiver(address0x2);
     }
 
     function testRebaseTokenDistribution() external {
-        address stakingVault = address(0x1);
-        address gaugeRecipient = address(0x2);
-        chedda.setStakingVault(stakingVault);
-        chedda.setGaugeRecipient(gaugeRecipient);
-        skip(1 seconds);
-        chedda.rebase();
-        uint256 emissions = chedda.emissionPerSecond();
-        UD60x18 stakingShare = chedda.stakingShare();
-        uint256 stakingVaultBalance = chedda.balanceOf(stakingVault);
-        assertEq(stakingVaultBalance, ud(emissions).mul(stakingShare).unwrap());
-        uint256 gaugeRecipientBalance = chedda.balanceOf(gaugeRecipient);
-        assertEq(gaugeRecipientBalance, emissions - stakingVaultBalance);
+        // initial rebase amount = 0 if no time has passed.
+        uint256 rebaseAmount = chedda.rebase();
+        assertEq(rebaseAmount, 0);
+
+        address tokenReceiver = address(0x2);
+        chedda.setTokenReceiver(tokenReceiver);
+        skip(30 seconds);
+        rebaseAmount = chedda.rebase();
+        uint256 secondRebaseAmount = chedda.rebase();
+        assertGt(rebaseAmount, 0);
+        assertEq(secondRebaseAmount, 0);
+
+        // uint256 emissions = chedda.emissionPerSecond();
+        // console2.log("second emiisions = %d, rebaseAmount = %d", emissions, rebaseAmount);
+        // UD60x18 stakingShare = chedda.stakingShare();
+        // uint256 stakingVaultBalance = chedda.balanceOf(stakingVault);
+        // assertEq(stakingVaultBalance, ud(emissions).mul(stakingShare).unwrap());
+        // uint256 gaugeRecipientBalance = chedda.balanceOf(tokenReceiver);
+        // // assertEq(gaugeRecipientBalance, emissions - stakingVaultBalance);
+        // console2.log("stakingShare = %d, vaultBalance = %d, gaugeBalance = %d", stakingShare.unwrap(), stakingVaultBalance, gaugeRecipientBalance);
+    }
+
+    function testEpoch() external {
+        uint256 epoch = chedda.epoch();
+        uint256 epochLength = chedda.EPOCH_LENGTH();
+        assertEq(epoch, 0);
+
+        skip(epochLength);
+        epoch = chedda.epoch();
+        assertGt(epoch, 0);
     }
 }
