@@ -63,7 +63,7 @@ contract StakingPool is IStakingPool {
     /// @notice Total amount of tokens staked
     uint256 public totalStaked;
 
-    /// @notice The number of stakers
+    /// @notice The number of unique stakers
     uint256 public stakers;
 
     /// @notice Current reward per share

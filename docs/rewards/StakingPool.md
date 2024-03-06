@@ -142,6 +142,14 @@ uint256 totalStaked
 
 Total amount of tokens staked
 
+### stakers
+
+```solidity
+uint256 stakers
+```
+
+The number of unique stakers
+
 ### rewardPerShare
 
 ```solidity
