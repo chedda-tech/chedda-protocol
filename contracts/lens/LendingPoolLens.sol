@@ -8,10 +8,11 @@ import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { ILendingPool } from "../pool/ILendingPool.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { MathLib } from "../library/MathLib.sol";
+import { IAddressRegistry } from "../config/IAddressRegistry.sol";
 
 /// @title LendingPoolLens
 /// @notice Provides utility functions to view the state of LendingPools
-contract LendingPoolLens is Ownable {
+contract LendingPoolLens {
 
     struct PoolStats {
         address pool;
@@ -95,101 +96,24 @@ contract LendingPoolLens is Ownable {
     using MathLib for uint256;
 
     address[] private _pools;
-    mapping (address => bool) private _activePools;
+    IAddressRegistry public registry;
+
 
     // solhint-disable-next-line no-empty-blocks
-    constructor(address _owner) Ownable(_owner) {}
-
-    ///////////////////////////////////////////////////////////////////////////
-    ///                 Registration/Unregistration
-    ///////////////////////////////////////////////////////////////////////////
-
-    /// @notice Registers a new lending pool
-    /// @dev Can only be called by owner
-    /// Reverts if pools is already registered.
-    /// Emits PoolRegistered(address pool, address caller)
-    /// @param pool The address of pool.
-    /// @param isActive The active state of pool used for filtering.
-    function registerPool(address pool, bool isActive) external onlyOwner() {
-        if (_poolAlreadyRegistered(pool)) {
-            revert AlreadyRegistered(pool);
-        }
-        _pools.push(pool);
-        _activePools[pool] = isActive;
-
-        emit PoolRegistered(pool, msg.sender);
-    }
-
-    /// @notice Unregisters a lending pool
-    /// @dev Can only be called by admin. Reverts if pool is not registered
-    /// Emits PoolRegistered(address pool, address caller)
-    /// @param pool The pool to register
-    function unregisterPool(address pool) external onlyOwner() {
-        if (!_poolAlreadyRegistered(pool)) {
-            revert NotRegistered(pool);
-        }
-        uint256 foundIndex = type(uint256).max;
-        for (uint256 i = 0; i < _pools.length; i++) {
-            if (_pools[i] == pool) {
-                foundIndex = i;
-            }
-        }
-        if (foundIndex != type(uint256).max) {
-            _pools[foundIndex] = _pools[_pools.length - 1];
-            _pools.pop();
-            _activePools[pool] = false;
-
-            emit PoolUnregistered(pool, msg.sender);
-        }
-    }
-
-    /// @notice Sets a pool as active
-    /// @dev Pools can be filtered by their active state
-    /// @param pool The pool to set active or inactive
-    /// @param isActive boolean flag to set pool as active or not
-    function setActive(address pool, bool isActive) external onlyOwner() {
-        if (!_poolAlreadyRegistered(pool)) {
-            revert NotRegistered(pool);
-        }
-        _activePools[pool] = isActive;
-    }
-
-    /// @dev checks if a pool is already registered
-    function _poolAlreadyRegistered(address pool) private view returns (bool) {
-        for (uint256 i = 0; i < _pools.length; i++) {
-            if (_pools[i] == pool) {
-                return true;
-            }
-        }
-        return false;
+    constructor(address _registry) {
+        registry = IAddressRegistry(_registry);
     }
 
     /// @notice Returns a list of all the registered pools
     /// @return pools The addresses of all registered pools
     function registeredPools() external view returns (address[] memory) {
-        return _pools;
+        return registry.registeredPools();
     }
 
     /// @notice Returns a list of all the active pools
     /// @return pools The addresses of all active pools
     function activePools() external view returns (address[] memory) {
-        uint256 numberActive = 0;
-        for (uint256 i = 0; i < _pools.length; i++) {
-            if (_activePools[_pools[i]]) {
-                numberActive += 1;
-            }
-        }
-        if (numberActive == 0) {
-            return new address[](0);
-        }
-        address[] memory pools = new address[](numberActive);
-        uint256 j = 0;
-        for (uint256 i = 0; i < _pools.length; i++) {
-            if (_activePools[_pools[i]]) {
-                pools[j++] = _pools[i];
-            }
-        }
-        return pools;
+        return registry.activePools();
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -198,7 +122,7 @@ contract LendingPoolLens is Ownable {
 
     /// @notice Returns the combined stats for all pools monitored by lens.
     /// @return aggregateStats The aggregated stats of the all registred pools
-    function getAggregateStats() external view returns (AggregateStats memory) {
+    function getAggregateStats(bool onlyActive) external view returns (AggregateStats memory) {
         uint256 totalSuppliedValue = 0;
         uint256 totalBorrowedValue = 0;
         uint256 totalAvailableValue = 0;
@@ -207,9 +131,11 @@ contract LendingPoolLens is Ownable {
         uint8 assetDecimals;
         ILendingPool pool;
         IPriceFeed priceFeed;
+        address[] memory pools = onlyActive ? registry.activePools() : registry.registeredPools();
+        uint256 poolsLength = pools.length;
 
-        for (uint256 i = 0; i < _pools.length; i++) {
-            pool = ILendingPool(_pools[i]);
+        for (uint256 i = 0; i < poolsLength; i++) {
+            pool = ILendingPool(pools[i]);
             priceFeed = pool.priceFeed();
             assetDecimals = pool.poolAsset().decimals();
             UD60x18 assetPrice = ud(priceFeed.readPrice(address(pool.poolAsset()), 0).toUint256().normalized(priceFeed.decimals(), 18));
@@ -241,7 +167,7 @@ contract LendingPoolLens is Ownable {
     /// @return poolStats An array of `PoolStats` objects, containing the stats for specified pools.
     function getPoolStatsList(address[] calldata pools) external view returns (PoolStats[] memory) {
         for (uint256 i = 0; i < pools.length; i++) {
-            if (!_poolAlreadyRegistered(pools[i])) {
+            if (!registry.isRegisteredPool(pools[i])) {
                 revert NotRegistered(pools[i]);
             }
         }
@@ -259,7 +185,7 @@ contract LendingPoolLens is Ownable {
     /// @param poolAddress The address of the pool to return stats for
     /// @return poolStats The `PoolStats` object containing the stats for specified pool.
     function getPoolStats(address poolAddress) public view returns (PoolStats memory) {
-        if (!_poolAlreadyRegistered(poolAddress)) {
+        if (!registry.isRegisteredPool(poolAddress)) {
             revert NotRegistered(poolAddress);
         }
         ILendingPool pool = ILendingPool(poolAddress);
