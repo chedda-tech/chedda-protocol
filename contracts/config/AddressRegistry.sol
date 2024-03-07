@@ -21,7 +21,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     address[] private _pools;
     mapping (address => bool) private _activePools;
 
-    constructor() Ownable(msg.sender) {}
+    constructor(address admin) Ownable(admin) {}
 
     /// @inheritdoc	IAddressRegistry
     function rewardsDistributor() external view returns (address) {

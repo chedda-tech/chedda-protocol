@@ -23,4 +23,20 @@ contract MockAddressRegistry is IAddressRegistry {
     function setRewardsDistributor(address distributor) external {
         _distributor = distributor;
     }
+
+    function registeredPools() external pure returns (address[] memory) {
+        return new address[](0);
+    }
+
+    function activePools() external pure returns (address[] memory) {
+        return new address[](0);
+    }
+
+    function isRegisteredPool(address) external pure returns (bool) {
+        return true;
+    }
+
+    function isActivePool(address) external pure returns (bool) {
+        return true;
+    }
 }
