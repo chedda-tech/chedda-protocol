@@ -128,64 +128,17 @@ error AlreadyRegistered(address pool)
 error NotRegistered(address pool)
 ```
 
+### registry
+
+```solidity
+contract IAddressRegistry registry
+```
+
 ### constructor
 
 ```solidity
-constructor(address _owner) public
+constructor(address _registry) public
 ```
-
-### registerPool
-
-```solidity
-function registerPool(address pool, bool isActive) external
-```
-
-Registers a new lending pool
-
-_Can only be called by owner
-Reverts if pools is already registered.
-Emits PoolRegistered(address pool, address caller)_
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| pool | address | The address of pool. |
-| isActive | bool | The active state of pool used for filtering. |
-
-### unregisterPool
-
-```solidity
-function unregisterPool(address pool) external
-```
-
-Unregisters a lending pool
-
-_Can only be called by admin. Reverts if pool is not registered
-Emits PoolRegistered(address pool, address caller)_
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| pool | address | The pool to register |
-
-### setActive
-
-```solidity
-function setActive(address pool, bool isActive) external
-```
-
-Sets a pool as active
-
-_Pools can be filtered by their active state_
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| pool | address | The pool to set active or inactive |
-| isActive | bool | boolean flag to set pool as active or not |
 
 ### registeredPools
 
@@ -218,7 +171,7 @@ Returns a list of all the active pools
 ### getAggregateStats
 
 ```solidity
-function getAggregateStats() external view returns (struct LendingPoolLens.AggregateStats)
+function getAggregateStats(bool onlyActive) external view returns (struct LendingPoolLens.AggregateStats)
 ```
 
 Returns the combined stats for all pools monitored by lens.
