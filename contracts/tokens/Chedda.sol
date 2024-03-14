@@ -92,6 +92,9 @@ contract Chedda  is ERC20, Ownable {
         if (lastRebase >= block.timestamp) {
             return 0;
         }
+        if (tokenReceiver == address(0)) {
+            return 0;
+        }
 
         uint256 mintAmount = emissionPerSecond() * (block.timestamp - lastRebase);
         if (mintAmount != 0) {
