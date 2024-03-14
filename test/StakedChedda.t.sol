@@ -2,18 +2,18 @@
 pragma solidity ^0.8.20;
 
 import { Test } from "forge-std/Test.sol";
-import { Chedda } from "../contracts/tokens/Chedda.sol";
+import { CheddaToken } from "../contracts/tokens/CheddaToken.sol";
 import { StakedChedda, ERC20 } from "../contracts/tokens/StakedChedda.sol";
 
 contract StakedCheddaTest is Test {
 
-    Chedda public chedda;
+    CheddaToken public chedda;
     StakedChedda public xChedda;
     address public bob;
 
     function setUp() external {
         bob = makeAddr("bob");
-        chedda = new Chedda(bob);
+        chedda = new CheddaToken(bob);
         xChedda = new StakedChedda(address(chedda));
     }
 

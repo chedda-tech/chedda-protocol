@@ -4,14 +4,14 @@ pragma solidity ^0.8.20;
 import { Test } from "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
-import { Chedda, Ownable } from "../contracts/tokens/Chedda.sol";
+import { CheddaToken, Ownable } from "../contracts/tokens/CheddaToken.sol";
 
 contract CheddaTest is Test {
 
-    Chedda public chedda;
+    CheddaToken public chedda;
 
     function setUp() external {
-        chedda = new Chedda(address(msg.sender));
+        chedda = new CheddaToken(address(msg.sender));
     }
 
     function testInitialSupply() external view {
@@ -54,7 +54,7 @@ contract CheddaTest is Test {
 
     function testSetGaugeRecipient() external {
         address address0 = address(0);
-        vm.expectRevert(Chedda.ZeroAddress.selector);
+        vm.expectRevert(CheddaToken.ZeroAddress.selector);
         chedda.setTokenReceiver(address0);
 
         address address0x2 = address(0x2);
