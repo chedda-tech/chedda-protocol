@@ -55,7 +55,7 @@ contract LendingPoolLensTest is Test {
         vm.stopPrank();
     }
 
-    function testPoolSetup() external {
+    function testPoolSetup() external view {
         assertEq(lens.version(), 2);
         assertEq(lens.registeredPools().length, 2);
         assertEq(lens.activePools().length, 2);
@@ -109,7 +109,7 @@ contract LendingPoolLensTest is Test {
         assertEq(info.walletAssetBalance, ERC20(pool1.poolAsset()).balanceOf(bob));
     }
 
-    function testPoolCollateral() external {
+    function testPoolCollateral() external view {
         // deposit asset as colateral
 
         // deposit collateral 1 + 2
@@ -130,7 +130,7 @@ contract LendingPoolLensTest is Test {
         assertEq(collateralInfo[1].collateralFactor, pool1.collateralFactor(address(collateral2)));
     }
 
-    function testPoolMarketInfo() external {
+    function testPoolMarketInfo() external view {
         LendingPoolLens.MarketInfo memory marketInfo = lens.getMarketInfo(address(pool1));
         assertEq(marketInfo.oraclePrice, pool1.priceFeed().readPrice(address(pool1.poolAsset()), 0));
         assertEq(marketInfo.oraclePriceDecimals, pool1.priceFeed().decimals());

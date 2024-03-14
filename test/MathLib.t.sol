@@ -9,7 +9,7 @@ contract MathLibTest is Test {
 
     using MathLib for uint256;
 
-    function testNormalize() external {
+    function testNormalize() external pure {
         uint256 value18 = 10e18;
         uint256 value8 = 10e8;
 

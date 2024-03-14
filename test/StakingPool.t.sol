@@ -38,7 +38,7 @@ contract StakingPoolTest is Test {
         vm.stopPrank();
     }
 
-    function testStakingSetup() external {
+    function testStakingSetup() external view {
         assertEq(address(pool.stakingToken()), address(stakingToken));
         assertEq(address(pool.rewardToken()), address(rewardToken));
     }

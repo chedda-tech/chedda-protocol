@@ -18,7 +18,7 @@ contract InterestRatesProjectorTest is Test {
         projector = new InterestRatesProjector();
     }
 
-    function testProjection() external {
+    function testProjection() external view {
         uint256 u0 = 0;
         uint256 u1 = 0.1e18;
         uint256 u2 = 0.2e18;

@@ -45,7 +45,7 @@ contract AddressRegistryTest is Test {
         unregistered = new MockLendingPool(name3, address(asset1), address(priceFeed), collaterals);
     }
 
-    function testAddressRegistrySetUp() external {
+    function testAddressRegistrySetUp() external view {
         assertEq(registry.cheddaToken(), address(0));
         assertEq(registry.rewardsDistributor(), address(0));
     }

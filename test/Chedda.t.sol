@@ -14,7 +14,7 @@ contract CheddaTest is Test {
         chedda = new Chedda(address(msg.sender));
     }
 
-    function testInitialSupply() external {
+    function testInitialSupply() external view {
         uint256 initialSupply = chedda.INITIAL_SUPPLY();
         uint256 totalSupply = chedda.totalSupply();
         assertEq(initialSupply, totalSupply);
