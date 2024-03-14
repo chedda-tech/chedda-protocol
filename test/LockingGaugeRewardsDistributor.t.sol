@@ -107,6 +107,7 @@ contract LockingGaugeRewardsDistributorTest is Test {
         uint256 distributed = distributor.distribute();
         assertEq(distributed, 0);
     }
+    
     function testLockingGaugeDistribute() external {
 
         uint256 weight1 = 0.8e18;
