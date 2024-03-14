@@ -17,7 +17,10 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     error NotRegistered(address pool);
 
     address private _rewardsDistributor;
-    address private _chedda;
+    address private _cheddaToken;
+    address private _lendingPoolLens;
+    address private _accountLens;
+    address private _rewardLens;
     address[] private _pools;
     mapping (address => bool) private _activePools;
 
@@ -30,7 +33,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
 
     /// @inheritdoc	IAddressRegistry
     function cheddaToken() external view returns (address) {
-        return _chedda;
+        return _cheddaToken;
     }
 
     /// @notice Sets the rewards distributor
@@ -48,7 +51,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     /// emits CheddaSet(address caller, address cheddaToken) event
     /// @param chedda New chedda token address 
     function setCheddaToken(address chedda) external onlyOwner() {
-        _chedda = chedda;
+        _cheddaToken = chedda;
 
         emit CheddaSet(msg.sender, chedda);
     }
