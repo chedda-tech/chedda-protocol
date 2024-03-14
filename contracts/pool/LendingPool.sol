@@ -201,7 +201,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// Debt and interest
     DebtToken public immutable debtToken;
     IAddressRegistry public immutable registry;
-    StakingPool public immutable stakePool;
     IPriceFeed public immutable priceFeed;
     InterestRates public interestRates;
     IInterestRatesModel public interestRatesModel;
@@ -272,7 +271,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         priceFeed = IPriceFeed(_priceFeed);
         registry = IAddressRegistry(_registry);
         debtToken = new DebtToken(_asset, address(this));
-        stakePool = new StakingPool(address(this), address(registry.cheddaToken()));
+        stakingPool = new StakingPool(address(this), address(registry.cheddaToken()));
         gauge = new CheddaLockingGauge(address(registry.cheddaToken()));
         _initialize(_collateralTokens);
     }
