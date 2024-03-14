@@ -41,9 +41,8 @@ contract LockingGaugeRewardsDistributorTest is Test {
         // pool2.setStakingPool(address(pool2));
     }
 
-    function testDistributorSetUp() external {
-        // assertEq(address(token), address(distributor.token()));
-        // distributor.registerPool(pool1);
+    function testDistributorSetUp() external view {
+        assertEq(address(token), address(distributor.token()));
     }
 
     function testDistributorRegisterNonAdminFail() external {
@@ -141,6 +140,42 @@ contract LockingGaugeRewardsDistributorTest is Test {
         assertEq(p2Stake.rewardAmount(), ud(mintAmount).mul(ud(weight2)).mul(ud(distributor.stakingPortion())).unwrap());
         assertEq(p1Gauge.rewardAmount() + p1Stake.rewardAmount(), ud(mintAmount).mul(ud(weight1)).unwrap());
         assertEq(p2Gauge.rewardAmount() + p2Stake.rewardAmount(), ud(mintAmount).mul(ud(weight2)).unwrap());
+    }
+
+     function testLockingGaugeDistributeFuzz(uint256 mintAmount) external {
+
+        mintAmount = bound(mintAmount, 0, 1_000_000_000e18);
+        uint256 weight1 = 0.8e18;
+        uint256 weight2 = 0.2e18;
+
+        RewardsSpy p1Gauge = new RewardsSpy();
+        RewardsSpy p2Gauge = new RewardsSpy();
+        RewardsSpy p1Stake = new RewardsSpy();
+        RewardsSpy p2Stake = new RewardsSpy();
+
+        vm.startPrank(admin);
+        distributor.registerPool(pool1);
+        distributor.registerPool(pool2);
+        p1Gauge.setWeight(weight1);
+        p2Gauge.setWeight(weight2);
+        vm.stopPrank();
+
+        token.mint(address(distributor), mintAmount);
+
+        pool1.setGauge(address(p1Gauge));
+        pool1.setStakingPool(address(p1Stake));
+        pool2.setGauge(address(p2Gauge));
+        pool2.setStakingPool(address(p2Stake));
+
+        uint256 distributed = distributor.distribute();
+        assertEq(distributed, mintAmount);
+        assertEq(p1Gauge.rewardAmount(), ud(mintAmount).mul(ud(weight1)).mul(ud(distributor.lockingPortion())).unwrap());
+        assertEq(p1Stake.rewardAmount(), ud(mintAmount).mul(ud(weight1)).mul(ud(distributor.stakingPortion())).unwrap());
+        assertEq(p2Gauge.rewardAmount(), ud(mintAmount).mul(ud(weight2)).mul(ud(distributor.lockingPortion())).unwrap());
+        assertEq(p2Stake.rewardAmount(), ud(mintAmount).mul(ud(weight2)).mul(ud(distributor.stakingPortion())).unwrap());
+
+        assertApproxEqAbs(p1Gauge.rewardAmount() + p1Stake.rewardAmount(), ud(mintAmount).mul(ud(weight1)).unwrap(), 1);
+        assertApproxEqAbs(p2Gauge.rewardAmount() + p2Stake.rewardAmount(), ud(mintAmount).mul(ud(weight2)).unwrap(), 1);
     }
 }
 
