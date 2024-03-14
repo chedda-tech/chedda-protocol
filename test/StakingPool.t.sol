@@ -257,5 +257,37 @@ contract StakingPoolStaking is StakingPoolTest {
         assertApproxEqAbs(pool.claimable(alice), aliceClaimableBeforeAdd + rewardAmount * 2 / 3, 1e18);
     }
 
+    function testStakers() external {
+        stakingToken.mint(bob, stakeAmount);
+        stakingToken.mint(alice, stakeAmount);
+
+        assertEq(pool.stakers(), 0);
+        // bob stake
+        vm.startPrank(bob);
+        stakingToken.approve(address(pool), stakeAmount);
+        pool.stake(stakeAmount);
+        vm.stopPrank();
+        assertEq(pool.stakers(), 1);
+
+        // alice stake
+        vm.startPrank(alice);
+        stakingToken.approve(address(pool), stakeAmount);
+        pool.stake(stakeAmount);
+        vm.stopPrank(); 
+        assertEq(pool.stakers(), 2);
+
+        // full unstake reduces stakers
+        vm.startPrank(bob);
+        pool.unstake(stakeAmount);
+        vm.stopPrank();
+        assertEq(pool.stakers(), 1);
+
+        // partial unstake does not reduce stakers
+        vm.startPrank(alice);
+        pool.unstake(stakeAmount / 2);
+        vm.stopPrank();
+        assertEq(pool.stakers(), 1);
+    }
+
     // fuzz testing for staking, unstaking, claiming
 }
