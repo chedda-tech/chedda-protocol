@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { CheddaToken, Ownable } from "../contracts/tokens/CheddaToken.sol";
+import { IRewardsDistributor } from "../contracts/rewards/IRewardsDistributor.sol";
 
 contract CheddaTest is Test {
 
@@ -60,7 +61,7 @@ contract CheddaTest is Test {
         address address0x2 = address(0x2);
         chedda.setTokenReceiver(address0x2);
 
-        address tokenReceiver = chedda.tokenReceiver();
+        address tokenReceiver = address(chedda.tokenReceiver());
         assertEq(address0x2, tokenReceiver);
 
         vm.prank(address(0x2));

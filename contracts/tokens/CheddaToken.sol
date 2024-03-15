@@ -3,12 +3,14 @@ pragma solidity 0.8.20;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IRewardsDistributor } from "../rewards/IRewardsDistributor.sol";
+import { IRebaseToken } from "./IRebaseToken.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 
 /// @title CheddaToken
 /// @notice CheddaToken token
 // TODO: Create emission controller that controls emissions.
-contract CheddaToken  is ERC20, Ownable {
+contract CheddaToken  is ERC20, Ownable, IRebaseToken {
 
     /// @notice Emitted when the new token is minted in a rebase
     /// @param caller The caller of the rebase function
@@ -43,7 +45,7 @@ contract CheddaToken  is ERC20, Ownable {
     uint256 public lastRebase;
 
     /// @notice The receiver for new token emissions.
-    address public tokenReceiver;
+    IRewardsDistributor public tokenReceiver;
     
     // TODO: Start at 32% inflation
     uint256[6] private _inflationRates = [
@@ -81,7 +83,7 @@ contract CheddaToken  is ERC20, Ownable {
         if (_receiver == address(0)) {
             revert ZeroAddress();
         }
-        tokenReceiver = _receiver;
+        tokenReceiver = IRewardsDistributor(_receiver);
         emit TokenReceiverSet(msg.sender, _receiver);
     }
 
@@ -92,14 +94,16 @@ contract CheddaToken  is ERC20, Ownable {
         if (lastRebase >= block.timestamp) {
             return 0;
         }
-        if (tokenReceiver == address(0)) {
+        if (address(tokenReceiver) == address(0)) {
             return 0;
         }
 
         uint256 mintAmount = emissionPerSecond() * (block.timestamp - lastRebase);
         if (mintAmount != 0) {
             lastRebase = block.timestamp;
-            _mint(tokenReceiver, mintAmount);
+            _mint(address(tokenReceiver), mintAmount);
+
+            tokenReceiver.distribute();
 
             emit TokenRebased(msg.sender, mintAmount, totalSupply());
         }

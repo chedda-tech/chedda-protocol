@@ -7,11 +7,12 @@ import {StakingPool} from "../contracts/rewards/StakingPool.sol";
 import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 import {MockRewardsDistributor} from "./mocks/MockRewardsDistributor.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MockRebaseERC20} from "./mocks/MockRebaseERC20.sol";
 
 contract StakingPoolTest is Test {
 
     StakingPool internal pool;
-    ERC20Mock internal stakingToken;
+    MockRebaseERC20 internal stakingToken;
     ERC20Mock internal rewardToken;
     MockAddressRegistry internal registry;
     MockRewardsDistributor internal distributor;
@@ -19,13 +20,15 @@ contract StakingPoolTest is Test {
     address internal alice;
     address internal bob;
     address internal colin;
+    address internal receiver;
 
     function setUp() public virtual {
         alice = makeAddr("alice");
         bob = makeAddr("bob");
         colin = makeAddr("colin");
+        receiver = makeAddr("receiver");
         
-        stakingToken = new ERC20Mock();
+        stakingToken = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, receiver);
         rewardToken = new ERC20Mock();
         registry = new MockAddressRegistry();
 

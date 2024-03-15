@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IStakingPool} from "./IStakingPool.sol";
+import {IRebaseToken} from "../tokens/IRebaseToken.sol";
 
 /// @title StakingPool
 /// @notice Manages staking tokens and rewards.
@@ -55,7 +56,7 @@ contract StakingPool is IStakingPool {
     mapping(address => UserInfo) public userInfo;
 
     /// @notice The staking token
-    IERC20 public stakingToken; // Token being staked
+    IRebaseToken public stakingToken; // Token being staked
 
     /// @notice The reward token
     IERC20 public rewardToken; // Token for rewards
@@ -73,7 +74,7 @@ contract StakingPool is IStakingPool {
     /// @param _stakingToken The token being staked.
     /// @param _rewardToken The reward token.
     constructor(address _stakingToken, address _rewardToken) {
-        stakingToken = IERC20(_stakingToken);
+        stakingToken = IRebaseToken(_stakingToken);
         rewardToken = IERC20(_rewardToken);
     }
 
@@ -98,6 +99,8 @@ contract StakingPool is IStakingPool {
         user.rewardDebt = user.amountStaked * rewardPerShare / 1e12;
         totalStaked += amount;
 
+        stakingToken.rebase();
+
         emit Staked(msg.sender, amount);
         return amountClaimed;
     }
@@ -108,6 +111,8 @@ contract StakingPool is IStakingPool {
         if (user.amountStaked < amount) {
             revert InsufficientStake();
         }
+
+        stakingToken.rebase();
         
         uint256 pendingReward = claimable(msg.sender);
         uint256 claimed = 0;

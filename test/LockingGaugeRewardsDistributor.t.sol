@@ -8,7 +8,7 @@ import {ICheddaPool} from "../contracts/rewards/ICheddaPool.sol";
 import {MockCheddaPool} from "./mocks/MockCheddaPool.sol";
 import {MockLockingGauge} from "./mocks/MockLockingGauge.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
-import { UD60x18, ud } from "prb-math/UD60x18.sol";
+import {UD60x18, ud} from "prb-math/UD60x18.sol";
 
 contract LockingGaugeRewardsDistributorTest is Test {
 
