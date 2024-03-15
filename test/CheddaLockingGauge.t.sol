@@ -6,11 +6,12 @@ import {console2} from "forge-std/console2.sol";
 import {CheddaLockingGauge} from "../contracts/rewards/CheddaLockingGauge.sol";
 import {Lock, LockTime} from "../contracts/rewards/ILockingGauge.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MockRebaseERC20} from "./mocks/MockRebaseERC20.sol";
 
 contract CheddaLockingGaugeTest is Test {
 
     CheddaLockingGauge public gauge;
-    ERC20Mock public token;
+    MockRebaseERC20 public token;
     address alice;
     address bob;
     address carol;
@@ -18,13 +19,15 @@ contract CheddaLockingGaugeTest is Test {
     address minter;
 
     function setUp() external {
-        token = new ERC20Mock();
-        gauge = new CheddaLockingGauge(address(token));
         alice = makeAddr("alice");
         bob = makeAddr("bob");
         carol = makeAddr("carol");
         dean = makeAddr("dean");
         minter = makeAddr("minter");
+
+        token = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, minter);
+        gauge = new CheddaLockingGauge(address(token));
+
         token.mint(alice, 1_000_000e18);
         token.mint(bob, 1_000_000e18);
         token.mint(carol, 1_000_000e18);

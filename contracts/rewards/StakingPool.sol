@@ -12,6 +12,7 @@ import {IRebaseToken} from "../tokens/IRebaseToken.sol";
 contract StakingPool is IStakingPool {
 
     using SafeERC20 for IERC20;
+    using SafeERC20 for IRebaseToken;
 
     /// @notice Emitted when a user stakes tokens.
     /// @param account The account that staked.
@@ -56,10 +57,10 @@ contract StakingPool is IStakingPool {
     mapping(address => UserInfo) public userInfo;
 
     /// @notice The staking token
-    IRebaseToken public stakingToken; // Token being staked
+    IERC20 public stakingToken; // Token being staked
 
     /// @notice The reward token
-    IERC20 public rewardToken; // Token for rewards
+    IRebaseToken public rewardToken; // Token for rewards
 
     /// @notice Total amount of tokens staked
     uint256 public totalStaked;
@@ -74,8 +75,8 @@ contract StakingPool is IStakingPool {
     /// @param _stakingToken The token being staked.
     /// @param _rewardToken The reward token.
     constructor(address _stakingToken, address _rewardToken) {
-        stakingToken = IRebaseToken(_stakingToken);
-        rewardToken = IERC20(_rewardToken);
+        stakingToken = IERC20(_stakingToken);
+        rewardToken = IRebaseToken(_rewardToken);
     }
 
     /// @inheritdoc IStakingPool
@@ -99,7 +100,7 @@ contract StakingPool is IStakingPool {
         user.rewardDebt = user.amountStaked * rewardPerShare / 1e12;
         totalStaked += amount;
 
-        stakingToken.rebase();
+        rewardToken.rebase();
 
         emit Staked(msg.sender, amount);
         return amountClaimed;
@@ -112,7 +113,7 @@ contract StakingPool is IStakingPool {
             revert InsufficientStake();
         }
 
-        stakingToken.rebase();
+        rewardToken.rebase();
         
         uint256 pendingReward = claimable(msg.sender);
         uint256 claimed = 0;
@@ -136,6 +137,7 @@ contract StakingPool is IStakingPool {
 
     /// @inheritdoc IStakingPool
     function claim() public returns (uint256) {
+        rewardToken.rebase();
         uint256 claimAmount = claimable(msg.sender);
         if (claimAmount != 0) {
             UserInfo storage user = userInfo[msg.sender];

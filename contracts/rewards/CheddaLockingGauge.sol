@@ -6,10 +6,12 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ILockingGauge, Lock, LockTime} from "./ILockingGauge.sol";
+import {IRebaseToken} from "../tokens/IRebaseToken.sol";
 
 contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
+    using SafeERC20 for IRebaseToken;
 
     /// @notice Emitted when a lock is created or updated.
     /// @param account The account creating a lock.
@@ -29,7 +31,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     error ZeroAmount();
     error InvalidAmount(uint256);
 
-    IERC20 public token;
+    IRebaseToken public token;
     uint256 public rewardPerShare;
     uint256 public totalLocked;
     uint256 public totalClaimed;
@@ -41,7 +43,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     mapping (address => Lock) private locks;
 
     constructor(address _token) {
-        token = IERC20(_token);
+        token = IRebaseToken(_token);
     }
 
     /// @inheritdoc	ILockingGauge
@@ -49,6 +51,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         if (amount == 0) {
             revert ZeroAmount();
         }
+        token.rebase();
         uint256 endTime;
         uint256 ts = block.timestamp;
         if (time == LockTime.thirtyDays) {
@@ -86,6 +89,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     /// @inheritdoc	ILockingGauge
     function withdraw() external nonReentrant() returns (uint256) {
+        token.rebase();
         Lock storage lock = locks[msg.sender];
         uint256 amount = lock.amount;
         if (amount == 0) {
@@ -124,6 +128,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     /// @dev Internal claim function.
     function _claim(address account) internal returns (uint256) {
+        token.rebase();
         uint256 amount = claimable(account);
         if (amount != 0) {
             Lock storage lock = locks[account];

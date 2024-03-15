@@ -12,8 +12,8 @@ import {MockRebaseERC20} from "./mocks/MockRebaseERC20.sol";
 contract StakingPoolTest is Test {
 
     StakingPool internal pool;
-    MockRebaseERC20 internal stakingToken;
-    ERC20Mock internal rewardToken;
+    ERC20Mock internal stakingToken;
+    MockRebaseERC20 internal rewardToken;
     MockAddressRegistry internal registry;
     MockRewardsDistributor internal distributor;
 
@@ -28,8 +28,8 @@ contract StakingPoolTest is Test {
         colin = makeAddr("colin");
         receiver = makeAddr("receiver");
         
-        stakingToken = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, receiver);
-        rewardToken = new ERC20Mock();
+        stakingToken = new ERC20Mock();
+        rewardToken = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, receiver);
         registry = new MockAddressRegistry();
 
         distributor = new MockRewardsDistributor();
