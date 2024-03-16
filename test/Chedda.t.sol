@@ -10,9 +10,11 @@ import { IRewardsDistributor } from "../contracts/rewards/IRewardsDistributor.so
 contract CheddaTest is Test {
 
     CheddaToken public chedda;
+    address public lzEndpoint;
 
     function setUp() external {
-        chedda = new CheddaToken(address(msg.sender));
+        lzEndpoint = makeAddr("lzendpoint");
+        chedda = new CheddaToken(address(msg.sender), lzEndpoint);
     }
 
     function testInitialSupply() external view {

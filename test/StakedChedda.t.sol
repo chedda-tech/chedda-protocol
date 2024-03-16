@@ -10,10 +10,12 @@ contract StakedCheddaTest is Test {
     CheddaToken public chedda;
     StakedChedda public xChedda;
     address public bob;
+    address public lzEndpoint;
 
     function setUp() external {
         bob = makeAddr("bob");
-        chedda = new CheddaToken(bob);
+        lzEndpoint = makeAddr("lzEndpoint");
+        chedda = new CheddaToken(bob, lzEndpoint);
         xChedda = new StakedChedda(address(chedda));
     }
 

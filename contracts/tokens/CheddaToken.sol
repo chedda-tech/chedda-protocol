@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { OFT } from "@layerzero-v2/contracts/oft/OFT.sol";
 import { IRewardsDistributor } from "../rewards/IRewardsDistributor.sol";
 import { IRebaseToken } from "./IRebaseToken.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
@@ -10,7 +11,7 @@ import { UD60x18, ud } from "prb-math/UD60x18.sol";
 /// @title CheddaToken
 /// @notice CheddaToken token
 // TODO: Create emission controller that controls emissions.
-contract CheddaToken  is ERC20, Ownable, IRebaseToken {
+contract CheddaToken is OFT, IRebaseToken {
 
     /// @notice Emitted when the new token is minted in a rebase
     /// @param caller The caller of the rebase function
@@ -67,13 +68,14 @@ contract CheddaToken  is ERC20, Ownable, IRebaseToken {
 
 
     /// @notice Construct a new Chedda token.
-    /// @param custodian The token custodian to mint initial supply to.
-    constructor(address custodian)
-    ERC20("Chedda", "CHEDDA")
-    Ownable(msg.sender) {
+    /// @param owner The contract owner. Initial suppply is minted to this owner.
+    /// @param lzEndpoint The LayerZero endpoint.
+    constructor(address owner, address lzEndpoint)
+    OFT("Chedda", "CHEDDA", lzEndpoint, owner)
+    Ownable(owner) {
         tge = block.timestamp;
         lastRebase = block.timestamp;
-        _mint(custodian, INITIAL_SUPPLY);
+        _mint(owner, INITIAL_SUPPLY);
     }
 
     /// @notice Sets the address to recieve token emission. 
