@@ -7,7 +7,7 @@ import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { CheddaToken, Ownable } from "../contracts/tokens/CheddaToken.sol";
 import { IRewardsDistributor } from "../contracts/rewards/IRewardsDistributor.sol";
 
-contract CheddaTest is Test {
+contract CheddaTokenTest is Test {
 
     CheddaToken public chedda;
     address public lzEndpoint;
