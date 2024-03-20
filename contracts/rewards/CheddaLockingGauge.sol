@@ -77,6 +77,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         uint256 weightedAmount = amount * _boostFactor(time) / MAXBOOST;
         lock.amount += amount;
         lock.expiry = endTime;
+        lock.lockTime = time;
 
         lock.timeWeighted += weightedAmount;
         lock.rewardDebt = lock.timeWeighted * rewardPerShare / 1e12;

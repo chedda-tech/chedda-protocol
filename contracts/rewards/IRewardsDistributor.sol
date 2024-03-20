@@ -9,4 +9,8 @@ interface IRewardsDistributor {
     /// @dev Explain to a developer any extra details
     /// @return The amount of token distributed.
     function distribute() external returns (uint256);
+
+    /// @notice Returns the total weight of all the pools.
+    /// @return The total weight of all registered pools.
+    function weightTotal() external returns (uint256);
 }

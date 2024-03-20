@@ -29,7 +29,8 @@ contract MockLockingGauge is ILockingGauge {
             amount: 0,
             timeWeighted: 0,
             expiry: 0,
-            rewardDebt: 0
+            rewardDebt: 0,
+            lockTime: LockTime.ninetyDays
         });
     }
 

@@ -1,14 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-/// @notice The structure that represents an active lock.
-struct Lock {
-    uint256 amount;
-    uint256 timeWeighted;
-    uint256 expiry;
-    uint256 rewardDebt;
-}
-
 /// @notice Enum representing the possible lock times
 enum LockTime {
     thirtyDays,
@@ -16,12 +8,22 @@ enum LockTime {
     oneEightyDays,
     threeSixtyDays
 }
+
+/// @notice The structure that represents an active lock.
+struct Lock {
+    uint256 amount;
+    uint256 timeWeighted;
+    uint256 expiry;
+    uint256 rewardDebt;
+    LockTime lockTime;
+}
+
     
 interface ILockingGauge {
     
     /// @notice Returns the total amount of time weighted locked tokens.
     /// @return The time weighted locked tokens.
-    function weight() external returns (uint256);
+    function weight() external view returns (uint256);
     
     /// @notice Locks CHEDDA token for the given lock time.
     /// @dev Explain to a developer any extra details

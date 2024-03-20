@@ -5,6 +5,6 @@ import {ILockingGauge} from "./ILockingGauge.sol";
 import {IStakingPool} from ".//IStakingPool.sol";
 
 interface ICheddaPool {
-    function gauge() external returns (ILockingGauge);
-    function stakingPool() external returns (IStakingPool);
+    function gauge() external view returns (ILockingGauge);
+    function stakingPool() external view returns (IStakingPool);
 }

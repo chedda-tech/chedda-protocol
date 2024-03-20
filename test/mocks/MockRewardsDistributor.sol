@@ -13,4 +13,8 @@ contract MockRewardsDistributor is IRewardsDistributor {
         return 0;
     }
 
+    function weightTotal() external pure returns (uint256) {
+        return 0;
+    }
+
 }

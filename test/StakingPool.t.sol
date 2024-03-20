@@ -68,6 +68,7 @@ contract StakingPoolTest is Test {
 contract StakingPoolStaking is StakingPoolTest {
 
     uint256 public stakeAmount = 1000e18;
+    uint256 public aliceStakeAmount = 3000e18;
 
     function setUp() public override {
         super.setUp();
@@ -76,6 +77,9 @@ contract StakingPoolStaking is StakingPoolTest {
 
         vm.startPrank(bob);
         stakingToken.approve(address(pool), stakeAmount);
+        vm.stopPrank(); 
+        vm.startPrank(alice);
+        stakingToken.approve(address(pool), aliceStakeAmount);
         vm.stopPrank(); 
     }
 
@@ -92,6 +96,21 @@ contract StakingPoolStaking is StakingPoolTest {
         assertEq(pool.totalStaked(), stakeAmount);
         assertEq(pool.stakingBalance(bob), stakeAmount);
         assertEq(stakingToken.balanceOf(address(pool)), stakeAmount); 
+    }
+
+    function testMultipleStakes() public {
+        vm.startPrank(bob);
+        pool.stake(stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        pool.stake(aliceStakeAmount);
+        vm.stopPrank();
+
+        assertEq(pool.totalStaked(), stakeAmount + aliceStakeAmount);
+        assertEq(pool.stakingBalance(bob), stakeAmount);
+        assertEq(pool.stakingBalance(alice), aliceStakeAmount);
+        assertEq(stakingToken.balanceOf(address(pool)), stakeAmount + aliceStakeAmount); 
     }
 
     function testUnstaking() external {
@@ -141,7 +160,6 @@ contract StakingPoolStaking is StakingPoolTest {
         assertEq(rewardToken.balanceOf(bob), rewardAmount);
         assertEq(pool.claimable(bob), 0);
 
-        uint256 aliceStakeAmount = stakeAmount * 3;
         vm.startPrank(alice);
         stakingToken.approve(address(pool), aliceStakeAmount);
         pool.stake(aliceStakeAmount);
