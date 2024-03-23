@@ -1,14 +1,11 @@
 @openzeppelin/=lib/openzeppelin-contracts/
 @openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
+openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/
 forge-std/=lib/forge-std/src/
 solmate/=lib/solmate/src/
 prb-math/=lib/prb-math/src/
-@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
-@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 @prb/test/=lib/prb-math/node_modules/@prb/test/
 LayerZero-v2/=lib/LayerZero-v2/
 @layerzero-v2/=lib/LayerZero-v2/oapp/
 @layerzerolabs/lz-evm-protocol-v2/=lib/LayerZero-v2/protocol/
 ds-test/=lib/LayerZero-v2/lib/forge-std/lib/ds-test/src/
-openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/
-openzeppelin-contracts/=lib/openzeppelin-contracts/
