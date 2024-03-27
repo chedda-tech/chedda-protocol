@@ -48,9 +48,6 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     /// @inheritdoc	ILockingGauge
     function createLock(uint256 amount, LockTime time) external returns (uint256) {
-        if (amount == 0) {
-            revert ZeroAmount();
-        }
         token.rebase();
         uint256 endTime;
         uint256 ts = block.timestamp;
@@ -69,11 +66,16 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         if (lock.expiry > endTime) {
             revert ReducedLockTime();
         }
+        if (lock.amount == 0 && amount == 0) {
+            revert ZeroAmount();
+        }
         if (lock.amount == 0) {
             numberOfLocks += 1;
         }
 
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        if (amount != 0) {
+            token.safeTransferFrom(msg.sender, address(this), amount);
+        }
         uint256 weightedAmount = amount * _boostFactor(time) / MAXBOOST;
         lock.amount += amount;
         lock.expiry = endTime;
