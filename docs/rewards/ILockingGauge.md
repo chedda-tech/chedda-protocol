@@ -1,18 +1,5 @@
 # Solidity API
 
-## Lock
-
-The structure that represents an active lock.
-
-```solidity
-struct Lock {
-  uint256 amount;
-  uint256 timeWeighted;
-  uint256 expiry;
-  uint256 rewardDebt;
-}
-```
-
 ## LockTime
 
 Enum representing the possible lock times
@@ -26,12 +13,26 @@ enum LockTime {
 }
 ```
 
+## Lock
+
+The structure that represents an active lock.
+
+```solidity
+struct Lock {
+  uint256 amount;
+  uint256 timeWeighted;
+  uint256 expiry;
+  uint256 rewardDebt;
+  enum LockTime lockTime;
+}
+```
+
 ## ILockingGauge
 
 ### weight
 
 ```solidity
-function weight() external returns (uint256)
+function weight() external view returns (uint256)
 ```
 
 Returns the total amount of time weighted locked tokens.

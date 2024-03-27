@@ -309,12 +309,6 @@ Debt and interest
 contract IAddressRegistry registry
 ```
 
-### stakePool
-
-```solidity
-contract StakingPool stakePool
-```
-
 ### priceFeed
 
 ```solidity

@@ -118,3 +118,17 @@ function distribute() external returns (uint256)
 
 @inheritdoc	IRewardsDistributor
 
+### weightTotal
+
+```solidity
+function weightTotal() public view returns (uint256)
+```
+
+Returns the total weight of all the pools.
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The total weight of all registered pools. |
+

@@ -21,3 +21,17 @@ _Explain to a developer any extra details_
 | ---- | ---- | ----------- |
 | [0] | uint256 | The amount of token distributed. |
 
+### weightTotal
+
+```solidity
+function weightTotal() external returns (uint256)
+```
+
+Returns the total weight of all the pools.
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The total weight of all registered pools. |
+

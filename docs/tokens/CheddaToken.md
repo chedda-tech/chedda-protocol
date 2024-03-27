@@ -1,8 +1,8 @@
 # Solidity API
 
-## Chedda
+## CheddaToken
 
-Chedda token
+CheddaToken token
 
 ### TokenRebased
 
@@ -98,7 +98,7 @@ The timestamp of the last rebase.
 ### tokenReceiver
 
 ```solidity
-address tokenReceiver
+contract IRewardsDistributor tokenReceiver
 ```
 
 The receiver for new token emissions.
@@ -106,7 +106,7 @@ The receiver for new token emissions.
 ### constructor
 
 ```solidity
-constructor(address custodian) public
+constructor(address owner, address lzEndpoint) public
 ```
 
 Construct a new Chedda token.
@@ -115,7 +115,8 @@ Construct a new Chedda token.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| custodian | address | The token custodian to mint initial supply to. |
+| owner | address | The contract owner. Initial suppply is minted to this owner. |
+| lzEndpoint | address | The LayerZero endpoint. |
 
 ### setTokenReceiver
 

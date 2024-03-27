@@ -75,7 +75,7 @@ error InvalidAmount(uint256)
 ### token
 
 ```solidity
-contract IERC20 token
+contract IRebaseToken token
 ```
 
 ### rewardPerShare

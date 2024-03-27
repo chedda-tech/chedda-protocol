@@ -129,7 +129,7 @@ The staking token
 ### rewardToken
 
 ```solidity
-contract IERC20 rewardToken
+contract IRebaseToken rewardToken
 ```
 
 The reward token

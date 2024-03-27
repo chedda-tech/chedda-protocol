@@ -5,12 +5,12 @@
 ### gauge
 
 ```solidity
-function gauge() external returns (contract ILockingGauge)
+function gauge() external view returns (contract ILockingGauge)
 ```
 
 ### stakingPool
 
 ```solidity
-function stakingPool() external returns (contract IStakingPool)
+function stakingPool() external view returns (contract IStakingPool)
 ```
 
