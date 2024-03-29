@@ -128,7 +128,7 @@ contract CheddaLockingGaugeTest is Test {
         vm.stopPrank();
 
         vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(CheddaLockingGauge.NoLockFound.selector, alice));
+        vm.expectRevert(abi.encodeWithSelector(CheddaLockingGauge.LockNotFound.selector, alice));
         gauge.withdraw();
         vm.stopPrank();
     }
@@ -167,27 +167,42 @@ contract CheddaLockingGaugeTest is Test {
         vm.stopPrank();
     }
 
-    function testRelocking() external {
+    function testExtendLock() external {
         uint256 amount = 1000e18;
         vm.startPrank(bob);
         token.approve(address(gauge), amount);
         uint256 initialExpiry = gauge.createLock(amount, LockTime.ninetyDays);
         Lock memory initialLock = gauge.getLock(bob);
 
-        token.approve(address(gauge), amount);
         vm.expectRevert(CheddaLockingGauge.ReducedLockTime.selector);
-        gauge.createLock(amount, LockTime.thirtyDays);
+        gauge.extendLock(LockTime.thirtyDays);
         
-        uint256 newExpiry = gauge.createLock(amount, LockTime.oneEightyDays);
+        uint256 newExpiry = gauge.extendLock(LockTime.oneEightyDays);
         Lock memory newLock = gauge.getLock(bob);
 
-        assertApproxEqAbs(newExpiry, initialExpiry * 2, 10);
-        assertEq(newLock.amount, initialLock.amount * 2);
+        assertApproxEqAbs(initialExpiry * 2, newExpiry, 10);
+        assertEq(initialLock.amount, newLock.amount);
 
         // new weight = initial + 2 x initial
-        assertEq(newLock.timeWeighted, initialLock.timeWeighted * 3);
+        assertEq(initialLock.timeWeighted * 2, newLock.timeWeighted);
 
         vm.stopPrank(); 
+    }
+
+    function testAddToLock() external {
+        uint256 amount = 1000e18;
+        vm.startPrank(bob);
+        token.approve(address(gauge), amount);
+        gauge.createLock(amount, LockTime.thirtyDays);
+        Lock memory initialLock = gauge.getLock(bob);
+
+        token.approve(address(gauge), amount);
+        gauge.addToLock(amount);
+        Lock memory newLock = gauge.getLock(bob);
+        assertEq(initialLock.amount * 2, newLock.amount);
+        assertEq(initialLock.expiry, newLock.expiry);
+        assertEq(initialLock.timeWeighted * 2, newLock.timeWeighted);
+        vm.stopPrank();
     }
 
     function testAddRewardsReverts() external {

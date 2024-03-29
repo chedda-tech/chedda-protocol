@@ -83,7 +83,7 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
         if (available == 0) {
             return 0;
         }
-        uint256 totalWeight = weightTotal();
+        uint256 totalWeight = totalWeightSum();
         
         // no tokens locked
         if (totalWeight == 0) {
@@ -92,7 +92,7 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
         for (uint256 i = 0; i < length; i++) {
             // -> distribute to pools based on weights.
             ILockingGauge gauge = pools[i].gauge();
-            uint256 poolRewards = available * gauge.weight() / totalWeight;
+            uint256 poolRewards = available * gauge.totalWeight() / totalWeight;
             if (poolRewards > 0) {
                 IStakingPool pool = pools[i].stakingPool();
                 uint256 stakingRewards = poolRewards * stakingPortion / Konstant;
@@ -118,13 +118,13 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
     }
 
     /// @inheritdoc IRewardsDistributor
-    function weightTotal() public view returns (uint256) {
+    function totalWeightSum() public view returns (uint256) {
         uint256 length = pools.length;
         uint256 weight = 0;
         for (uint256 i = 0; i < length; i++) {
             // get weights and total weight of pools
             ILockingGauge gauge = pools[i].gauge();
-            weight += gauge.weight();
+            weight += gauge.totalWeight();
         }
         return weight;
     }

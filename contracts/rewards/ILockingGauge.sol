@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 /// @notice Enum representing the possible lock times
 enum LockTime {
+    zero,
     thirtyDays,
     ninetyDays,
     oneEightyDays,
@@ -23,10 +24,9 @@ interface ILockingGauge {
     
     /// @notice Returns the total amount of time weighted locked tokens.
     /// @return The time weighted locked tokens.
-    function weight() external view returns (uint256);
+    function totalWeight() external view returns (uint256);
     
     /// @notice Locks CHEDDA token for the given lock time.
-    /// @dev Explain to a developer any extra details
     /// @param amount The token amount to lock
     /// @param time The lock time. This is specified by the `LockTime` enum.
     /// @return The expiry of the created lock
@@ -38,7 +38,10 @@ interface ILockingGauge {
     /// CHEDDA previously locked by the caller.
     function withdraw() external returns (uint256);
 
-    /// @notice Returns the `Lock` struct for the given account if it exists.
+    /// @notice Returns the `Lock` struct for the given account.
+    /// @dev Note: A `Lock` is always returned by this function.
+    /// If a valid lock exists, the `amount` field is non-zero. A zero `amount`
+    /// means a valid lock does not exist.
     /// @param account THe account to return the lock for.
     /// @return The lock info.
     function getLock(address account) external view returns (Lock memory);

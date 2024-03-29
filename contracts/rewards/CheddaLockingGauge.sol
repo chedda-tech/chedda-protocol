@@ -17,6 +17,8 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     /// @param account The account creating a lock.
     /// @param amount The amount locked. 
     event LockCreated(address indexed account, uint256 amount, uint256 expiry);
+
+    event LockModified(address indexed account, uint256 amount, uint256 expiry);
     
     event Withdrawn(address indexed account, uint256 amount);
     
@@ -25,9 +27,10 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     event RewardsAdded(address indexed caller, uint256 amount);
 
     error ReducedLockTime();
-    error InvalidTime(LockTime);
+    error InvalidLockTime(LockTime);
+    error LockExists(address);
+    error LockNotFound(address);
     error LockNotExpired(uint256);
-    error NoLockFound(address);
     error ZeroAmount();
     error InvalidAmount(uint256);
 
@@ -36,7 +39,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     uint256 public totalLocked;
     uint256 public totalClaimed;
     uint256 public totalRewards;
-    uint256 public weight;
+    uint256 public totalWeight;
     uint256 public numberOfLocks;
 
     uint256 constant private MAXBOOST = 400;
@@ -49,12 +52,97 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     /// @inheritdoc	ILockingGauge
     function createLock(uint256 amount, LockTime time) external returns (uint256) {
         token.rebase();
-        uint256 endTime;
+        Lock storage lock = locks[msg.sender];
+        if (lock.amount != 0) {
+            revert LockExists(msg.sender);
+        }
+        uint256 endTime = _getNewLockExpiry(time);
+        if (endTime == 0) {
+            revert InvalidLockTime(time);
+        }
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+        numberOfLocks += 1;
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 weightedAmount = amount * _boostFactor(time) / MAXBOOST;
+
+        lock.amount = amount;
+        lock.expiry = endTime;
+        lock.lockTime = time;
+        lock.timeWeighted = weightedAmount;
+        lock.rewardDebt = lock.timeWeighted * rewardPerShare / 1e12;
+
+        totalLocked += amount;
+        totalWeight += weightedAmount;
+
+        emit LockCreated(msg.sender, amount, lock.expiry);
+        return lock.expiry;
+    }
+
+    function extendLock(LockTime time) external returns (uint256) {
+        token.rebase();
+
+        Lock storage lock = locks[msg.sender];
+        if (lock.amount == 0) {
+            revert LockNotFound(msg.sender);
+        }
+        uint256 expiry = _getNewLockExpiry(time);
+        if (lock.expiry > expiry) {
+            revert ReducedLockTime();
+        }
+        _claim(msg.sender);
+
+        totalWeight -= lock.timeWeighted;
+
+        uint256 weightedAmount = lock.amount * _boostFactor(time) / MAXBOOST;
+        lock.expiry = expiry;
+        lock.lockTime = time;
+        lock.timeWeighted = weightedAmount;
+        lock.rewardDebt = lock.timeWeighted * rewardPerShare / 1e12;
+        totalWeight += weightedAmount;
+        emit LockModified(msg.sender, lock.amount, lock.expiry);
+
+        return lock.expiry;
+    }
+
+    function addToLock(uint256 amount) external returns (uint256) {
+        token.rebase();
+
+        Lock storage lock = locks[msg.sender];
+        if (lock.amount == 0) {
+            revert LockNotFound(msg.sender);
+        }
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+        _claim(msg.sender);
+        totalWeight -= lock.timeWeighted;
+
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        lock.amount += amount;
+        uint256 weightedAmount = lock.amount * _boostFactor(lock.lockTime) / MAXBOOST;
+        lock.timeWeighted = weightedAmount;
+        lock.rewardDebt = lock.timeWeighted * rewardPerShare / 1e12;
+
+        totalLocked += amount;
+        totalWeight += weightedAmount;
+
+        emit LockModified(msg.sender, lock.amount, lock.expiry);
+
+        return lock.amount;
+    }
+
+    function _getNewLockExpiry(LockTime time) private view returns (uint256) {
+        uint256 endTime = 0;
         uint256 ts = block.timestamp;
-        if (time == LockTime.thirtyDays) {
-            // TODO: revert this back to 30 days;
-            // endTime = ts + 30 days;
+
+        if (time == LockTime.zero) {
+            // TODO: revert this
+            // revert InvalidLockTime(time);
             endTime = ts + 1 hours;
+        } else if (time == LockTime.thirtyDays) {
+            endTime = ts + 30 days;
         } else if (time == LockTime.ninetyDays) {
             endTime = ts + 90 days;
         } else if (time == LockTime.oneEightyDays) {
@@ -62,43 +150,19 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         } else if (time == LockTime.threeSixtyDays) {
             endTime = ts + 360 days;
         } else {
-            revert InvalidTime(time);
+            revert InvalidLockTime(time);
         }
-        Lock storage lock = locks[msg.sender];
-        if (lock.expiry > endTime) {
-            revert ReducedLockTime();
-        }
-        if (lock.amount == 0 && amount == 0) {
-            revert ZeroAmount();
-        }
-        if (lock.amount == 0) {
-            numberOfLocks += 1;
-        }
-
-        if (amount != 0) {
-            token.safeTransferFrom(msg.sender, address(this), amount);
-        }
-        uint256 weightedAmount = amount * _boostFactor(time) / MAXBOOST;
-        lock.amount += amount;
-        lock.expiry = endTime;
-        lock.lockTime = time;
-
-        lock.timeWeighted += weightedAmount;
-        lock.rewardDebt = lock.timeWeighted * rewardPerShare / 1e12;
-        totalLocked += amount;
-        weight += weightedAmount;
-
-        emit LockCreated(msg.sender, amount, lock.expiry);
-        return lock.expiry;
+        return endTime;
     }
 
     /// @inheritdoc	ILockingGauge
     function withdraw() external nonReentrant() returns (uint256) {
         token.rebase();
+
         Lock storage lock = locks[msg.sender];
         uint256 amount = lock.amount;
         if (amount == 0) {
-            revert NoLockFound(msg.sender);
+            revert LockNotFound(msg.sender);
         }
         if (lock.expiry > block.timestamp) {
             revert LockNotExpired(lock.expiry);
@@ -107,7 +171,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         _claim(msg.sender);
 
         totalLocked -= amount;
-        weight -= lock.timeWeighted;
+        totalWeight -= lock.timeWeighted;
         numberOfLocks -= 1;
 
         lock.amount = 0;
@@ -128,12 +192,12 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     /// @inheritdoc	ILockingGauge
     function claim() external returns (uint256) {
+        token.rebase();
         return _claim(msg.sender);
     }
 
     /// @dev Internal claim function.
     function _claim(address account) internal returns (uint256) {
-        token.rebase();
         uint256 amount = claimable(account);
         if (amount != 0) {
             Lock storage lock = locks[account];
@@ -177,7 +241,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         } else if (time == LockTime.threeSixtyDays) {
             return 400;
         }
-        revert InvalidTime(time);
+        revert InvalidLockTime(time);
     }
 
     /// @dev Updates the reward per share to account for `amount` rewards being added
@@ -185,6 +249,6 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         if (totalLocked == 0 || amount == 0) {
             return;
         }
-        rewardPerShare += (amount * 1e12) / weight;
+        rewardPerShare += (amount * 1e12) / totalWeight;
     }
 }
