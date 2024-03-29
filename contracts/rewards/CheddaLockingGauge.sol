@@ -52,7 +52,9 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         uint256 endTime;
         uint256 ts = block.timestamp;
         if (time == LockTime.thirtyDays) {
-            endTime = ts + 30 days;
+            // TODO: revert this back to 30 days;
+            // endTime = ts + 30 days;
+            endTime = ts + 1 hours;
         } else if (time == LockTime.ninetyDays) {
             endTime = ts + 90 days;
         } else if (time == LockTime.oneEightyDays) {
