@@ -32,6 +32,19 @@ interface ILockingGauge {
     /// @return The expiry of the created lock
     function createLock(uint256 amount, LockTime time) external returns (uint256);
 
+    /// @notice Extends an existing lock.
+    /// @dev A lock owned by the caller must already exist.
+    /// is the current time + length of lock based on lock time.
+    /// @param The new time for the lock.
+    /// @return The new expiry for the lock
+    function extendLock(LockTime time) external returns (uint256);
+
+    /// @notice Adds more CHEDDA to an existing lock. This does not change the lock expiry.
+    /// @dev A lock owned by the caller must already exist.
+    /// @param amount The amount of CHEDDA to add to the lock.
+    /// @return The total amoun tlocked by the user.
+    function addToLock(uint256 amount) external returns (uint256);
+    
     /// @notice Withdraws locked CHEDDA after the lock expires
     /// @dev A lock must exist and must have already expired for this call to succeed.
     /// @return The amount of CHEDDA withdrawn. This is equal to the total amount of 

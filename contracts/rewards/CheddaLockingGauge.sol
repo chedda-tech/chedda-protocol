@@ -8,6 +8,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {ILockingGauge, Lock, LockTime} from "./ILockingGauge.sol";
 import {IRebaseToken} from "../tokens/IRebaseToken.sol";
 
+/// @title CheddaLockingGauge
+/// @notice Manages the amount of CHEDDA locked in each pool.
 contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
@@ -16,14 +18,28 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     /// @notice Emitted when a lock is created or updated.
     /// @param account The account creating a lock.
     /// @param amount The amount locked. 
+    /// @param expiry The lock expiry
     event LockCreated(address indexed account, uint256 amount, uint256 expiry);
-
+`
+    /// @notice Emitted when a lock is extended or has more CHEDDA added to added.
+    /// @param account The account creating a lock.
+    /// @param amount The amount locked. 
+    /// @param expiry The lock expiry
     event LockModified(address indexed account, uint256 amount, uint256 expiry);
     
+    /// @notice Emitted when a lock is destroyed and locked tokens are withdrawn.
+    /// @param account The account creating a lock.
+    /// @param amount The amount locked. 
     event Withdrawn(address indexed account, uint256 amount);
     
+    /// @notice Emitted when rewards are claimed.
+    /// @param account The account claiming rewards.
+    /// @param amount The amount claimed.
     event Claimed(address indexed account, uint256 amount);
 
+    /// @notice Emmitted when rewards are added to this gauge
+    /// @param caller The caller of the function that emitted this event.
+    /// @param amount The amount of rewards added.
     event RewardsAdded(address indexed caller, uint256 amount);
 
     error ReducedLockTime();
@@ -49,7 +65,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         token = IRebaseToken(_token);
     }
 
-    /// @inheritdoc	ILockingGauge
+    /// @inheritdoc ILockingGauge
     function createLock(uint256 amount, LockTime time) external returns (uint256) {
         token.rebase();
         Lock storage lock = locks[msg.sender];
@@ -80,6 +96,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         return lock.expiry;
     }
 
+    /// @inheritdoc ILockingGauge
     function extendLock(LockTime time) external returns (uint256) {
         token.rebase();
 
@@ -106,6 +123,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         return lock.expiry;
     }
 
+    /// @inheritdoc ILockingGauge
     function addToLock(uint256 amount) external returns (uint256) {
         token.rebase();
 
@@ -133,6 +151,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         return lock.amount;
     }
 
+    /// @dev Gets the expiry time for a lock created now, determined by the LockTime passed in.
     function _getNewLockExpiry(LockTime time) private view returns (uint256) {
         uint256 endTime = 0;
         uint256 ts = block.timestamp;
@@ -155,7 +174,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         return endTime;
     }
 
-    /// @inheritdoc	ILockingGauge
+    /// @inheritdoc ILockingGauge
     function withdraw() external nonReentrant() returns (uint256) {
         token.rebase();
 
@@ -185,12 +204,12 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         return amount;
     }
 
-    /// @inheritdoc	ILockingGauge
+    /// @inheritdoc ILockingGauge
     function getLock(address account) external view returns (Lock memory) {
         return locks[account];
     }
 
-    /// @inheritdoc	ILockingGauge
+    /// @inheritdoc ILockingGauge
     function claim() external returns (uint256) {
         token.rebase();
         return _claim(msg.sender);
@@ -209,13 +228,13 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         return amount;
     }
 
-    /// @inheritdoc	ILockingGauge
+    /// @inheritdoc ILockingGauge
     function claimable(address account) public view returns (uint256) {
         Lock storage lock = locks[account];
         return (lock.timeWeighted * rewardPerShare) / 1e12 - lock.rewardDebt;
     }
 
-    /// @inheritdoc	ILockingGauge
+    /// @inheritdoc ILockingGauge
     function addRewards(uint256 amount) external {
         if (amount == 0) {
             revert ZeroAmount();

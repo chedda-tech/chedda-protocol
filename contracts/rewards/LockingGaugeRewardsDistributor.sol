@@ -11,7 +11,7 @@ import {IStakingPool} from "./IStakingPool.sol";
 
 /// @title LockingGaugeRewardsDistributor
 /// @notice Distributes token rewards to pools proportionally based on the pool's
-/// `weight`.
+/// `totalWeight`.
 contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
 
     using SafeERC20 for IERC20;
