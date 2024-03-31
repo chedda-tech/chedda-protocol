@@ -43,7 +43,7 @@ Sets the priceed feed for a token
 function readPrice(address _token, uint256) public view returns (int256 price)
 ```
 
-_Explain to a developer any extra details_
+_Reads the latest price reported for a given token._
 
 #### Return Values
 

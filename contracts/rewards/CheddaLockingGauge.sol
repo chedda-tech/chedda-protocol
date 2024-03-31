@@ -20,7 +20,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     /// @param amount The amount locked. 
     /// @param expiry The lock expiry
     event LockCreated(address indexed account, uint256 amount, uint256 expiry);
-`
+
     /// @notice Emitted when a lock is extended or has more CHEDDA added to added.
     /// @param account The account creating a lock.
     /// @param amount The amount locked. 

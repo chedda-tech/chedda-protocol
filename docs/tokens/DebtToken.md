@@ -107,9 +107,7 @@ Creates a debt token.
 function createDebt(uint256 amount, address account) external returns (uint256 shares)
 ```
 
-records the creation of debt. `account` borrowed `amount` of underlying token.
-
-_Explain to a developer any extra details_
+Records the creation of debt. `account` borrowed `amount` of underlying token.
 
 #### Parameters
 

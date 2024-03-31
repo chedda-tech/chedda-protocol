@@ -13,18 +13,16 @@ function distribute() external returns (uint256)
 
 Distributes rewwards to registered pools based on internal logic.
 
-_Explain to a developer any extra details_
-
 #### Return Values
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | The amount of token distributed. |
 
-### weightTotal
+### totalWeightSum
 
 ```solidity
-function weightTotal() external returns (uint256)
+function totalWeightSum() external returns (uint256)
 ```
 
 Returns the total weight of all the pools.

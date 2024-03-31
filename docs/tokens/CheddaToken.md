@@ -142,8 +142,6 @@ function rebase() external returns (uint256)
 
 Increases the total supply of CHEDDA token according to the emission schedule.
 
-_Explain to a developer any extra details_
-
 #### Return Values
 
 | Name | Type | Description |

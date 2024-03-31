@@ -85,7 +85,7 @@ emits RewardsDistributorSet(address caller, address distributor) event_
 function setCheddaToken(address chedda) external
 ```
 
-Explain to an end user what this does
+Sets the CHEDDA token address
 
 _Can only be called by the owner. 
 emits CheddaSet(address caller, address cheddaToken) event_

@@ -146,3 +146,9 @@ function getTokenCollateralValue(address token, uint256 amount) external view re
 function getTokenMarketValue(address token, uint256 amount) external view returns (uint256)
 ```
 
+### recapitalize
+
+```solidity
+function recapitalize() external returns (uint256)
+```
+

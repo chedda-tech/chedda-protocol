@@ -2,6 +2,8 @@
 
 ## CheddaLockingGauge
 
+Manages the amount of CHEDDA locked in each pool.
+
 ### LockCreated
 
 ```solidity
@@ -16,7 +18,23 @@ Emitted when a lock is created or updated.
 | ---- | ---- | ----------- |
 | account | address | The account creating a lock. |
 | amount | uint256 | The amount locked. |
-| expiry | uint256 |  |
+| expiry | uint256 | The lock expiry |
+
+### LockModified
+
+```solidity
+event LockModified(address account, uint256 amount, uint256 expiry)
+```
+
+Emitted when a lock is extended or has more CHEDDA added to added.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| account | address | The account creating a lock. |
+| amount | uint256 | The amount locked. |
+| expiry | uint256 | The lock expiry |
 
 ### Withdrawn
 
@@ -24,11 +42,29 @@ Emitted when a lock is created or updated.
 event Withdrawn(address account, uint256 amount)
 ```
 
+Emitted when a lock is destroyed and locked tokens are withdrawn.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| account | address | The account creating a lock. |
+| amount | uint256 | The amount locked. |
+
 ### Claimed
 
 ```solidity
 event Claimed(address account, uint256 amount)
 ```
+
+Emitted when rewards are claimed.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| account | address | The account claiming rewards. |
+| amount | uint256 | The amount claimed. |
 
 ### RewardsAdded
 
@@ -36,28 +72,43 @@ event Claimed(address account, uint256 amount)
 event RewardsAdded(address caller, uint256 amount)
 ```
 
+Emmitted when rewards are added to this gauge
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| caller | address | The caller of the function that emitted this event. |
+| amount | uint256 | The amount of rewards added. |
+
 ### ReducedLockTime
 
 ```solidity
 error ReducedLockTime()
 ```
 
-### InvalidTime
+### InvalidLockTime
 
 ```solidity
-error InvalidTime(enum LockTime)
+error InvalidLockTime(enum LockTime)
+```
+
+### LockExists
+
+```solidity
+error LockExists(address)
+```
+
+### LockNotFound
+
+```solidity
+error LockNotFound(address)
 ```
 
 ### LockNotExpired
 
 ```solidity
 error LockNotExpired(uint256)
-```
-
-### NoLockFound
-
-```solidity
-error NoLockFound(address)
 ```
 
 ### ZeroAmount
@@ -102,10 +153,10 @@ uint256 totalClaimed
 uint256 totalRewards
 ```
 
-### weight
+### totalWeight
 
 ```solidity
-uint256 weight
+uint256 totalWeight
 ```
 
 Returns the total amount of time weighted locked tokens.
@@ -133,7 +184,65 @@ constructor(address _token) public
 function createLock(uint256 amount, enum LockTime time) external returns (uint256)
 ```
 
-@inheritdoc	ILockingGauge
+Locks CHEDDA token for the given lock time.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| amount | uint256 | The token amount to lock |
+| time | enum LockTime | The lock time. This is specified by the `LockTime` enum. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The expiry of the created lock |
+
+### extendLock
+
+```solidity
+function extendLock(enum LockTime time) external returns (uint256)
+```
+
+Extends an existing lock.
+
+_A lock owned by the caller must already exist.
+is the current time + length of lock based on lock time._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| time | enum LockTime | The new time for the lock. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The new expiry for the lock |
+
+### addToLock
+
+```solidity
+function addToLock(uint256 amount) external returns (uint256)
+```
+
+Adds more CHEDDA to an existing lock. This does not change the lock expiry.
+
+_A lock owned by the caller must already exist._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| amount | uint256 | The amount of CHEDDA to add to the lock. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The total amoun tlocked by the user. |
 
 ### withdraw
 
@@ -141,7 +250,15 @@ function createLock(uint256 amount, enum LockTime time) external returns (uint25
 function withdraw() external returns (uint256)
 ```
 
-@inheritdoc	ILockingGauge
+Withdraws locked CHEDDA after the lock expires
+
+_A lock must exist and must have already expired for this call to succeed._
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The amount of CHEDDA withdrawn. This is equal to the total amount of  CHEDDA previously locked by the caller. |
 
 ### getLock
 
@@ -149,7 +266,23 @@ function withdraw() external returns (uint256)
 function getLock(address account) external view returns (struct Lock)
 ```
 
-@inheritdoc	ILockingGauge
+Returns the `Lock` struct for the given account.
+
+_Note: A `Lock` is always returned by this function.
+If a valid lock exists, the `amount` field is non-zero. A zero `amount`
+means a valid lock does not exist._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| account | address | THe account to return the lock for. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | struct Lock | The lock info. |
 
 ### claim
 
@@ -157,7 +290,16 @@ function getLock(address account) external view returns (struct Lock)
 function claim() external returns (uint256)
 ```
 
-@inheritdoc	ILockingGauge
+Claims any pending rewards
+
+_Rewards are available if a lock exists and rewards have been distributed
+to this locking pool._
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The amount of reward tokens received. |
 
 ### _claim
 
@@ -173,7 +315,19 @@ _Internal claim function._
 function claimable(address account) public view returns (uint256)
 ```
 
-@inheritdoc	ILockingGauge
+Returns the accrued token reward amount that can currently be claimed  by a given account.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| account | address | The account to return reward amount for. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The amount of claimable rewards. |
 
 ### addRewards
 
@@ -181,5 +335,11 @@ function claimable(address account) public view returns (uint256)
 function addRewards(uint256 amount) external
 ```
 
-@inheritdoc	ILockingGauge
+Adds token rewards to this pool
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| amount | uint256 | The amount to add. |
 

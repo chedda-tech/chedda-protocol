@@ -418,6 +418,16 @@ Emits GaugeSet(gauge, caller)._
 function setSupplyCap(uint256 _supplyCap) external
 ```
 
+Sets the supply cap in this pool.
+
+_This is the maximum amount that can be supplied in this pool._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _supplyCap | uint256 | The new supply cap |
+
 ### supply
 
 ```solidity
@@ -909,6 +919,14 @@ _This is the amount of asset borrowed divided by assets supplied._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | utilization The pool asset utilization. |
+
+### recapitalize
+
+```solidity
+function recapitalize() external view returns (uint256)
+```
+
+_recapitalizes the pool_
 
 ### beforeWithdraw
 

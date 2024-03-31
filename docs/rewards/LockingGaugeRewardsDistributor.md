@@ -3,7 +3,7 @@
 ## LockingGaugeRewardsDistributor
 
 Distributes token rewards to pools proportionally based on the pool's
-`weight`.
+`totalWeight`.
 
 ### AlreadyRegistered
 
@@ -118,10 +118,10 @@ function distribute() external returns (uint256)
 
 @inheritdoc	IRewardsDistributor
 
-### weightTotal
+### totalWeightSum
 
 ```solidity
-function weightTotal() public view returns (uint256)
+function totalWeightSum() public view returns (uint256)
 ```
 
 Returns the total weight of all the pools.
