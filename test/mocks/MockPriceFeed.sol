@@ -25,7 +25,8 @@ contract MockPriceFeed is IPriceFeed, Ownable {
         _prices[_token] = _price;
     }
 
-    /// @dev Explain to a developer any extra details
+    /// @notice Returns the price of specified token.
+    /// @param _token The token to get price for.
     /// @return price the latest price
     function readPrice(
         address _token,

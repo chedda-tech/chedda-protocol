@@ -25,7 +25,7 @@ contract CheddaPriceFeed is IPriceFeed, Ownable {
         _prices[_token] = _price;
     }
 
-    /// @dev Explain to a developer any extra details
+    /// @dev Reads the latest price reported for a given token.
     /// @return price the latest price
     function readPrice(
         address _token,

@@ -14,7 +14,7 @@ contract MockLockingGauge is ILockingGauge {
         emit WeightSet(w);
     }
 
-    function weight() external view returns (uint256) {
+    function totalWeight() external view returns (uint256) {
         return _weight;
     }
     

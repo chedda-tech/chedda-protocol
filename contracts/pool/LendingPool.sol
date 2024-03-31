@@ -299,6 +299,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         emit GaugeSet(_gauge, msg.sender);
     }
 
+    /// @notice Sets the supply cap in this pool.
+    /// @dev This is the maximum amount that can be supplied in this pool.
+    /// @param _supplyCap The new supply cap
     function setSupplyCap(uint256 _supplyCap) external onlyOwner {
         supplyCap = _supplyCap;
         emit SupplyCapSet(_supplyCap, msg.sender);

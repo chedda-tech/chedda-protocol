@@ -6,11 +6,10 @@ pragma solidity 0.8.20;
 /// thus, it's up to the implementation to define the reward distribution strategy.
 interface IRewardsDistributor {
     /// @notice Distributes rewwards to registered pools based on internal logic.
-    /// @dev Explain to a developer any extra details
     /// @return The amount of token distributed.
     function distribute() external returns (uint256);
 
     /// @notice Returns the total weight of all the pools.
     /// @return The total weight of all registered pools.
-    function weightTotal() external returns (uint256);
+    function totalWeightSum() external returns (uint256);
 }

@@ -90,7 +90,6 @@ contract CheddaToken is OFT, IRebaseToken {
     }
 
     /// @notice Increases the total supply of CHEDDA token according to the emission schedule.
-    /// @dev Explain to a developer any extra details
     /// @return amountMinted The increment in token total supply.
     function rebase() external returns (uint256) {
         if (lastRebase >= block.timestamp) {

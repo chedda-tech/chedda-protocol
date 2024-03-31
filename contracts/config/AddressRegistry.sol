@@ -46,7 +46,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
         emit RewardsDistributorSet(msg.sender, distributor);
     }
 
-    /// @notice Explain to an end user what this does
+    /// @notice Sets the CHEDDA token address
     /// @dev Can only be called by the owner. 
     /// emits CheddaSet(address caller, address cheddaToken) event
     /// @param chedda New chedda token address 

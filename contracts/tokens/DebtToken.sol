@@ -67,8 +67,7 @@ contract DebtToken is ERC4626 {
                     ICheddaDebtToken implementation
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice records the creation of debt. `account` borrowed `amount` of underlying token.
-    /// @dev Explain to a developer any extra details
+    /// @notice Records the creation of debt. `account` borrowed `amount` of underlying token.
     /// @param amount The amount borrowed
     /// @param account The account doing the borrowing
     /// @return shares The number of tokens minted to track this debt + future interest payments.

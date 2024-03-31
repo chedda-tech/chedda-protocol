@@ -142,7 +142,7 @@ contract LockingGaugeRewardsDistributorTest is Test {
         assertEq(p2Gauge.rewardAmount() + p2Stake.rewardAmount(), ud(mintAmount).mul(ud(weight2)).unwrap());
     }
 
-     function testLockingGaugeDistributeFuzz(uint256 mintAmount) external {
+     function testFuzzLockingGaugeDistribute(uint256 mintAmount) external {
 
         mintAmount = bound(mintAmount, 0, 1_000_000_000e18);
         uint256 weight1 = 0.8e18;
@@ -190,5 +190,9 @@ contract RewardsSpy {
 
     function setWeight(uint256 w) external {
         weight = w;
+    }
+
+    function totalWeight() external view returns (uint256) {
+        return weight;
     }
 }
