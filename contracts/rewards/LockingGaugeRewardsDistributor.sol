@@ -40,34 +40,34 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
     /// @notice Registers a pool to receive rewards.
     /// @dev Can only be called by contract owner.
     /// @param _pool Address of the pool.
-    function registerPool(ICheddaPool _pool) external onlyOwner() {
+    function registerPool(address _pool) external onlyOwner() {
         uint256 poolsLength = pools.length;
         for (uint256 i = 0; i < poolsLength; i++) {
-            if (pools[i] == _pool) {
-                revert AlreadyRegistered(address(_pool));
+            if (address(pools[i]) == _pool) {
+                revert AlreadyRegistered(_pool);
             }
         }
-        pools.push(_pool);
+        pools.push(ICheddaPool(_pool));
 
-        emit PoolRegistered(address(_pool));
+        emit PoolRegistered(_pool);
     }
 
     /// @notice Unregisters a pool.
     /// @param _pool Address of pool to unregister. Must have been previously registered.
-    function unregisterPool(ICheddaPool _pool) external onlyOwner() {
+    function unregisterPool(address _pool) external onlyOwner() {
         uint256 found = type(uint256).max;
         uint256 poolsLength = pools.length;
         for (uint256 i = 0; i < poolsLength; i++) {
-            if (pools[i] == _pool) {
+            if (address(pools[i]) == _pool) {
                 found = i;
             }
         }
         if (found != type(uint256).max) {
             pools[found] = pools[poolsLength - 1];
             pools.pop();
-            emit PoolUnregistered(address(_pool));
+            emit PoolUnregistered(_pool);
         } else {
-            revert NotFound(address(_pool));
+            revert NotFound(_pool);
         }
     }
 

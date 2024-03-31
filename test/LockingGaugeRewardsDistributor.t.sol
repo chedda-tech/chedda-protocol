@@ -50,25 +50,25 @@ contract LockingGaugeRewardsDistributorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, bob)
         );
-        distributor.registerPool(pool1);
+        distributor.registerPool(address(pool1));
         vm.stopPrank();
     }
 
     function testDistributorRegisterDuplicateFail() external {
        vm.startPrank(admin);
-       distributor.registerPool(pool1);
+       distributor.registerPool(address(pool1));
 
         vm.expectRevert(
             abi.encodeWithSelector(LockingGaugeRewardsDistributor.AlreadyRegistered.selector, address(pool1))
         );
-        distributor.registerPool(pool1);
+        distributor.registerPool(address(pool1));
         vm.stopPrank(); 
     }
 
     function testDistributorRegisterPool() external {
         vm.startPrank(admin);
-        distributor.registerPool(pool1);
-        distributor.registerPool(pool2);
+        distributor.registerPool(address(pool1));
+        distributor.registerPool(address(pool2));
         vm.stopPrank();
         assertEq(address(distributor.pools(0)), address(pool1));
         assertEq(address(distributor.pools(1)), address(pool2));
@@ -79,14 +79,14 @@ contract LockingGaugeRewardsDistributorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, bob)
         );
-        distributor.unregisterPool(pool1); 
+        distributor.unregisterPool(address(pool1)); 
         vm.stopPrank();
 
         vm.startPrank(admin);
         vm.expectRevert(
             abi.encodeWithSelector(LockingGaugeRewardsDistributor.NotFound.selector, pool1)
         );
-        distributor.unregisterPool(pool1);
+        distributor.unregisterPool(address(pool1));
         vm.stopPrank();
     }
 
@@ -94,11 +94,11 @@ contract LockingGaugeRewardsDistributorTest is Test {
 
     function testDistributorUnregisterPool() external {
         vm.startPrank(admin);
-        distributor.registerPool(pool1);
+        distributor.registerPool(address(pool1));
 
         vm.expectEmit(true, false, false, false);
         emit PoolUnregistered(address(pool1));
-        distributor.unregisterPool(pool1);
+        distributor.unregisterPool(address(pool1));
         vm.stopPrank();
     }
     
@@ -118,8 +118,8 @@ contract LockingGaugeRewardsDistributorTest is Test {
         RewardsSpy p2Stake = new RewardsSpy();
 
         vm.startPrank(admin);
-        distributor.registerPool(pool1);
-        distributor.registerPool(pool2);
+        distributor.registerPool(address(pool1));
+        distributor.registerPool(address(pool2));
         p1Gauge.setWeight(weight1);
         p2Gauge.setWeight(weight2);
         vm.stopPrank();
@@ -154,8 +154,8 @@ contract LockingGaugeRewardsDistributorTest is Test {
         RewardsSpy p2Stake = new RewardsSpy();
 
         vm.startPrank(admin);
-        distributor.registerPool(pool1);
-        distributor.registerPool(pool2);
+        distributor.registerPool(address(pool1));
+        distributor.registerPool(address(pool2));
         p1Gauge.setWeight(weight1);
         p2Gauge.setWeight(weight2);
         vm.stopPrank();

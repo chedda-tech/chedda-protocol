@@ -43,4 +43,11 @@ contract MockLockingGauge is ILockingGauge {
     }
 
     function addRewards(uint256) external pure {}
+
+    function addToLock(uint256) external pure returns (uint256) {
+        return 0;
+    }
+    function extendLock(LockTime) external pure returns (uint256) {
+        return 0;
+    }
 }

@@ -154,4 +154,8 @@ contract MockLendingPool is ILendingPool {
     function cheddaGauge() external pure returns (address) {
         return address(0);
     }
+
+    function recapitalize() external pure returns (uint256) {
+        return 0;
+    }
 }
