@@ -25,7 +25,7 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
 
     IERC20 public token;
 
-    ICheddaPool[] public pools;
+    address[] public pools;
     uint256 public stakingPortion = 0.6e18;
     uint256 public lockingPortion = 0.4e18;
     uint256 public constant Konstant = 1.0e18;
@@ -47,10 +47,14 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
                 revert AlreadyRegistered(_pool);
             }
         }
-        pools.push(ICheddaPool(_pool));
+        pools.push(_pool);
 
         emit PoolRegistered(_pool);
     }
+
+    function registeredPools() external view returns (address[] memory) {
+        return pools;
+    } 
 
     /// @notice Unregisters a pool.
     /// @param _pool Address of pool to unregister. Must have been previously registered.
@@ -91,13 +95,13 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
         }
         for (uint256 i = 0; i < length; i++) {
             // -> distribute to pools based on weights.
-            ILockingGauge gauge = pools[i].gauge();
+            ILockingGauge gauge = ICheddaPool(pools[i]).gauge();
             uint256 poolRewards = available * gauge.totalWeight() / totalWeight;
             if (poolRewards > 0) {
-                IStakingPool pool = pools[i].stakingPool();
+                IStakingPool pool = ICheddaPool(pools[i]).stakingPool();
                 uint256 stakingRewards = poolRewards * stakingPortion / Konstant;
                 if (stakingRewards > 0) {
-                    token.safeIncreaseAllowance(address(pool), stakingRewards);
+                    token.safeIncreaseAllowance(pools[i], stakingRewards);
                     pool.addRewards(stakingRewards);
                 }
                 
@@ -123,7 +127,7 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
         uint256 weight = 0;
         for (uint256 i = 0; i < length; i++) {
             // get weights and total weight of pools
-            ILockingGauge gauge = pools[i].gauge();
+            ILockingGauge gauge = ICheddaPool(pools[i]).gauge();
             weight += gauge.totalWeight();
         }
         return weight;
