@@ -101,7 +101,7 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
                 IStakingPool pool = ICheddaPool(pools[i]).stakingPool();
                 uint256 stakingRewards = poolRewards * stakingPortion / Konstant;
                 if (stakingRewards > 0) {
-                    token.safeIncreaseAllowance(pools[i], stakingRewards);
+                    token.safeIncreaseAllowance(address(pool), stakingRewards);
                     pool.addRewards(stakingRewards);
                 }
                 
