@@ -260,6 +260,8 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
             return 200;
         } else if (time == LockTime.threeSixtyDays) {
             return 400;
+        } else if (time == LockTime.zero) {
+            return 10; // TODO: revert to invalid after testing
         }
         revert InvalidLockTime(time);
     }
