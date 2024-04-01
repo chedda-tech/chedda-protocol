@@ -197,6 +197,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         lock.expiry = 0;
         lock.timeWeighted = 0;
         lock.rewardDebt = 0;
+        lock.lockTime = LockTime.zero;
 
         token.safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, amount);
