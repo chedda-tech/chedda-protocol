@@ -9,9 +9,9 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 contract CheddaTokenBridged is OFT {
 
     /// @notice Construct a new Chedda token.
-    /// @param owner The contract owner. Initial suppply is minted to this owner.
     /// @param lzEndpoint The LayerZero endpoint.
-    constructor(address owner, address lzEndpoint)
-    OFT("Chedda", "CHEDDA", lzEndpoint, owner)
-    Ownable(owner) {}
+    /// @param delegate The contract owner. Can configure OFT.
+    constructor(address lzEndpoint, address delegate)
+    OFT("Chedda", "CHEDDA", lzEndpoint, delegate)
+    Ownable(delegate) {}
 }
