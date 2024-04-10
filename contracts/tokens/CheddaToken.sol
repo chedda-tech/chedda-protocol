@@ -70,7 +70,7 @@ contract CheddaToken is OFT, IRebaseToken {
     /// @notice Construct a new Chedda token.
     /// @param owner The contract owner. Initial suppply is minted to this owner.
     /// @param lzEndpoint The LayerZero endpoint.
-    constructor(address owner, address lzEndpoint)
+    constructor(address lzEndpoint, address owner)
     OFT("Chedda", "CHEDDA", lzEndpoint, owner)
     Ownable(owner) {
         tge = block.timestamp;

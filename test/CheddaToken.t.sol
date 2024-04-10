@@ -14,7 +14,7 @@ contract CheddaTokenTest is Test {
 
     function setUp() external {
         lzEndpoint = makeAddr("lzendpoint");
-        chedda = new CheddaToken(address(msg.sender), lzEndpoint);
+        chedda = new CheddaToken(lzEndpoint, address(msg.sender));
     }
 
     function testInitialSupply() external view {
