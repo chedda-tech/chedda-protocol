@@ -31,10 +31,11 @@ contract StakingPoolTest is Test {
         stakingToken = new ERC20Mock();
         rewardToken = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, receiver);
         registry = new MockAddressRegistry();
+        registry.setCheddaToken(address(rewardToken));
 
         distributor = new MockRewardsDistributor();
         registry.setRewardsDistributor(address(distributor));
-        pool = new StakingPool(address(stakingToken), address(rewardToken));
+        pool = new StakingPool(address(registry), address(stakingToken));
         
         vm.prank(address(distributor));
         rewardToken.approve(address(pool), type(uint256).max);

@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IAddressRegistry} from "../config/AddressRegistry.sol";
 import {IStakingPool} from "./IStakingPool.sol";
 import {IRebaseToken} from "../tokens/IRebaseToken.sol";
 
@@ -62,6 +63,8 @@ contract StakingPool is IStakingPool {
     /// @notice The reward token
     IRebaseToken public rewardToken; // Token for rewards
 
+    IAddressRegistry public registry;
+
     /// @notice Total amount of tokens staked
     uint256 public totalStaked;
 
@@ -72,11 +75,19 @@ contract StakingPool is IStakingPool {
     uint256 public rewardPerShare;
 
     /// @notice Constructor
+    /// @param _registry The Chedda AddressRegistry
     /// @param _stakingToken The token being staked.
-    /// @param _rewardToken The reward token.
-    constructor(address _stakingToken, address _rewardToken) {
+    constructor(address _registry, address _stakingToken) {
+        registry = IAddressRegistry(_registry);
         stakingToken = IERC20(_stakingToken);
-        rewardToken = IRebaseToken(_rewardToken);
+        rewardToken = IRebaseToken(registry.cheddaToken());
+    }
+
+    modifier onlyAccountActor() {
+        if (msg.sender != registry.accountActor()) {
+            revert NotAuthorized(msg.sender);
+        }
+        _;
     }
 
     /// @inheritdoc IStakingPool
@@ -138,15 +149,25 @@ contract StakingPool is IStakingPool {
     /// @inheritdoc IStakingPool
     function claim() public returns (uint256) {
         rewardToken.rebase();
-        uint256 claimAmount = claimable(msg.sender);
-        if (claimAmount != 0) {
-            UserInfo storage user = userInfo[msg.sender];
-            user.rewardDebt = user.amountStaked * rewardPerShare / 1e12;
-            IERC20(rewardToken).safeTransfer(msg.sender, claimAmount);
+        return _claimFor(msg.sender);
+    }
 
-            emit RewardsClaimed(msg.sender, claimAmount);
+    /// @inheritdoc IStakingPool
+    function claimFor(address account) external onlyAccountActor() returns (uint256) {
+        return _claimFor(account);
+    }
+
+    /// @dev Internal claim function
+    function _claimFor(address account) private returns (uint256) {
+       uint256 claimAmount = claimable(account);
+        if (claimAmount != 0) {
+            UserInfo storage user = userInfo[account];
+            user.rewardDebt = user.amountStaked * rewardPerShare / 1e12;
+            IERC20(rewardToken).safeTransfer(account, claimAmount);
+
+            emit RewardsClaimed(account, claimAmount);
         }        
-        return claimAmount;
+        return claimAmount; 
     }
 
     /// @inheritdoc IStakingPool

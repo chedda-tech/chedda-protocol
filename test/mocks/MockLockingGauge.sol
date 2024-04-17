@@ -34,6 +34,10 @@ contract MockLockingGauge is ILockingGauge {
         });
     }
 
+    function claimFor(address) external returns (uint256) {
+        return 0;
+    }
+
     function claim() external pure returns (uint256) {
         return 0;
     }

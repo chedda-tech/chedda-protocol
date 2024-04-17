@@ -7,11 +7,13 @@ import {CheddaLockingGauge} from "../contracts/rewards/CheddaLockingGauge.sol";
 import {Lock, LockTime} from "../contracts/rewards/ILockingGauge.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MockRebaseERC20} from "./mocks/MockRebaseERC20.sol";
+import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 
 contract CheddaLockingGaugeTest is Test {
 
     CheddaLockingGauge public gauge;
     MockRebaseERC20 public token;
+    MockAddressRegistry public registry;
     address alice;
     address bob;
     address carol;
@@ -25,8 +27,10 @@ contract CheddaLockingGaugeTest is Test {
         dean = makeAddr("dean");
         minter = makeAddr("minter");
 
+        registry = new MockAddressRegistry();
         token = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, minter);
-        gauge = new CheddaLockingGauge(address(token));
+        gauge = new CheddaLockingGauge(address(registry));
+        registry.setCheddaToken(address(token));
 
         token.mint(alice, 1_000_000e18);
         token.mint(bob, 1_000_000e18);

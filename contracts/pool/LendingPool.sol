@@ -271,8 +271,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         priceFeed = IPriceFeed(_priceFeed);
         registry = IAddressRegistry(_registry);
         debtToken = new DebtToken(_asset, address(this));
-        stakingPool = new StakingPool(address(this), address(registry.cheddaToken()));
-        gauge = new CheddaLockingGauge(address(registry.cheddaToken()));
+        stakingPool = new StakingPool(_registry, address(this));
+        gauge = new CheddaLockingGauge(_registry);
         _initialize(_collateralTokens);
     }
 

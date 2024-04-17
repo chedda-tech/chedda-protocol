@@ -59,6 +59,12 @@ interface ILockingGauge {
     /// @return The lock info.
     function getLock(address account) external view returns (Lock memory);
 
+    /// @notice Claim pending rewards for another account.
+    /// @dev Emits `RewardsClaimed(address, uint)` event.
+    /// Can only be called by `AccountActor` contract.
+    /// @return The amount claimed
+    function claimFor(address account) external returns (uint256);
+
     /// @notice Claims any pending rewards
     /// @dev Rewards are available if a lock exists and rewards have been distributed
     /// to this locking pool. 

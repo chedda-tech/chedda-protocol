@@ -19,6 +19,12 @@ interface IStakingPool {
     /// @return The amount claimed.
     function claim() external returns (uint256);
 
+    /// @notice Claim pending rewards for another account.
+    /// @dev Emits `RewardsClaimed(address, uint)` event.
+    /// Can only be called by `AccountActor` contract.
+    /// @return The amount claimed
+    function claimFor(address account) external returns (uint256);
+
     /// @notice Returns pending rewards for given account.
     /// @param account The account to get the pending rewards for.
     /// @return The amount of rewards that can currently be claimed by this account

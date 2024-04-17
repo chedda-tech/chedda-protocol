@@ -7,6 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ILockingGauge, Lock, LockTime} from "./ILockingGauge.sol";
 import {IRebaseToken} from "../tokens/IRebaseToken.sol";
+import {IAddressRegistry} from "../config/IAddressRegistry.sol";
 
 /// @title CheddaLockingGauge
 /// @notice Manages the amount of CHEDDA locked in each pool.
@@ -50,6 +51,10 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     error ZeroAmount();
     error InvalidAmount(uint256);
 
+    /// @dev Thrown when account other than rewardsDistributor calls the `addRewards()` function.
+    error NotAuthorized(address caller);
+
+    IAddressRegistry public registry;
     IRebaseToken public token;
     uint256 public rewardPerShare;
     uint256 public totalLocked;
@@ -61,8 +66,16 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     uint256 constant private MAXBOOST = 400;
     mapping (address => Lock) private locks;
 
-    constructor(address _token) {
-        token = IRebaseToken(_token);
+    constructor(address _registry) {
+        registry = IAddressRegistry(_registry);
+        token = IRebaseToken(registry.cheddaToken());
+    }
+
+    modifier onlyAccountActor() {
+        if (msg.sender != registry.accountActor()) {
+            revert NotAuthorized(msg.sender);
+        }
+        _;
     }
 
     /// @inheritdoc ILockingGauge
@@ -108,7 +121,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         if (lock.expiry > expiry) {
             revert ReducedLockTime();
         }
-        _claim(msg.sender);
+        _claimFor(msg.sender);
 
         totalWeight -= lock.timeWeighted;
 
@@ -134,7 +147,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         if (amount == 0) {
             revert ZeroAmount();
         }
-        _claim(msg.sender);
+        _claimFor(msg.sender);
         totalWeight -= lock.timeWeighted;
 
         token.safeTransferFrom(msg.sender, address(this), amount);
@@ -187,7 +200,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
             revert LockNotExpired(lock.expiry);
         }
 
-        _claim(msg.sender);
+        _claimFor(msg.sender);
 
         totalLocked -= amount;
         totalWeight -= lock.timeWeighted;
@@ -213,11 +226,16 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     /// @inheritdoc ILockingGauge
     function claim() external returns (uint256) {
         token.rebase();
-        return _claim(msg.sender);
+        return _claimFor(msg.sender);
+    }
+
+    /// @inheritdoc ILockingGauge
+    function claimFor(address account) external onlyAccountActor() returns (uint256) {
+        return _claimFor(account);
     }
 
     /// @dev Internal claim function.
-    function _claim(address account) internal returns (uint256) {
+    function _claimFor(address account) internal returns (uint256) {
         uint256 amount = claimable(account);
         if (amount != 0) {
             Lock storage lock = locks[account];
