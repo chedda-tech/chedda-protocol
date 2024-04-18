@@ -10,6 +10,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
 
     event RewardsDistributorSet(address indexed caller, address indexed distributor);
     event CheddaSet(address indexed caller, address indexed chedda);
+    event AccountActorSet(address indexed caller, address indexed actor);
     event PoolRegistered(address indexed pool, address indexed caller);
     event PoolUnregistered(address indexed pool, address indexed caller);
 
@@ -19,7 +20,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     address private _rewardsDistributor;
     address private _cheddaToken;
     address private _lendingPoolLens;
-    address private _accountLens;
+    address private _accountActor;
     address private _rewardLens;
     address[] private _pools;
     mapping (address => bool) private _activePools;
@@ -36,6 +37,10 @@ contract AddressRegistry is Ownable, IAddressRegistry {
         return _cheddaToken;
     }
 
+    function accountActor() external view returns (address) {
+        return _accountActor;
+    }
+
     /// @notice Sets the rewards distributor
     /// @dev Can only be called by the owner. 
     /// emits RewardsDistributorSet(address caller, address distributor) event
@@ -48,12 +53,22 @@ contract AddressRegistry is Ownable, IAddressRegistry {
 
     /// @notice Sets the CHEDDA token address
     /// @dev Can only be called by the owner. 
-    /// emits CheddaSet(address caller, address cheddaToken) event
+    /// emits `CheddaSet(address caller, address cheddaToken)` event
     /// @param chedda New chedda token address 
     function setCheddaToken(address chedda) external onlyOwner() {
         _cheddaToken = chedda;
 
         emit CheddaSet(msg.sender, chedda);
+    }
+
+    /// @notice Sets the AccountActor address
+    /// @dev Can only be called by owner.
+    /// emits `AccountActorSet(address caller, address actor)` event.
+    /// @param actor The new account Actor.
+    function setAccountActor(address actor) external onlyOwner() {
+        _accountActor = actor;
+
+        emit AccountActorSet(msg.sender, actor);
     }
 
     ///////////////////////////////////////////////////////////////////////////
