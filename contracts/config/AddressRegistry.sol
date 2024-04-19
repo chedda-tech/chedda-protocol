@@ -8,9 +8,10 @@ import {IAddressRegistry} from "./IAddressRegistry.sol";
 /// @notice Stores and retrieves commonly used addresses on the protocol.
 contract AddressRegistry is Ownable, IAddressRegistry {
 
-    event RewardsDistributorSet(address indexed caller, address indexed distributor);
-    event CheddaSet(address indexed caller, address indexed chedda);
-    event AccountActorSet(address indexed caller, address indexed actor);
+    event RewardsDistributorSet(address indexed distributor, address indexed caller);
+    event CheddaSet(address indexed chedda, address indexed caller);
+    event CheddaPriceOracleSet(address indexed oracle, address indexed caller);
+    event AccountActorSet(address indexed actor, address indexed caller);
     event PoolRegistered(address indexed pool, address indexed caller);
     event PoolUnregistered(address indexed pool, address indexed caller);
 
@@ -19,6 +20,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
 
     address private _rewardsDistributor;
     address private _cheddaToken;
+    address private _cheddaPriceOracle;
     address private _lendingPoolLens;
     address private _accountActor;
     address private _rewardLens;
@@ -41,6 +43,10 @@ contract AddressRegistry is Ownable, IAddressRegistry {
         return _accountActor;
     }
 
+    function cheddaPriceOracle() external view returns (address) {
+        return _cheddaPriceOracle;
+    }
+
     /// @notice Sets the rewards distributor
     /// @dev Can only be called by the owner. 
     /// emits RewardsDistributorSet(address caller, address distributor) event
@@ -48,7 +54,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     function setRewardsDistributor(address distributor) external onlyOwner() {
         _rewardsDistributor = distributor;
 
-        emit RewardsDistributorSet(msg.sender, distributor);
+        emit RewardsDistributorSet(distributor, msg.sender);
     }
 
     /// @notice Sets the CHEDDA token address
@@ -58,7 +64,13 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     function setCheddaToken(address chedda) external onlyOwner() {
         _cheddaToken = chedda;
 
-        emit CheddaSet(msg.sender, chedda);
+        emit CheddaSet(chedda, msg.sender);
+    }
+
+    function setCheddaPriceOracle(address _oracle) external onlyOwner() {
+        _cheddaPriceOracle = _oracle;
+
+        emit CheddaPriceOracleSet(_oracle, msg.sender);
     }
 
     /// @notice Sets the AccountActor address
@@ -68,7 +80,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     function setAccountActor(address actor) external onlyOwner() {
         _accountActor = actor;
 
-        emit AccountActorSet(msg.sender, actor);
+        emit AccountActorSet(actor, msg.sender);
     }
 
     ///////////////////////////////////////////////////////////////////////////

@@ -8,6 +8,9 @@ import {ICheddaPool} from "../rewards/ICheddaPool.sol";
 import {ILockingGauge} from "../rewards/ILockingGauge.sol";
 import {IStakingPool} from "../rewards/IStakingPool.sol";
 import {IPriceFeed} from "../oracle/IPriceFeed.sol";
+import { UD60x18, ud } from "prb-math/UD60x18.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { MathLib } from "../library/MathLib.sol";
 
 /// @title AccountActor
 /// @notice Provides views into accounts and positions.
@@ -30,17 +33,20 @@ contract AccountActor {
         address asset;
         uint8 decimals;
         uint256 supplied;
-        uint256 suppliedValue;
         uint256 borrowed;
+        uint256 suppliedValue;
         uint256 borrowedValue;
-        uint256 debtValue;
         uint256 collateralValue;
         uint256 healthFactor;
         uint256 staked;
-        uint256 lockRewardsClaimable;
+        uint256 locked;
         uint256 stakeRewardsClaimable;
+        uint256 lockRewardsClaimable;
         uint256 exposure; // used as flag to show in dashboard or not
     }
+
+    using MathLib for uint256;
+    using SafeCast for int256;
 
     IAddressRegistry public registry;
 
@@ -48,7 +54,7 @@ contract AccountActor {
         registry = IAddressRegistry(_registry);
     }
 
-    function accountSummary(address account) external pure returns (AccountSummary memory) {
+    function accountSummary(address) external pure returns (AccountSummary memory) {
         AccountSummary memory summary = AccountSummary({
             netValue: 0,
             supplied: 0,
@@ -62,7 +68,6 @@ contract AccountActor {
     /// @param account The account to check
     /// @return tuple (stakeRewardsPending, lockRewardsPending). A tuple containing
     /// total amount of staking and lock rewards.
-    /// @inheritdoc	Copies all missing tags from the base function (must be followed by the contract name)
     function claimableRewards(address account) external view returns (uint256, uint256) {
         address[] memory pools = registry.registeredPools();
         uint256 poolsLength = pools.length;
@@ -75,7 +80,7 @@ contract AccountActor {
             stakeRewardsPending += stakingPool.claimable(account);
             lockRewardsPending += gauge.claimable(account);
         }
-        
+
         return (stakeRewardsPending, lockRewardsPending);
     }
 
@@ -139,19 +144,28 @@ contract AccountActor {
     function getPosition(address account, address poolAddress) public view returns (Position memory) {
         ILendingPool pool = ILendingPool(poolAddress);
         ERC20 poolAsset = pool.poolAsset();
-        uint256 debtAmount = pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account));
+        IPriceFeed priceFeed = pool.priceFeed();
+        uint8 assetDecimals = pool.poolAsset().decimals();
+        uint256 supplied = pool.assetBalance(account);
+        uint256 borrowed = pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account));
+        uint256 normalizedAssetPrice = priceFeed.readPrice(address(pool.poolAsset()), 0).toUint256()
+            .normalized(priceFeed.decimals(), 18);
         Position memory position = Position({
             account: account,
             pool: poolAddress,
             asset: address(poolAsset),
-            decimals: poolAsset.decimals(),
-            supplied: pool.assetBalance(account),
-            suppliedValue: 0,
-            borrowed: debtAmount,
-            borrowedValue: 0,
-            debtValue: pool.getTokenMarketValue(address(poolAsset), debtAmount),
+            decimals: assetDecimals,
+            supplied: supplied,
+            borrowed: borrowed,
+            suppliedValue: ud(supplied.normalized(assetDecimals, 18)).mul(ud(normalizedAssetPrice)).unwrap(),
+            borrowedValue: ud(borrowed.normalized(assetDecimals, 18)).mul(ud(normalizedAssetPrice)).unwrap(),
             collateralValue: pool.totalAccountCollateralValue(account),
-            healthFactor: pool.accountHealth(account)
+            healthFactor: pool.accountHealth(account),
+            staked: ICheddaPool(poolAddress).stakingPool().stakingBalance(account),
+            locked: ICheddaPool(poolAddress).gauge().getLock(account).amount,
+            stakeRewardsClaimable: ICheddaPool(poolAddress).stakingPool().claimable(account),
+            lockRewardsClaimable: ICheddaPool(poolAddress).gauge().claimable(account),
+            exposure: 0
         });
         return position;
     }
