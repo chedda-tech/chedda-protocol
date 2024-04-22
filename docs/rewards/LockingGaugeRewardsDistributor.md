@@ -44,7 +44,7 @@ contract IERC20 token
 ### pools
 
 ```solidity
-contract ICheddaPool[] pools
+address[] pools
 ```
 
 ### stakingPortion
@@ -83,7 +83,7 @@ Constructor
 ### registerPool
 
 ```solidity
-function registerPool(contract ICheddaPool _pool) external
+function registerPool(address _pool) external
 ```
 
 Registers a pool to receive rewards.
@@ -94,12 +94,18 @@ _Can only be called by contract owner._
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _pool | contract ICheddaPool | Address of the pool. |
+| _pool | address | Address of the pool. |
+
+### registeredPools
+
+```solidity
+function registeredPools() external view returns (address[])
+```
 
 ### unregisterPool
 
 ```solidity
-function unregisterPool(contract ICheddaPool _pool) external
+function unregisterPool(address _pool) external
 ```
 
 Unregisters a pool.
@@ -108,7 +114,7 @@ Unregisters a pool.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _pool | contract ICheddaPool | Address of pool to unregister. Must have been previously registered. |
+| _pool | address | Address of pool to unregister. Must have been previously registered. |
 
 ### distribute
 

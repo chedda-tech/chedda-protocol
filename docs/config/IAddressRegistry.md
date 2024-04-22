@@ -2,10 +2,22 @@
 
 ## IAddressRegistry
 
+### accountActor
+
+```solidity
+function accountActor() external view returns (address)
+```
+
 ### cheddaToken
 
 ```solidity
 function cheddaToken() external view returns (address)
+```
+
+### cheddaPriceOracle
+
+```solidity
+function cheddaPriceOracle() external view returns (address)
 ```
 
 ### rewardsDistributor

@@ -134,6 +134,12 @@ contract IRebaseToken rewardToken
 
 The reward token
 
+### registry
+
+```solidity
+contract IAddressRegistry registry
+```
+
 ### totalStaked
 
 ```solidity
@@ -161,7 +167,7 @@ Current reward per share
 ### constructor
 
 ```solidity
-constructor(address _stakingToken, address _rewardToken) public
+constructor(address _registry, address _stakingToken) public
 ```
 
 Constructor
@@ -170,8 +176,14 @@ Constructor
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
+| _registry | address | The Chedda AddressRegistry |
 | _stakingToken | address | The token being staked. |
-| _rewardToken | address | The reward token. |
+
+### onlyAccountActor
+
+```solidity
+modifier onlyAccountActor()
+```
 
 ### stake
 
@@ -232,6 +244,23 @@ _Emits `RewardsClaimed(address, uint)` event._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | The amount claimed. |
+
+### claimFor
+
+```solidity
+function claimFor(address account) external returns (uint256)
+```
+
+Claim pending rewards for another account.
+
+_Emits `RewardsClaimed(address, uint)` event.
+Can only be called by `AccountActor` contract._
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The amount claimed |
 
 ### claimable
 

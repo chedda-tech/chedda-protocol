@@ -106,7 +106,7 @@ The receiver for new token emissions.
 ### constructor
 
 ```solidity
-constructor(address owner, address lzEndpoint) public
+constructor(address lzEndpoint, address owner) public
 ```
 
 Construct a new Chedda token.
@@ -115,8 +115,8 @@ Construct a new Chedda token.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| owner | address | The contract owner. Initial suppply is minted to this owner. |
 | lzEndpoint | address | The LayerZero endpoint. |
+| owner | address | The contract owner. Initial suppply is minted to this owner. |
 
 ### setTokenReceiver
 

@@ -923,7 +923,7 @@ _This is the amount of asset borrowed divided by assets supplied._
 ### recapitalize
 
 ```solidity
-function recapitalize() external view returns (uint256)
+function recapitalize() external pure returns (uint256)
 ```
 
 _recapitalizes the pool_

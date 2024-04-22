@@ -123,6 +123,20 @@ error ZeroAmount()
 error InvalidAmount(uint256)
 ```
 
+### NotAuthorized
+
+```solidity
+error NotAuthorized(address caller)
+```
+
+_Thrown when account other than rewardsDistributor calls the `addRewards()` function._
+
+### registry
+
+```solidity
+contract IAddressRegistry registry
+```
+
 ### token
 
 ```solidity
@@ -175,7 +189,13 @@ uint256 numberOfLocks
 ### constructor
 
 ```solidity
-constructor(address _token) public
+constructor(address _registry) public
+```
+
+### onlyAccountActor
+
+```solidity
+modifier onlyAccountActor()
 ```
 
 ### createLock
@@ -301,10 +321,27 @@ to this locking pool._
 | ---- | ---- | ----------- |
 | [0] | uint256 | The amount of reward tokens received. |
 
-### _claim
+### claimFor
 
 ```solidity
-function _claim(address account) internal returns (uint256)
+function claimFor(address account) external returns (uint256)
+```
+
+Claim pending rewards for another account.
+
+_Emits `RewardsClaimed(address, uint)` event.
+Can only be called by `AccountActor` contract._
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The amount claimed |
+
+### _claimFor
+
+```solidity
+function _claimFor(address account) internal returns (uint256)
 ```
 
 _Internal claim function._

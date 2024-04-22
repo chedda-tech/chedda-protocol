@@ -7,13 +7,25 @@ Stores and retrieves commonly used addresses on the protocol.
 ### RewardsDistributorSet
 
 ```solidity
-event RewardsDistributorSet(address caller, address distributor)
+event RewardsDistributorSet(address distributor, address caller)
 ```
 
 ### CheddaSet
 
 ```solidity
-event CheddaSet(address caller, address chedda)
+event CheddaSet(address chedda, address caller)
+```
+
+### CheddaPriceOracleSet
+
+```solidity
+event CheddaPriceOracleSet(address oracle, address caller)
+```
+
+### AccountActorSet
+
+```solidity
+event AccountActorSet(address actor, address caller)
 ```
 
 ### PoolRegistered
@@ -62,6 +74,18 @@ function cheddaToken() external view returns (address)
 
 @inheritdoc	IAddressRegistry
 
+### accountActor
+
+```solidity
+function accountActor() external view returns (address)
+```
+
+### cheddaPriceOracle
+
+```solidity
+function cheddaPriceOracle() external view returns (address)
+```
+
 ### setRewardsDistributor
 
 ```solidity
@@ -88,13 +112,36 @@ function setCheddaToken(address chedda) external
 Sets the CHEDDA token address
 
 _Can only be called by the owner. 
-emits CheddaSet(address caller, address cheddaToken) event_
+emits `CheddaSet(address caller, address cheddaToken)` event_
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | chedda | address | New chedda token address |
+
+### setCheddaPriceOracle
+
+```solidity
+function setCheddaPriceOracle(address _oracle) external
+```
+
+### setAccountActor
+
+```solidity
+function setAccountActor(address actor) external
+```
+
+Sets the AccountActor address
+
+_Can only be called by owner.
+emits `AccountActorSet(address caller, address actor)` event._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| actor | address | The new account Actor. |
 
 ### registerPool
 

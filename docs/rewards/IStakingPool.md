@@ -62,6 +62,23 @@ _Emits `RewardsClaimed(address, uint)` event._
 | ---- | ---- | ----------- |
 | [0] | uint256 | The amount claimed. |
 
+### claimFor
+
+```solidity
+function claimFor(address account) external returns (uint256)
+```
+
+Claim pending rewards for another account.
+
+_Emits `RewardsClaimed(address, uint)` event.
+Can only be called by `AccountActor` contract._
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The amount claimed |
+
 ### claimable
 
 ```solidity
