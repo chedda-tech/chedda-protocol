@@ -22,9 +22,9 @@ contract AccountActor {
 
     struct AccountSummary {
         uint256 netValue;
-        uint256 supplied;
-        uint256 borrowed;
-        uint256 locked;
+        uint256 suppliedValue;
+        uint256 borrowedValue;
+        uint256 lockedValue;
     }
 
     struct Position {
@@ -48,20 +48,50 @@ contract AccountActor {
     using MathLib for uint256;
     using SafeCast for int256;
 
+    /// @notice Chedda address registry
     IAddressRegistry public registry;
 
+    /// @dev Constructor
+    /// @param _registry The address registry address.
     constructor(address _registry) {
         registry = IAddressRegistry(_registry);
     }
 
-    function accountSummary(address) external pure returns (AccountSummary memory) {
-        AccountSummary memory summary = AccountSummary({
-            netValue: 0,
-            supplied: 0,
-            borrowed: 0,
-            locked: 0
+    /// @notice Returns the account status summed up.
+    /// @param account The account to return stats for.
+    /// @return the `AccountSummary` object containing account stats.
+    function accountSummary(address account) external view returns (AccountSummary memory) {
+        address[] memory pools = registry.registeredPools();
+        uint256 totalSuppliedValue;
+        uint256 totalBorrowedValue;
+        uint256 totalLockedValue;
+
+        for (uint256 i = 0; i < pools.length; i++) {
+            ILendingPool pool = ILendingPool(pools[i]);
+            uint8 assetDecimals = pool.poolAsset().decimals();
+            uint256 normalizedAssetPrice = pool.priceFeed().readPrice(address(pool.poolAsset()), 0).toUint256()
+                .normalized(pool.priceFeed().decimals(), 18);
+            uint256 supplied = pool.assetBalance(account);
+            uint256 borrowed = pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account));
+            totalSuppliedValue += ud(supplied.normalized(assetDecimals, 18)).mul(ud(normalizedAssetPrice)).unwrap();
+            totalBorrowedValue += ud(borrowed.normalized(assetDecimals, 18)).mul(ud(normalizedAssetPrice)).unwrap();
+            totalLockedValue += _getCheddaTokenValue(ICheddaPool(pools[i]).gauge().getLock(account).amount);
+        }
+
+        return AccountSummary({
+            netValue: totalSuppliedValue > totalBorrowedValue ? totalSuppliedValue - totalBorrowedValue : 0,
+            suppliedValue: totalSuppliedValue,
+            borrowedValue: totalBorrowedValue,
+            lockedValue: totalLockedValue
         });
-        return summary;
+    }
+
+    function _getCheddaTokenValue(uint256 amount) private view returns (uint256) {
+        IPriceFeed cheddaPriceFeed = IPriceFeed(registry.cheddaPriceOracle());
+        uint256 normalizedCheddaPrice = cheddaPriceFeed.readPrice(registry.cheddaToken(), 0).toUint256()
+            .normalized(cheddaPriceFeed.decimals(), 18);
+        // NOTE: assumes 18 decimals on amount. Safe assumption since only used for Chedda token
+        return ud(amount).mul(ud(normalizedCheddaPrice)).unwrap();
     }
 
     /// @notice Checks amount of rewards that can be claimed by a given account.
@@ -143,17 +173,19 @@ contract AccountActor {
     /// If `account` does not have a position in this pool the numerical values are all zero.
     function getPosition(address account, address poolAddress) public view returns (Position memory) {
         ILendingPool pool = ILendingPool(poolAddress);
-        ERC20 poolAsset = pool.poolAsset();
         IPriceFeed priceFeed = pool.priceFeed();
         uint8 assetDecimals = pool.poolAsset().decimals();
         uint256 supplied = pool.assetBalance(account);
         uint256 borrowed = pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account));
         uint256 normalizedAssetPrice = priceFeed.readPrice(address(pool.poolAsset()), 0).toUint256()
             .normalized(priceFeed.decimals(), 18);
+        IStakingPool stakingPool = ICheddaPool(poolAddress).stakingPool();
+        ILockingGauge gauge = ICheddaPool(poolAddress).gauge();
+        // can't declare additioal variables due rto stack too deep.
         Position memory position = Position({
             account: account,
             pool: poolAddress,
-            asset: address(poolAsset),
+            asset: address(pool.poolAsset()),
             decimals: assetDecimals,
             supplied: supplied,
             borrowed: borrowed,
@@ -161,12 +193,28 @@ contract AccountActor {
             borrowedValue: ud(borrowed.normalized(assetDecimals, 18)).mul(ud(normalizedAssetPrice)).unwrap(),
             collateralValue: pool.totalAccountCollateralValue(account),
             healthFactor: pool.accountHealth(account),
-            staked: ICheddaPool(poolAddress).stakingPool().stakingBalance(account),
-            locked: ICheddaPool(poolAddress).gauge().getLock(account).amount,
-            stakeRewardsClaimable: ICheddaPool(poolAddress).stakingPool().claimable(account),
-            lockRewardsClaimable: ICheddaPool(poolAddress).gauge().claimable(account),
-            exposure: 0
+            staked: stakingPool.stakingBalance(account),
+            locked: gauge.getLock(account).amount,
+            stakeRewardsClaimable: stakingPool.claimable(account),
+            lockRewardsClaimable: gauge.claimable(account),
+            exposure: _getExposure(account, poolAddress)
         });
         return position;
+    }
+
+    /// @dev returns a non zero value if an account has some exposure to a given pool.
+    /// Exposure is any off supplied, borrowed, staked, locked, claimable rewards in a pool.
+    function _getExposure(address account, address poolAddress) private view returns (uint256) {
+        ILendingPool pool = ILendingPool(poolAddress);
+        IStakingPool stakingPool = ICheddaPool(poolAddress).stakingPool();
+        ILockingGauge gauge = ICheddaPool(poolAddress).gauge();
+
+        uint256 hasSupplied = pool.assetBalance(account);
+        uint256 hasborrowed = pool.debtToken().balanceOf(account);
+        uint256 staked = stakingPool.stakingBalance(account);
+        uint256 locked = gauge.getLock(account).amount;
+        uint256 stakeRewawrds = stakingPool.claimable(account);
+        uint256 lockRewards = gauge.claimable(account);
+        return hasSupplied + hasborrowed + staked + locked + stakeRewawrds + lockRewards;
     }
 }
