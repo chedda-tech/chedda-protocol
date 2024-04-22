@@ -6,18 +6,26 @@ import {IAddressRegistry} from "../../contracts/config/IAddressRegistry.sol";
 contract MockAddressRegistry is IAddressRegistry {
     
     address private _chedda;
+    address private _cheddaOracle;
     address private _distributor;
 
     function cheddaToken() external view returns (address) {
         return _chedda;
     }
 
+    function cheddaPriceOracle() external view returns (address) {
+        return _cheddaOracle;
+    }
     function rewardsDistributor() external view returns (address) {
         return _distributor;
     }
 
     function setCheddaToken(address chedda) external {
         _chedda = chedda;
+    }
+
+    function setCheddaPriceOracle(address oracle) external {
+        _cheddaOracle = oracle;
     }
 
     function setRewardsDistributor(address distributor) external {
@@ -38,5 +46,9 @@ contract MockAddressRegistry is IAddressRegistry {
 
     function isActivePool(address) external pure returns (bool) {
         return true;
+    }
+
+    function accountActor() external pure returns (address) {
+        return address(0);
     }
 }
