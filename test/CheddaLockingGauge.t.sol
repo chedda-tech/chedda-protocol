@@ -27,10 +27,10 @@ contract CheddaLockingGaugeTest is Test {
         dean = makeAddr("dean");
         minter = makeAddr("minter");
 
-        registry = new MockAddressRegistry();
         token = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, minter);
-        gauge = new CheddaLockingGauge(address(registry));
+        registry = new MockAddressRegistry();
         registry.setCheddaToken(address(token));
+        gauge = new CheddaLockingGauge(address(registry));
 
         token.mint(alice, 1_000_000e18);
         token.mint(bob, 1_000_000e18);
@@ -38,7 +38,7 @@ contract CheddaLockingGaugeTest is Test {
         token.mint(dean, 1_000_000e18);
     }
 
-    function testCreateLock() external {
+    function testCreateSingleLock() external {
         uint256 amount = 1000e18;
 
         uint256 initialBobBalance = token.balanceOf(bob);
