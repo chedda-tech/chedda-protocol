@@ -70,6 +70,26 @@ contract AddressRegistryTest is Test {
         assertEq(registry.cheddaToken(), chedda);
     }
 
+    function testSetAccountActorFailNotOwner() external {
+        address actor = makeAddr("actor");
+
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, bob)
+        );
+        registry.setAccountActor(actor);
+        vm.stopPrank();
+    }
+
+    function testSetAccountActor() external {
+        address actor = makeAddr("actor");
+
+        vm.startPrank(owner);
+        registry.setAccountActor(actor);
+        vm.stopPrank();
+        assertEq(registry.accountActor(), actor);
+    }
+
     function testSetRewardsDistributorFail() external {
         address distributor = makeAddr("distributor");
         vm.startPrank(bob);
