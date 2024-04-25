@@ -154,15 +154,13 @@ contract AccountActor {
             // claim pool staking rewards
             uint256 amountToClaim = stakingPool.claimable(account);
             if (amountToClaim > 0) {
-                totalClaimed += amountToClaim;
-                stakingPool.claimFor(account);
+                totalClaimed += stakingPool.claimFor(account);
             }
 
             // claim pool locking rewards
             amountToClaim = gauge.claimable(account);
             if (amountToClaim > 0) {
-                totalClaimed += amountToClaim;
-                gauge.claimFor(account);
+                totalClaimed += gauge.claimFor(account);
             }
         }
         return totalClaimed;
@@ -213,7 +211,7 @@ contract AccountActor {
             .normalized(priceFeed.decimals(), 18);
         IStakingPool stakingPool = ICheddaPool(poolAddress).stakingPool();
         ILockingGauge gauge = ICheddaPool(poolAddress).gauge();
-        // can't declare additioal variables due rto stack too deep.
+        // can't declare additioal variables due to stack too deep.
         Position memory position = Position({
             account: account,
             pool: poolAddress,
