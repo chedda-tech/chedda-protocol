@@ -5,9 +5,14 @@ import {IAddressRegistry} from "../../contracts/config/IAddressRegistry.sol";
 
 contract MockAddressRegistry is IAddressRegistry {
     
+    address private _actor;
     address private _chedda;
     address private _cheddaOracle;
     address private _distributor;
+
+    function accountActor() external view returns (address) {
+        return _actor;
+    }
 
     function cheddaToken() external view returns (address) {
         return _chedda;
@@ -32,11 +37,15 @@ contract MockAddressRegistry is IAddressRegistry {
         _distributor = distributor;
     }
 
-    function registeredPools() external pure returns (address[] memory) {
+    function setAccountActor(address actor) external {
+        _actor = actor;
+    }
+
+    function registeredPools() external virtual view returns (address[] memory) {
         return new address[](0);
     }
 
-    function activePools() external pure returns (address[] memory) {
+    function activePools() external virtual view returns (address[] memory) {
         return new address[](0);
     }
 
@@ -48,7 +57,4 @@ contract MockAddressRegistry is IAddressRegistry {
         return true;
     }
 
-    function accountActor() external pure returns (address) {
-        return address(0);
-    }
 }

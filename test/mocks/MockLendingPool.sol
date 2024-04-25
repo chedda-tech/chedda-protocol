@@ -20,9 +20,13 @@ contract MockLendingPool is ILendingPool {
     uint256 private _tvl;
     uint256 private _feesPaid;
     uint256 public supplyCap = 1_000_000e18;
+    address private _stakingPool;
+    address private _gauge;
     address[] private _collaterals;
     mapping (address => uint) private _accountSupplied;
     mapping (address => uint) private _accountBorrowed;
+    mapping (address => uint) private _accountCollateralValue;
+    mapping (address => uint) private _accountCollateralAmount;
     mapping (address => uint) private _accountHealth;
 
 
@@ -41,6 +45,14 @@ contract MockLendingPool is ILendingPool {
         _tvl = t;
     }
 
+    function setGauge(address g) external {
+        _gauge = g;
+    }
+
+    function setStakingPool(address s) external {
+        _stakingPool = s;
+    }
+
     function setFeesPaid(uint256 fees) external {
         _feesPaid = fees;
     }
@@ -57,8 +69,12 @@ contract MockLendingPool is ILendingPool {
         _accountHealth[account] = health;
     }
 
-    function setTokenCollateralDeposited(address token, uint256 amount) external {
-        
+    function setAccountCollateralValue(address account, uint256 value) external {
+        _accountCollateralValue[account] = value;
+    }
+
+    function setAccountCollateralAmount(address account, uint256 amount) external {
+        _accountCollateralValue[account] = amount;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -99,8 +115,8 @@ contract MockLendingPool is ILendingPool {
         return _feesPaid;
     }
 
-    function gauge() external pure returns (ILiquidityGauge) {
-        return ILiquidityGauge(address(0));
+    function gauge() external view returns (ILiquidityGauge) {
+        return ILiquidityGauge(_gauge);
     }
 
     function interestRatesModel() external pure returns (IInterestRatesModel) {
@@ -131,12 +147,12 @@ contract MockLendingPool is ILendingPool {
         return _accountBorrowed[account];
     }
 
-    function totalAccountCollateralValue(address) external pure returns (uint256) {
-        return 500e18;
+    function totalAccountCollateralValue(address account) external view returns (uint256) {
+        return _accountCollateralValue[account];
     }
 
-    function accountCollateralAmount(address, address) external pure returns (uint256) {
-        return 200e18;
+    function accountCollateralAmount(address account, address) external view returns (uint256) {
+        return _accountCollateralAmount[account];
     }
 
     function getTokenCollateralValue(address, uint256) external pure returns (uint256) {
@@ -147,12 +163,8 @@ contract MockLendingPool is ILendingPool {
         return 250e18;
     }
 
-    function stakingPool() external pure returns (address) {
-        return address(0);
-    }
-
-    function cheddaGauge() external pure returns (address) {
-        return address(0);
+    function stakingPool() external view returns (address) {
+        return address(_stakingPool);
     }
 
     function recapitalize() external pure returns (uint256) {
