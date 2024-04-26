@@ -28,12 +28,6 @@ contract AccountActorTest is Test {
     function testAccountActorSetup() public view {
         assertEq(address(registry), address(actor.registry()));
     }
-
-    function testAccountSummary() public pure {
-        // AccountActor.AccountSummary memory summary = actor.accountSummary(account);
-    }
-
-    function testAllPositions() public {}
 }
 
 contract AccountActorClaimTests is AccountActorTest {
@@ -163,13 +157,10 @@ contract AccountActorPositionTests is AccountActorTest {
     }
 
     function testAccountActorGetAllPositions() public {
-        MockClaimable stakingPool;
-        MockClaimable lockingGauge;
-
         registry = new AccountActorRegistrySpy();
         actor = new AccountActor(address(registry));
-        stakingPool = new MockClaimable();
-        lockingGauge = new MockClaimable();
+        MockClaimable stakingPool = new MockClaimable();
+        MockClaimable lockingGauge = new MockClaimable();
 
         pool.setStakingPool(address(stakingPool));
         pool.setGauge(address(lockingGauge));
@@ -181,6 +172,39 @@ contract AccountActorPositionTests is AccountActorTest {
     }
 }
 
+contract AccountActorSummaryTest is AccountActorTest {
+    MockLendingPool pool;
+
+    function setUp() public override {
+        super.setUp();
+        MockPriceFeed priceFeed = new MockPriceFeed(8);
+        MockERC20 token = new MockERC20("Mock", "MOCK", 18, 1_000_000e18);
+        MockERC20 mockChedda = new MockERC20("Mock", "MOCK", 18, 1_000_000e18);
+        MockERC20 collateral = new MockERC20("Coll", "COLL", 18, 1_000_000e18);
+        address[] memory collaterals = new address[](1);
+        collaterals[0] = address(collateral);
+        pool = new MockLendingPool(
+            "mPool",
+            address(token),
+            address(priceFeed),
+            collaterals
+        );
+        MockClaimable stakingPool = new MockClaimable();
+        MockClaimable lockingGauge = new MockClaimable();
+
+        pool.setStakingPool(address(stakingPool));
+        pool.setGauge(address(lockingGauge));
+        priceFeed.setPrice(address(mockChedda), 2.55e8);
+        registry.setCheddaToken(address(mockChedda));
+        registry.registerPool(address(pool));
+        registry.setCheddaPriceOracle(address(priceFeed));
+    }
+
+    function testAccountActorSummary() public view {
+        AccountActor.AccountSummary memory summary = actor.accountSummary(account);
+        assertEq(summary.netValue, 0);
+    }
+}
 /// @dev AddressRegistry spy
 contract AccountActorRegistrySpy is MockAddressRegistry {
     address[] private _pools;
