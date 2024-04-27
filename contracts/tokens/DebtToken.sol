@@ -78,7 +78,6 @@ contract DebtToken is ERC4626 {
         if (shares == 0) {
             revert ZeroShares();
         }
-
         _variableTotalDebt += amount;
         _mint(account, shares);
         _accrue();
@@ -175,7 +174,16 @@ contract DebtToken is ERC4626 {
 
     function _accrue() private {
         uint256 timestamp =  block.timestamp;
-         uint256 elapsedTime = timestamp - _lastAccrual;
+        // no accrual if no debt exists
+        if (_variableTotalDebt == 0) {
+            return;
+        }
+
+        // initialize `_lastAccrual` if not yet initialized
+        if (_lastAccrual == 0) {
+            _lastAccrual = timestamp;
+        }
+        uint256 elapsedTime = timestamp - _lastAccrual;
         if (elapsedTime == 0) {
             return;
         }
