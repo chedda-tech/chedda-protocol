@@ -20,6 +20,7 @@ contract DebtTokenTest is Test {
         alice = makeAddr("alice");
         _asset = new MockERC20("Token", "TOK", 18, 1_000_000 * 1e18);
         _debtToken = new DebtToken(_asset, vault);
+        vm.warp(1641070800);
     }
 
     function testReverts() public {
