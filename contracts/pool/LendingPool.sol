@@ -53,7 +53,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     }
 
     /// @dev Information about collateral deposited to the pool.
-    struct CollateralDeposited {
+    struct CollateralDeposit {
         address token;
         TokenType tokenType;
         uint256 amount;
@@ -222,7 +222,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     mapping(address => uint256) public collateralFactor;
 
     // account => token => amount
-    mapping(address => mapping(address => CollateralDeposited))
+    mapping(address => mapping(address => CollateralDeposit))
         public accountCollateralDeposited;
 
     // token address => Collateral amount
@@ -504,7 +504,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (_accountHasCollateral(account, token)) {
             accountCollateralDeposited[account][token].amount += amount;
         } else {
-            CollateralDeposited memory deposit = CollateralDeposited({
+            CollateralDeposit memory deposit = CollateralDeposit({
                 token: token,
                 tokenType: TokenType.ERC20,
                 amount: amount,
@@ -578,7 +578,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address account,
         address collateral
     ) external view returns (uint256[] memory) {
-        CollateralDeposited memory c = accountCollateralDeposited[account][
+        CollateralDeposit memory c = accountCollateralDeposited[account][
             collateral
         ];
         return c.tokenIds;
@@ -593,7 +593,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 totalValue = 0;
         for (uint256 i = 0; i < collateralTokenList.length; i++) {
             address token = collateralTokenList[i];
-            CollateralDeposited memory collateral = accountCollateralDeposited[
+            CollateralDeposit memory collateral = accountCollateralDeposited[
                 account
             ][token];
             if (collateral.amount != 0) {
@@ -791,6 +791,36 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         return supplied; // TODO: add accrued interest
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    ///                     ERC20 overrides
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice Transfer tokens from caller to another address.
+    /// @dev Overrides ERC-20 transfer to add health checks after transfers
+    /// @param to address to send to
+    /// @param amount amount to send
+    /// @return true if transfer is successful, false otherwise.
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        bool success = super.transfer(to, amount);
+        _checkAccountHealth(msg.sender);
+        _checkAccountHealth(to);
+        return success;
+    }
+
+    /// @notice Transfer tokens from a given address to another.
+    /// @dev Overrides ERC-20 transferFrom to add health checks after transfers. 
+    /// Caller must have an allowance to transfer from `from` address.
+    /// @param from address to send from
+    /// @param to address to send to
+    /// @param amount amount to send
+    /// @return true if transfer is successful, false otherwise.
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+        bool success = super.transferFrom(from, to, amount);
+        _checkAccountHealth(from);
+        _checkAccountHealth(to);
+        return success;
+    }
+    
     /// @notice The assets available to be borrowed from pool.
     /// @return assetAmount The amount of asset available in pool.
     function available() public view returns (uint256) {
