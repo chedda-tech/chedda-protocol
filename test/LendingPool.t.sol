@@ -5,8 +5,10 @@ import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
+import {LinearInterestRatesModel} from "../contracts/interestrates/LinearInterestRatesModel.sol";
 import {LendingPool} from "../contracts/pool/LendingPool.sol";
 import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 import {MathLib} from "../contracts/library/MathLib.sol";
@@ -27,6 +29,7 @@ contract LendingPoolTest is Test {
     address public c1Address;
     address public c2Address;
     MockPriceFeed public priceFeed;
+    address public admin;
     address public bob;
     address public alice;
 
@@ -35,16 +38,17 @@ contract LendingPoolTest is Test {
     using SafeCast for int256;
     using MathLib for uint256;
 
-    function setUp() external {
+    function setUp() public virtual {
         asset = new MockERC20("Asset", "AST", 8, 1_000_000e8);
         collateral1 = new MockERC20("Collateral 1", "COL1", 18, 1_000_000e18);
         collateral2 = new MockERC20("Collateral 2", "COL2", 18, 1_000_000e18);
         c1Address = address(collateral1);
         c2Address = address(collateral2);
+        admin = makeAddr("admin");
         bob = makeAddr("bob");
         alice = makeAddr("alice");
         priceFeed = new MockPriceFeed(8);
-        priceFeed.setPrice(address(asset), 12e8);
+        priceFeed.setPrice(address(asset), 1e8);
         priceFeed.setPrice(c1Address, 50e8);
         priceFeed.setPrice(c2Address, 25e8);
 
@@ -65,9 +69,29 @@ contract LendingPoolTest is Test {
             tokenType: LendingPool.TokenType.ERC20
         });
 
+        LinearInterestRatesModel irModel = new LinearInterestRatesModel(
+            0,
+            0.05e18,
+            0.1e18,
+            0.9e18
+        );
         MockAddressRegistry registry = new MockAddressRegistry();
-        pool = new LendingPool(POOL_NAME, asset, address(priceFeed), address(registry), collateralTypes);
 
+        LendingPool.InitParams memory params = LendingPool.InitParams({
+            name: POOL_NAME,
+            asset: address(asset),
+            priceFeed: address(priceFeed),
+            interestRatesModel: address(irModel),
+            registry: address(registry),
+            treasury: admin,
+            owner: admin,
+            feeBps: 0.1e18,
+            collateralTokens: collateralTypes
+        });
+        // pool = new LendingPool(POOL_NAME, asset, address(priceFeed), address(registry), collateralTypes);
+        pool = new LendingPool(params);
+
+        vm.prank(admin);
         pool.setSupplyCap(supplyCap);
         poolAddress = address(pool);
     }
@@ -92,9 +116,18 @@ contract LendingPoolTest is Test {
         assertEq(pool.supplyCap(), supplyCap);
     }
 
-    function testGauge() external {
+    function testPoolSetGauge() external {
         address gauge = makeAddr("gauge");
+        vm.startPrank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
+        );
         pool.setGauge(gauge);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        pool.setGauge(gauge);
+        vm.stopPrank();
         assertEq(gauge, address(pool.gauge()));
     }
 
@@ -515,7 +548,7 @@ contract LendingPoolTest is Test {
         health = pool.accountHealth(bob);
         assertGt(health, 1.0e18);
         vm.expectRevert(
-            abi.encodeWithSelector(LendingPool.CheddaPool_AccountInsolvent.selector, bob, 999999999677777777)
+            abi.encodeWithSelector(LendingPool.CheddaPool_AccountInsolvent.selector, bob, 999999999988888888)
         );
         pool.take(assetAmount * 1 / 100);
         uint256 newHealth = pool.accountHealth(bob);
@@ -601,3 +634,9 @@ contract LendingPoolTest is Test {
         return ud(_calculateAssetValue(assetAddress, amount)).mul(ud(collateralFactor)).unwrap();
     }
 }
+
+// contract LendingPoolInterestTests is LendingPoolTest {
+//     function setUp() public override {
+//         super.setUp();
+//     }
+// }

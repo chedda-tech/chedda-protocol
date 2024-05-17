@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {LinearInterestRatesModel} from "../contracts/pool/LinearInterestRatesModel.sol";
+import {LinearInterestRatesModel} from "../contracts/interestrates/LinearInterestRatesModel.sol";
 
 contract CheckLinearInterestRatesModel is Script {
     LinearInterestRatesModel public strategy;

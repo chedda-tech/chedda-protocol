@@ -200,6 +200,11 @@ contract DebtToken is ERC4626 {
         emit DebtAccrued(_variableTotalDebt, interest);
     }
 
+    function addInterest(uint256 interest) external onlyVault() {
+        _variableTotalDebt += interest;
+        emit DebtAccrued(_variableTotalDebt, interest);
+    }
+
     function _calculateNewBorrowRate() private pure returns (uint256) {
         return PER_SECOND; // TODO: calculate from interest rate strategy
     }

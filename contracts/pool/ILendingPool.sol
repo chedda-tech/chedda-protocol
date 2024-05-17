@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { IInterestRatesModel } from "./IInterestRatesModel.sol";
+import { IInterestRatesModel } from "../interestrates/IInterestRatesModel.sol";
 import { ILiquidityGauge } from "../gauge/ILiquidityGauge.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { DebtToken } from "../tokens/DebtToken.sol";
@@ -32,4 +32,5 @@ interface ILendingPool {
     function accountCollateralAmount(address account, address collateral) external view returns (uint256);
     function getTokenCollateralValue(address token, uint256 amount) external view returns (uint256);
     function getTokenMarketValue(address token, uint256 amount) external view returns (uint256);
+    function recapitalize() external returns (uint256);
 }

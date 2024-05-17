@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {IInterestRatesModel, InterestRates} from "../pool/IInterestRatesModel.sol";
+import {IInterestRatesModel, InterestRates} from "./IInterestRatesModel.sol";
 
 /// @title InterestRatesProjector
 /// @notice Allows you to view the interest rates at various utilizations

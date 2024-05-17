@@ -9,8 +9,8 @@ import {UD60x18, ud} from "prb-math/UD60x18.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {DebtToken} from "../tokens/DebtToken.sol";
-import {IInterestRatesModel, InterestRates} from "./IInterestRatesModel.sol";
-import {LinearInterestRatesModel} from "./LinearInterestRatesModel.sol";
+import {IInterestRatesModel, InterestRates} from "../interestrates/IInterestRatesModel.sol";
+import {LinearInterestRatesModel} from "../interestrates/LinearInterestRatesModel.sol";
 import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {ILendingPool} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
@@ -67,6 +67,17 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         int256 value;
     }
 
+    struct PoolParams {
+        uint256 supplyCap;
+        uint256 minBorrowAmount;
+        uint256 maxBorrowAmount;
+    }
+
+    struct PoolConfig {
+        uint256 supplyCap;
+        uint256 feeRatio;
+        address feeRecipient;
+    }
     /// Events
 
     /// @notice Emitted when collateral is added
@@ -112,6 +123,26 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 amount,
         uint256 debtBurned
     );
+
+    /// @notice Emitted when interest is accrued
+    /// @dev called on all state changing functions.
+    /// @param caller indexed param of the caller of the action that triggered interest accrual.
+    /// @param borrowInterest The amount of borrow interest added.
+    /// @param supplyInterest The amount of supply interest added.
+    /// @param totalDebt The total amount debt pending.
+    /// @param totalAssets The total amount of assets including interest.
+    event InterestAccrued(
+        address indexed caller,
+        uint256 borrowInterest,
+        uint256 supplyInterest,
+        uint256 totalDebt,
+        uint256 totalAssets
+    );
+
+    /// @notice Emitted when pool share tokens are minted to treasury to cover fees.
+    /// @param caller Caller of function that triggered event
+    /// @param amountMinted The token amount minted
+    event MintToTreasury(address indexed caller, uint256 amountMinted);
 
     /// @notice Emitted when the rewards gauge is set
     /// @param gauge The gauge address.
@@ -242,38 +273,55 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev Flag to determine if collateral being deposited has already been counted as asset.
     bool private _assetCounted;
 
+    /// @dev timestamp of when interest last accrued
+    uint256 private _lastAccrual;
+
+    uint256 private constant SECONDS_PER_YEAR = 365.25 days;
+
+    uint256 public feeBps = 1e17;
+
+    address public treasury;
+
     ///////////////////////////////////////////////////////////////////////////
     ///                         initialization
     ///////////////////////////////////////////////////////////////////////////
 
+    struct InitParams {
+        string name;
+        address asset;
+        address priceFeed;
+        address interestRatesModel;
+        address registry;
+        address treasury;
+        address owner;
+        uint256 feeBps;
+        CollateralInfo[] collateralTokens;
+    }
+
     constructor(
-        string memory _name,
-        ERC20 _asset,
-        address _priceFeed,
-        address _registry,
-        CollateralInfo[] memory _collateralTokens
+        InitParams memory initParams
+        // string memory _name,
+        // ERC20 _asset,
+        // address _priceFeed,
+        // address _registry,
+        // CollateralInfo[] memory _collateralTokens
     )
-        Ownable(msg.sender) // TODO: pass owner as admin
+        Ownable(initParams.owner) // TODO: pass owner as admin
         ERC4626(
-            _asset,
-            string(abi.encodePacked("CHEDDA Pool ", _asset.name())),
-            string(abi.encodePacked("ch", _asset.symbol()))
+            ERC20(initParams.asset),
+            string(abi.encodePacked("CHEDDA Pool ", ERC20(initParams.asset).name())),
+            string(abi.encodePacked("ch", ERC20(initParams.asset).symbol()))
         )
     {
         // TODO: set interest rates strategy externally and pass in as constructor param
-        interestRatesModel = new LinearInterestRatesModel(
-            0,
-            0.05e18,
-            0.1e18,
-            0.9e18
-        );
-        characterization = _name;
-        priceFeed = IPriceFeed(_priceFeed);
-        registry = IAddressRegistry(_registry);
-        debtToken = new DebtToken(_asset, address(this));
-        stakingPool = new StakingPool(_registry, address(this));
-        gauge = new CheddaLockingGauge(_registry);
-        _initialize(_collateralTokens);
+        interestRatesModel = IInterestRatesModel(initParams.interestRatesModel);
+        characterization = initParams.name;
+        priceFeed = IPriceFeed(initParams.priceFeed);
+        registry = IAddressRegistry(initParams.registry);
+        debtToken = new DebtToken(ERC20(initParams.asset), address(this));
+        stakingPool = new StakingPool(initParams.registry, address(this));
+        gauge = new CheddaLockingGauge(initParams.registry);
+        _initialize(initParams.collateralTokens);
     }
 
     function _initialize(CollateralInfo[] memory _collateralTokens) private {
@@ -489,7 +537,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             revert CheddaPool_WrongCollateralType(token);
         }
         // check amount
-        if (amount <= 0) {
+        if (amount == 0) {
             revert CheddaPool_ZeroAmount();
         }
 
@@ -758,13 +806,55 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     }
 
     // TODO: Interest accrual
-    // function accrue() public {
-    //     _accrue();
-    // }
+    function accrueInterest() public {
+        _accrue();
+    }
 
-    // function _accrue() private {
-    //     debtToken.accrue();
-    // }
+    function _accrue() private {
+        uint256 timestamp =  block.timestamp;
+        uint256 totalDebt = debtToken.totalDebt();
+        // no accrual if no debt exists
+        if (totalDebt == 0) {
+            return;
+        }
+
+        // initialize `_lastAccrual` if not yet initialized
+        if (_lastAccrual == 0) {
+            _lastAccrual = timestamp;
+        }
+        uint256 elapsedTime = timestamp - _lastAccrual;
+        if (elapsedTime == 0) {
+            return;
+        }
+        // interestRates already updated
+        uint256 borrowRatePerSecond = interestRates.borrowRate / SECONDS_PER_YEAR;
+        uint256 supplyRatePerSecond = interestRates.supplyRate / SECONDS_PER_YEAR;
+
+        console2.log("[totalDebt = %d, interestPerSecond = %d, time = %d]",
+            totalDebt, borrowRatePerSecond, elapsedTime);
+        uint256 borrowInterest = ud(totalDebt).mul(ud(borrowRatePerSecond * elapsedTime)).unwrap();
+        uint256 supplyInterest = ud(totalDebt).mul(ud(supplyRatePerSecond * elapsedTime)).unwrap();
+        debtToken.addInterest(borrowInterest);
+        _mintToTreasury(borrowInterest);
+        supplied += supplyInterest;
+        
+        _lastAccrual = timestamp;
+        emit InterestAccrued(
+            msg.sender, 
+            borrowInterest, 
+            supplyInterest, 
+            debtToken.totalDebt(), 
+            totalAssets()
+        );
+    }
+
+    function _mintToTreasury(uint256 debtAmount) private {
+        uint256 mintAmount = ud(debtAmount).mul(ud(feeBps)).unwrap();
+        feesPaid += mintAmount;
+        _mint(treasury, mintAmount);
+
+        emit MintToTreasury(msg.sender, mintAmount);
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     ERC4626 overrides
@@ -830,8 +920,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @notice The assets borrowed from pool.
     /// @return assetAmount The amount of asset borrowed from pool.
     function borrowed() public view returns (uint256) {
-        uint256 balance = available();
-        return supplied > balance ? supplied - balance : 0;
+        return debtToken.totalDebt();
     }
 
     /// @notice The total value locked in this pool.
@@ -901,6 +990,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
                 .unwrap();
     }
 
+    /// @dev recapitalizes the pool
+    function recapitalize() external pure returns (uint256) {
+        return 0;
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     ///                        deposit/withdraw hooks
     ///////////////////////////////////////////////////////////////////////////
@@ -920,14 +1014,15 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     }
 
     /// Interest rates
-    function _calculateIntrestRates() private {
+    function updateInterestRates() private {
         interestRates = interestRatesModel.calculateInterestRates(
             utilization()
         );
     }
 
     function _updatePoolState() private {
-        _calculateIntrestRates();
+        updateInterestRates();
+        accrueInterest();
         _emitPoolState();
     }
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import { Test } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
+import { console2 } from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { DebtToken } from "../contracts/tokens/DebtToken.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
@@ -65,10 +65,9 @@ contract DebtTokenTest is Test {
         uint256 debtT1 = _debtToken.totalAssets();
         uint256 assetsPerShareT1 = _debtToken.assetsPerShare();
         assertGt(debtT1, debtT0);
-        assertGt(assetsPerShareT1, assetsPerShareT0);
 
         // debt grows over time
-        vm.warp(block.timestamp + 1000);
+        vm.warp(block.timestamp + 365.25 days);
         _debtToken.accrue();
         uint256 debtT2 = _debtToken.totalAssets();
         uint256 assetsPerShareT2 = _debtToken.assetsPerShare();

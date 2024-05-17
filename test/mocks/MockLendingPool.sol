@@ -5,7 +5,7 @@ import { ERC20 } from "solmate/tokens/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPriceFeed } from "../../contracts/oracle/IPriceFeed.sol";
 import { ILendingPool } from "../../contracts/pool/ILendingPool.sol";
-import { IInterestRatesModel } from "../../contracts/pool/IInterestRatesModel.sol";
+import { IInterestRatesModel } from "../../contracts/interestrates/IInterestRatesModel.sol";
 import { ILiquidityGauge } from "../../contracts/gauge/ILiquidityGauge.sol";
 import { DebtToken } from "../../contracts/tokens/DebtToken.sol";
 import { MockERC20 } from "./MockERC20.sol";

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-import {IInterestRatesModel, InterestRates} from "../../contracts/pool/IInterestRatesModel.sol";
+import {IInterestRatesModel, InterestRates} from "../../contracts/interestrates/IInterestRatesModel.sol";
 
 contract MockInterestRatesModel is IInterestRatesModel {
 

@@ -11,10 +11,12 @@ contract CheddaTokenTest is Test {
 
     CheddaToken public chedda;
     address public lzEndpoint;
+    address public admin;
 
     function setUp() external {
         lzEndpoint = makeAddr("lzendpoint");
-        chedda = new CheddaToken(lzEndpoint, address(msg.sender));
+        admin = makeAddr("admin");
+        chedda = new CheddaToken(lzEndpoint, admin);
     }
 
     function testInitialSupply() external view {
