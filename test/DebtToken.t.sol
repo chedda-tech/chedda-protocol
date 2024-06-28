@@ -18,13 +18,14 @@ contract DebtTokenTest is Test {
     function setUp() public {
         bob = makeAddr("bob");
         alice = makeAddr("alice");
+        vault = makeAddr("vault");
         _asset = new MockERC20("Token", "TOK", 18, 1_000_000 * 1e18);
         _debtToken = new DebtToken(_asset, vault);
         vm.warp(1641070800);
     }
 
     function testReverts() public {
-        uint256 amount = 1000 * 1e18;
+        uint256 amount = 1000e18;
 
         // checks reverts if not call
         vm.expectRevert(DebtToken.NotVault.selector);
@@ -38,7 +39,7 @@ contract DebtTokenTest is Test {
     }
 
     function testCreateDebt() external {
-        uint256 amount = 1000 * 1e18;
+        uint256 amount = 1000e18;
 
         vm.startPrank(vault);
 
@@ -48,14 +49,20 @@ contract DebtTokenTest is Test {
         assertEq(bobShares, _debtToken.accountShare(bob));
         assertEq(bobShares, _debtToken.totalSupply());
 
-        // totalBorrowed = borrowed + interest
         assertGe(_debtToken.totalDebt(), amount);
     }
 
+    // check initial state
+    // create debt
+    // -- check debt amount and assetsPerShare
+    // add interest
+    // -- check debt is the same, assetsPerShare increased by amount of interest added
     function testDebtGrows() external {
-        uint256 amount = 1000 * 1e18;
+        uint256 amount = 1000e18;
+        uint256 interestAmount = amount * 0.1e18 / 1e18; // 10% interest
 
         vm.startPrank(vault);
+        // initial state
         uint256 debtT0 = _debtToken.totalAssets();
         uint256 assetsPerShareT0 = _debtToken.assetsPerShare();
         assertEq(debtT0, 0);
@@ -64,19 +71,21 @@ contract DebtTokenTest is Test {
         _debtToken.createDebt(amount, bob); 
         uint256 debtT1 = _debtToken.totalAssets();
         uint256 assetsPerShareT1 = _debtToken.assetsPerShare();
+        uint256 totalSupplyT1 = _debtToken.totalSupply();
+        assertEq(amount, debtT1);
+        assertEq(assetsPerShareT0, assetsPerShareT1);
         assertGt(debtT1, debtT0);
 
-        // debt grows over time
-        vm.warp(block.timestamp + 365.25 days);
-        _debtToken.accrue();
-        uint256 debtT2 = _debtToken.totalAssets();
-        uint256 assetsPerShareT2 = _debtToken.assetsPerShare();
-        assertGt(debtT2, debtT1);
-        assertGt(assetsPerShareT2, assetsPerShareT1);
+        // add 10% interest
+        _debtToken.addInterest(interestAmount);
+        assertEq(_debtToken.totalSupply(), totalSupplyT1);
+        assertEq(_debtToken.assetsPerShare(), assetsPerShareT1 * 1.1e18 / 1e18);
+        assertEq(_debtToken.totalDebt(), debtT1 * 1.1e18 / 1e18);
+        assertEq(_debtToken.totalDebt(), debtT1 + interestAmount);
     }
 
     function testRepayAmount() external {
-       uint256 amount = 1000 * 1e18;
+       uint256 amount = 1000e18;
 
         vm.startPrank(vault);
 
@@ -89,7 +98,7 @@ contract DebtTokenTest is Test {
     }
 
     function testRepayShare() external {
-        uint256 amount = 1000 * 1e18;
+        uint256 amount = 1000e18;
 
         vm.startPrank(vault);
 
@@ -102,7 +111,7 @@ contract DebtTokenTest is Test {
     }
 
     function testTransfersRevert() external {
-       uint256 amount = 1000 * 1e18;
+       uint256 amount = 1000e18;
 
         vm.startPrank(vault);
 

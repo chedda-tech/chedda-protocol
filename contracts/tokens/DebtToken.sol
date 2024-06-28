@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import { ERC4626 } from "solmate/tokens/ERC4626.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { UD60x18, ud } from "prb-math/UD60x18.sol";
 
 /// @title DebtToken
 /// @notice This is the unit of account of debt in a lending pool.
@@ -22,22 +21,13 @@ contract DebtToken is ERC4626 {
     error NonTransferrable();
     error ZeroAssets();
     error ZeroShares();
+    error ZeroDebt(); 
     error NotVault();
 
-    uint64 public constant STARTING_INTEREST_RATE_PER_SECOND = 317097919; // approx 1% APR
-    uint64 public constant ONE_PERCENT = 1e18 / 100;
-    uint64 public constant PER_SECOND = ONE_PERCENT / 365 / 86400;
     uint256 private immutable _oneAsset;
 
     /// @notice The vault address
     address public vault;
-
-    /// @dev timestamp of when interest last accrued
-    uint256 private _lastAccrual;
-
-    /// @dev interest rate per second.
-    /// TODO: This should be dependent on intrest rate model
-    uint256 private _interestPerSecond;
 
     /// @dev total borrowed + accrued interest
     uint256 private _variableTotalDebt;
@@ -80,7 +70,7 @@ contract DebtToken is ERC4626 {
         }
         _variableTotalDebt += amount;
         _mint(account, shares);
-        _accrue();
+        // _accrue();
 
         emit DebtCreated(account, amount, shares);
     }
@@ -90,7 +80,7 @@ contract DebtToken is ERC4626 {
     /// @param account The account repaying
     /// @return amount The amount of debt repaid
     function repayShare(uint256 shares, address account) external onlyVault returns (uint256 amount) {
-        _accrue();
+        // _accrue();
         // Check for rounding error since we round down in previewRedeem.
         amount = previewRedeem(shares);
         if (amount == 0) {
@@ -108,7 +98,7 @@ contract DebtToken is ERC4626 {
     /// @param account The account repaying
     /// @return shares The shares burned by repaying this debt.
     function repayAmount(uint256 amount, address account) external onlyVault returns (uint256 shares) {
-        _accrue();
+        // _accrue();
         shares = previewWithdraw(amount); // No need to check for rounding error, previewWithdraw rounds up.
         if (shares == 0) {
             revert ZeroShares();
@@ -169,43 +159,42 @@ contract DebtToken is ERC4626 {
     /// @notice Accrues interest
     /// @dev External wrapper to internal `_accrue()` function.
     function accrue() external {
-        _accrue();
+        // _accrue();
     }
 
-    function _accrue() private {
-        uint256 timestamp =  block.timestamp;
-        // no accrual if no debt exists
-        if (_variableTotalDebt == 0) {
-            return;
-        }
+    // function _accrue() private {
+    //     uint256 timestamp =  block.timestamp;
+    //     // no accrual if no debt exists
+    //     if (_variableTotalDebt == 0) {
+    //         return;
+    //     }
 
-        // initialize `_lastAccrual` if not yet initialized
-        if (_lastAccrual == 0) {
-            _lastAccrual = timestamp;
-        }
-        uint256 elapsedTime = timestamp - _lastAccrual;
-        if (elapsedTime == 0) {
-            return;
-        }
-        if (_interestPerSecond == 0) {
-            _interestPerSecond = STARTING_INTEREST_RATE_PER_SECOND;
-        } else {
-            _interestPerSecond = _calculateNewBorrowRate();
-        }
+    //     // initialize `_lastAccrual` if not yet initialized
+    //     if (_lastAccrual == 0) {
+    //         _lastAccrual = timestamp;
+    //     }
+    //     uint256 elapsedTime = timestamp - _lastAccrual;
+    //     if (elapsedTime == 0) {
+    //         return;
+    //     }
+    //     if (_interestPerSecond == 0) {
+    //         _interestPerSecond = STARTING_INTEREST_RATE_PER_SECOND;
+    //     } else {
+    //         _interestPerSecond = _calculateNewBorrowRate();
+    //     }
 
-        _lastAccrual = timestamp;
-        uint256 interest = ud(_variableTotalDebt).mul(ud(_interestPerSecond * elapsedTime)).unwrap();
-        _variableTotalDebt += interest;
+    //     _lastAccrual = timestamp;
+    //     uint256 interest = ud(_variableTotalDebt).mul(ud(_interestPerSecond * elapsedTime)).unwrap();
+    //     _variableTotalDebt += interest;
 
-        emit DebtAccrued(_variableTotalDebt, interest);
-    }
+    //     emit DebtAccrued(_variableTotalDebt, interest);
+    // }
 
     function addInterest(uint256 interest) external onlyVault() {
+        if (_variableTotalDebt == 0) {
+            revert ZeroDebt();
+        }
         _variableTotalDebt += interest;
         emit DebtAccrued(_variableTotalDebt, interest);
-    }
-
-    function _calculateNewBorrowRate() private pure returns (uint256) {
-        return PER_SECOND; // TODO: calculate from interest rate strategy
     }
 }
