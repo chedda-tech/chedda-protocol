@@ -11,5 +11,5 @@ interface IRewardsDistributor {
 
     /// @notice Returns the total weight of all the pools.
     /// @return The total weight of all registered pools.
-    function totalWeightSum() external returns (uint256);
+    function totalWeightSum() external view returns (uint256);
 }
