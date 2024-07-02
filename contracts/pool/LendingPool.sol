@@ -10,7 +10,6 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {DebtToken} from "../tokens/DebtToken.sol";
 import {IInterestRatesModel, InterestRates} from "../interestrates/IInterestRatesModel.sol";
-import {LinearInterestRatesModel} from "../interestrates/LinearInterestRatesModel.sol";
 import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {ILendingPool} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
@@ -300,11 +299,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     constructor(
         InitParams memory initParams
-        // string memory _name,
-        // ERC20 _asset,
-        // address _priceFeed,
-        // address _registry,
-        // CollateralInfo[] memory _collateralTokens
     )
         Ownable(initParams.owner) // TODO: pass owner as admin
         ERC4626(
@@ -321,6 +315,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         debtToken = new DebtToken(ERC20(initParams.asset), address(this));
         stakingPool = new StakingPool(initParams.registry, address(this));
         gauge = new CheddaLockingGauge(initParams.registry);
+        treasury = initParams.treasury;
         _initialize(initParams.collateralTokens);
     }
 
@@ -800,7 +795,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// 1. Check that funds are available.
     function _validateBorrow(address, uint256 amount) private view {
         uint256 amountAvailable = available();
-        if (amountAvailable <= amount) {
+        if (amountAvailable < amount) {
             revert CheddaPool_InsufficientAssetBalance(amountAvailable, amount);
         }
     }
