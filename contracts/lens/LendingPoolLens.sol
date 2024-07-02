@@ -9,6 +9,11 @@ import { ILendingPool } from "../pool/ILendingPool.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { MathLib } from "../library/MathLib.sol";
 import { IAddressRegistry } from "../config/IAddressRegistry.sol";
+import {CheddaToken} from "../tokens/CheddaToken.sol";
+import {ICheddaPool} from "../rewards/ICheddaPool.sol";
+import {ILockingGauge} from "../rewards/ILockingGauge.sol";
+import {IStakingPool} from "../rewards/IStakingPool.sol";
+import {IRewardsDistributor} from "../rewards/IRewardsDistributor.sol";
 
 /// @title LendingPoolLens
 /// @notice Provides utility functions to view the state of LendingPools
@@ -27,6 +32,8 @@ contract LendingPoolLens {
         uint256 maxSupplyAPY;
         uint256 baseBorrowAPY;
         uint256 maxBorrowAPY;
+        uint256 dailyRewards;
+        uint256 rewardsAPY;
         uint256 utilization;
         uint256 feesPaid;
         uint256 tvl;
@@ -209,6 +216,8 @@ contract LendingPoolLens {
             baseBorrowAPY: pool.baseBorrowAPY(),
             maxSupplyAPY: pool.baseSupplyAPY(), // TODO: base + reward rate from gauge
             maxBorrowAPY: pool.baseBorrowAPY(), // same here
+            dailyRewards: poolDailyRewards(poolAddress),
+            rewardsAPY:poolRewardRate(poolAddress),
             utilization: pool.utilization(),
             feesPaid: pool.feesPaid(),
             tvl: pool.tvl(),
@@ -327,6 +336,31 @@ contract LendingPoolLens {
             liquidationPenalty: 0.05e18 // get from pool
         });
         return info;
+    }
+
+    /// @notice Returns the amount of token emissions a given pool receives daily.
+    /// @param poolAddress The pool to check for.
+    /// @return rewards pool receives in a day.
+    function poolDailyRewards(address poolAddress) public view returns (uint256) {
+        IRewardsDistributor distributor = IRewardsDistributor(registry.rewardsDistributor());
+        CheddaToken chedda = CheddaToken(registry.cheddaToken());
+        uint256 dailyRewards = chedda.emissionPerSecond() * 
+            1 days * 
+            ICheddaPool(poolAddress).gauge().totalWeight() / 
+            distributor.totalWeightSum();
+        return dailyRewards;
+    }
+
+    /// @notice Returns the reward rate (APY) a pool receives.
+    /// @param poolAddress The pool to check for.
+    /// @return The reward rate a pool receives.
+    function poolRewardRate(address poolAddress) public view returns (uint256) {
+        ILendingPool lPool = ILendingPool(poolAddress);
+        CheddaToken chedda = CheddaToken(registry.cheddaToken());
+        uint256 annualRewards = chedda.emissionPerSecond() * 365.25 days;
+        return annualRewards * 
+            IPriceFeed(registry.cheddaPriceOracle()).readPrice(address(registry.cheddaToken()), 0).toUint256() /
+            lPool.supplied() * lPool.priceFeed().readPrice(address(lPool.poolAsset()), 0).toUint256();
     }
 
     /// @dev returns the version of the lens
