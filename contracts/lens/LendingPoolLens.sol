@@ -358,9 +358,14 @@ contract LendingPoolLens {
         ILendingPool lPool = ILendingPool(poolAddress);
         CheddaToken chedda = CheddaToken(registry.cheddaToken());
         uint256 annualRewards = chedda.emissionPerSecond() * 365.25 days;
-        return (annualRewards * 
-            IPriceFeed(registry.cheddaPriceOracle()).readPrice(address(registry.cheddaToken()), 0).toUint256()) /
-            (lPool.supplied() * lPool.priceFeed().readPrice(address(lPool.poolAsset()), 0).toUint256());
+        return 
+            ud(annualRewards)
+            .mul(
+                ud(cheddaOracle.readPrice(address(registry.cheddaToken()), 0).toUint256().normalized(cheddaOracle.decimals(), 18))
+            ).div(
+                ud(lPool.supplied().normalized(lPool.poolAsset().decimals(), 18))
+                .mul(ud(assetOracle.readPrice(address(lPool.poolAsset()), 0).toUint256().normalized(assetOracle.decimals(), 18)))
+            ).unwrap();
     }
 
     /// @dev returns the version of the lens
