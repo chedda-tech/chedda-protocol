@@ -357,6 +357,8 @@ contract LendingPoolLens {
     function poolRewardRate(address poolAddress) public view returns (uint256) {
         ILendingPool lPool = ILendingPool(poolAddress);
         CheddaToken chedda = CheddaToken(registry.cheddaToken());
+        IPriceFeed cheddaOracle = IPriceFeed(registry.cheddaPriceOracle());
+        IPriceFeed assetOracle = lPool.priceFeed();
         uint256 annualRewards = chedda.emissionPerSecond() * 365.25 days;
         return 
             ud(annualRewards)

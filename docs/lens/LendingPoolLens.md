@@ -20,6 +20,8 @@ struct PoolStats {
   uint256 maxSupplyAPY;
   uint256 baseBorrowAPY;
   uint256 maxBorrowAPY;
+  uint256 dailyRewards;
+  uint256 rewardsAPY;
   uint256 utilization;
   uint256 feesPaid;
   uint256 tvl;
@@ -309,6 +311,46 @@ Returns market information about the pool
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | struct LendingPoolLens.MarketInfo | info The `MarketInfo` about collateral in the specified pool. |
+
+### poolDailyRewards
+
+```solidity
+function poolDailyRewards(address poolAddress) public view returns (uint256)
+```
+
+Returns the amount of token emissions a given pool receives daily.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| poolAddress | address | The pool to check for. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | rewards pool receives in a day. |
+
+### poolRewardRate
+
+```solidity
+function poolRewardRate(address poolAddress) public view returns (uint256)
+```
+
+Returns the reward rate (APY) a pool receives.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| poolAddress | address | The pool to check for. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The reward rate a pool receives. |
 
 ### version
 
