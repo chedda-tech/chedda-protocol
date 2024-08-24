@@ -1966,7 +1966,7 @@ Accrues interest
 
 _External wrapper to internal `_accrue()` function._
 
-## IRebaseToken
+## ICheddaToken
 
 Interface representing a rebase token
 
@@ -2019,7 +2019,7 @@ Emitted when CHEDDA is unstaked.
 ### chedda
 
 ```solidity
-contract IRebaseToken chedda
+contract ICheddaToken chedda
 ```
 
 ### constructor

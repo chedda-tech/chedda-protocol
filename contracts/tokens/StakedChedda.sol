@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import { IRebaseToken } from "./IRebaseToken.sol";
+import { ICheddaToken } from "./ICheddaToken.sol";
 
 /// @title Staked Chedda
 /// @notice Tokenized vault representing staked CHEDDA rewards.
@@ -22,12 +22,12 @@ contract StakedChedda is ERC4626 {
     /// @param shares The amount of xCHEDDA burned.
     event Unstaked(address indexed account, uint256 amount, uint256 shares);
 
-    IRebaseToken public chedda;
+    ICheddaToken public chedda;
 
     constructor(address _chedda) 
     ERC4626(IERC20(_chedda))
     ERC20("Staked Chedda", "xCHEDDA") {
-        chedda = IRebaseToken(_chedda);
+        chedda = ICheddaToken(_chedda);
     }
 
     /// @notice Total amount of CHEDDA staked.

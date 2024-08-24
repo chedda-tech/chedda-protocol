@@ -41,7 +41,7 @@ Emitted when CHEDDA is unstaked.
 ### chedda
 
 ```solidity
-contract IRebaseToken chedda
+contract ICheddaToken chedda
 ```
 
 ### constructor

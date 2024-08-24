@@ -7,13 +7,13 @@ import {StakingPool} from "../contracts/rewards/StakingPool.sol";
 import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 import {MockRewardsDistributor} from "./mocks/MockRewardsDistributor.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
-import {MockRebaseERC20} from "./mocks/MockRebaseERC20.sol";
+import {MockCheddaToken} from "./mocks/MockCheddaToken.sol";
 
 contract StakingPoolTest is Test {
 
     StakingPool internal pool;
     ERC20Mock internal stakingToken;
-    MockRebaseERC20 internal rewardToken;
+    MockCheddaToken internal mockChedda;
     MockAddressRegistry internal registry;
     MockRewardsDistributor internal distributor;
 
@@ -29,27 +29,27 @@ contract StakingPoolTest is Test {
         receiver = makeAddr("receiver");
         
         stakingToken = new ERC20Mock();
-        rewardToken = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, receiver);
+        mockChedda = new MockCheddaToken();
         registry = new MockAddressRegistry();
-        registry.setCheddaToken(address(rewardToken));
+        registry.setCheddaToken(address(mockChedda));
 
         distributor = new MockRewardsDistributor();
         registry.setRewardsDistributor(address(distributor));
         pool = new StakingPool(address(registry), address(stakingToken));
         
         vm.prank(address(distributor));
-        rewardToken.approve(address(pool), type(uint256).max);
+        mockChedda.approve(address(pool), type(uint256).max);
         vm.stopPrank();
     }
 
     function testStakingSetup() external view {
         assertEq(address(pool.stakingToken()), address(stakingToken));
-        assertEq(address(pool.rewardToken()), address(rewardToken));
+        assertEq(address(pool.rewardToken()), address(mockChedda));
     }
 
     function testAddReward() external {
         uint256 amount = 10000e18;
-        rewardToken.mint(address(distributor), amount);
+        mockChedda.mint(address(distributor), amount);
 
         vm.startPrank(address(distributor));
         vm.expectRevert(StakingPool.ZeroAmount.selector);
@@ -62,7 +62,7 @@ contract StakingPoolTest is Test {
         pool.addRewards(amount);
         vm.stopPrank();
 
-        assertEq(rewardToken.balanceOf(address(pool)), amount);
+        assertEq(mockChedda.balanceOf(address(pool)), amount);
     }
 }
 
@@ -135,7 +135,7 @@ contract StakingPoolStaking is StakingPoolTest {
     /// - claimRewards should reset rewards and balance numbers
     function testMultipleClaims() external {
         uint256 rewardAmount = 1000e18;
-        rewardToken.mint(address(distributor), rewardAmount);
+        mockChedda.mint(address(distributor), rewardAmount);
 
         vm.startPrank(address(distributor));
         pool.addRewards(rewardAmount);
@@ -147,7 +147,7 @@ contract StakingPoolStaking is StakingPoolTest {
 
         assertEq(pool.claimable(bob), 0);
 
-        rewardToken.mint(address(distributor), rewardAmount);
+        mockChedda.mint(address(distributor), rewardAmount);
         vm.startPrank(address(distributor));
         pool.addRewards(rewardAmount);
         vm.stopPrank();
@@ -158,7 +158,7 @@ contract StakingPoolStaking is StakingPoolTest {
         pool.claim();
         vm.stopPrank();
 
-        assertEq(rewardToken.balanceOf(bob), rewardAmount);
+        assertEq(mockChedda.balanceOf(bob), rewardAmount);
         assertEq(pool.claimable(bob), 0);
 
         vm.startPrank(alice);
@@ -166,7 +166,7 @@ contract StakingPoolStaking is StakingPoolTest {
         pool.stake(aliceStakeAmount);
         vm.stopPrank();
 
-        rewardToken.mint(address(distributor), rewardAmount);
+        mockChedda.mint(address(distributor), rewardAmount);
         vm.startPrank(address(distributor));
         pool.addRewards(rewardAmount);
         vm.stopPrank();
@@ -182,12 +182,12 @@ contract StakingPoolStaking is StakingPoolTest {
         vm.stopPrank();
 
         assertEq(pool.claimable(alice), 0);
-        assertEq(rewardAmount * 3 / 4, rewardToken.balanceOf(alice));
+        assertEq(rewardAmount * 3 / 4, mockChedda.balanceOf(alice));
 
         // alice claiming does not affect bob's balance
         assertEq(pool.claimable(bob), rewardAmount / 4);
 
-        rewardToken.mint(address(distributor), rewardAmount);
+        mockChedda.mint(address(distributor), rewardAmount);
 
         vm.startPrank(address(distributor));
         pool.addRewards(rewardAmount);
@@ -203,7 +203,7 @@ contract StakingPoolStaking is StakingPoolTest {
         uint256 rewardAmount = 250e18;
 
         stakingToken.mint(bob, stakeAmount);
-        rewardToken.mint(address(distributor), rewardAmount);
+        mockChedda.mint(address(distributor), rewardAmount);
 
         vm.startPrank(bob);
         pool.stake(stakeAmount);
@@ -219,7 +219,7 @@ contract StakingPoolStaking is StakingPoolTest {
         // stakingToken.mint(bob, stakeAmount);
         stakingToken.approve(address(pool), stakeAmount);
         pool.stake(stakeAmount);
-        assertEq(rewardToken.balanceOf(bob), rewardAmount);
+        assertEq(mockChedda.balanceOf(bob), rewardAmount);
         // assertEq(pool.lifetimeClaimed(), rewardAmount);
         // console2.log("***** [lifetimeRewards = %d, accountsCheckPoint = %d]", pool.lifetimeRewards(), pool.accountCheckpoints(bob));
         assertEq(pool.claimable(bob), 0);
@@ -250,8 +250,8 @@ contract StakingPoolStaking is StakingPoolTest {
 
         // send rewards
         vm.startPrank(address(distributor));
-        rewardToken.mint(address(distributor), rewardAmount);
-        rewardToken.approve(address(pool), rewardAmount);
+        mockChedda.mint(address(distributor), rewardAmount);
+        mockChedda.approve(address(pool), rewardAmount);
         pool.addRewards(rewardAmount);
         vm.stopPrank();
         
@@ -261,14 +261,14 @@ contract StakingPoolStaking is StakingPoolTest {
         vm.stopPrank();
 
         // check rewards claimed and claimable
-        assertEq(rewardToken.balanceOf(bob), rewardAmount / 2);
+        assertEq(mockChedda.balanceOf(bob), rewardAmount / 2);
         assertEq(pool.claimable(bob), 0);
         assertEq(pool.claimable(alice), rewardAmount / 2);
         uint256 aliceClaimableBeforeAdd = pool.claimable(alice);
 
         vm.startPrank(address(distributor));
-        rewardToken.mint(address(distributor), rewardAmount);
-        rewardToken.approve(address(pool), rewardAmount);
+        mockChedda.mint(address(distributor), rewardAmount);
+        mockChedda.approve(address(pool), rewardAmount);
         pool.addRewards(rewardAmount);
         vm.stopPrank();
 

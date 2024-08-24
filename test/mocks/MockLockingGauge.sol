@@ -2,11 +2,13 @@
 pragma solidity 0.8.20;
 
 import {ILockingGauge, LockTime, Lock} from "../../contracts/rewards/ILockingGauge.sol";
+import {ICheddaToken} from "../../contracts/tokens/ICheddaToken.sol";
 
 contract MockLockingGauge is ILockingGauge {
     event WeightSet(uint256 weight);
 
     uint256 private _weight;
+    ICheddaToken public token;
 
     function setWeight(uint256 w) external {
         _weight = w;

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.20;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IRebaseToken } from "../../contracts/tokens/IRebaseToken.sol";
+import { ICheddaToken } from "../../contracts/tokens/ICheddaToken.sol";
 
-contract MockRebaseERC20 is ERC20, IRebaseToken {
+contract MockCheddaToken is ERC20, ICheddaToken {
 
     address public _receiver;
     uint8 _decimals;
@@ -32,5 +32,9 @@ contract MockRebaseERC20 is ERC20, IRebaseToken {
 
     function decimals() public view virtual override returns (uint8) {        
         return _decimals;
+    }
+
+    function emissionPerSecond() public view returns (uint256) {
+        return 1000 * 1**decimals();
     }
 }

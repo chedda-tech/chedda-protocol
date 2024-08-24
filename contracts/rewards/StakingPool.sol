@@ -6,14 +6,15 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IAddressRegistry} from "../config/AddressRegistry.sol";
 import {IStakingPool} from "./IStakingPool.sol";
-import {IRebaseToken} from "../tokens/IRebaseToken.sol";
+import {ICheddaToken} from "../tokens/ICheddaToken.sol";
 
 /// @title StakingPool
 /// @notice Manages staking tokens and rewards.
+/// Use cases: LendigPool LP staking, $CHEDDA token LP token.
 contract StakingPool is IStakingPool {
 
     using SafeERC20 for IERC20;
-    using SafeERC20 for IRebaseToken;
+    using SafeERC20 for ICheddaToken;
 
     /// @notice Emitted when a user stakes tokens.
     /// @param account The account that staked.
@@ -61,7 +62,7 @@ contract StakingPool is IStakingPool {
     IERC20 public stakingToken; // Token being staked
 
     /// @notice The reward token
-    IRebaseToken public rewardToken; // Token for rewards
+    ICheddaToken public rewardToken; // Token for rewards
 
     IAddressRegistry public registry;
 
@@ -80,7 +81,7 @@ contract StakingPool is IStakingPool {
     constructor(address _registry, address _stakingToken) {
         registry = IAddressRegistry(_registry);
         stakingToken = IERC20(_stakingToken);
-        rewardToken = IRebaseToken(registry.cheddaToken());
+        rewardToken = ICheddaToken(registry.cheddaToken());
     }
 
     modifier onlyAccountActor() {

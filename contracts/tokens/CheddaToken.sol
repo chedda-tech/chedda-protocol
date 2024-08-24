@@ -5,13 +5,13 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { OFT } from "@layerzero-v2/contracts/oft/OFT.sol";
 import { IRewardsDistributor } from "../rewards/IRewardsDistributor.sol";
-import { IRebaseToken } from "./IRebaseToken.sol";
+import { ICheddaToken } from "./ICheddaToken.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 
 /// @title CheddaToken
 /// @notice CheddaToken token
 // TODO: Create emission controller that controls emissions.
-contract CheddaToken is OFT, IRebaseToken {
+contract CheddaToken is OFT, ICheddaToken {
 
     /// @notice Emitted when the new token is minted in a rebase
     /// @param caller The caller of the rebase function
