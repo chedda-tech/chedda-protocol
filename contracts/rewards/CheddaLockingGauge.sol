@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ILockingGauge, Lock, LockTime} from "./ILockingGauge.sol";
-import {IRebaseToken} from "../tokens/IRebaseToken.sol";
+import {ICheddaToken} from "../tokens/ICheddaToken.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
 
 /// @title CheddaLockingGauge
@@ -14,7 +14,7 @@ import {IAddressRegistry} from "../config/IAddressRegistry.sol";
 contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
-    using SafeERC20 for IRebaseToken;
+    using SafeERC20 for ICheddaToken;
 
     /// @notice Emitted when a lock is created or updated.
     /// @param account The account creating a lock.
@@ -55,7 +55,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     error NotAuthorized(address caller);
 
     IAddressRegistry public registry;
-    IRebaseToken public token;
+    ICheddaToken public token;
     uint256 public rewardPerShare;
     uint256 public totalLocked;
     uint256 public totalClaimed;
@@ -68,7 +68,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
 
     constructor(address _registry) {
         registry = IAddressRegistry(_registry);
-        token = IRebaseToken(registry.cheddaToken());
+        token = ICheddaToken(registry.cheddaToken());
     }
 
     modifier onlyAccountActor() {

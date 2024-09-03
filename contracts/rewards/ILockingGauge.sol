@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
+import {ICheddaToken} from "../tokens/ICheddaToken.sol";
 
 /// @notice Enum representing the possible lock times
 enum LockTime {
@@ -21,6 +22,10 @@ struct Lock {
 
     
 interface ILockingGauge {
+
+    /// @notice The token locked to this gauge.
+    /// @return The token address.
+    function token() external view returns (ICheddaToken);
     
     /// @notice Returns the total amount of time weighted locked tokens.
     /// @return The time weighted locked tokens.

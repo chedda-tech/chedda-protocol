@@ -238,6 +238,14 @@ contract MockICheddaPool is ICheddaPool {
     function stakingPool() external view returns (IStakingPool) {
         return _stakingPool;
     }
+
+    function setStakingPool(address sPool) external {
+        _stakingPool = IStakingPool(sPool);
+    }
+
+    function setGauge(address g) external {
+        _lockingGauge = ILockingGauge(g);
+    }
 }
 
 contract MockClaimable is IStakingPool {

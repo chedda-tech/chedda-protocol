@@ -26,8 +26,8 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
     IERC20 public token;
 
     address[] public pools;
-    uint256 public stakingPortion = 0.6e18;
-    uint256 public lockingPortion = 0.4e18;
+    uint256 public stakingPortion = 0.4e18;
+    uint256 public lockingPortion = 0.6e18;
     uint256 public constant Konstant = 1.0e18;
 
     /// @notice Constructor

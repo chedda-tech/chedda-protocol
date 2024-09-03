@@ -6,17 +6,19 @@ import { console2 } from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { CheddaToken, Ownable } from "../contracts/tokens/CheddaToken.sol";
 import { IRewardsDistributor } from "../contracts/rewards/IRewardsDistributor.sol";
+import {LZEndpointMock} from "@layerzerolabs/examples/lzApp/mocks/LZEndpointMock.sol";
 
 contract CheddaTokenTest is Test {
 
     CheddaToken public chedda;
-    address public lzEndpoint;
+    LZEndpointMock public lzEndpoint;
     address public admin;
 
     function setUp() external {
-        lzEndpoint = makeAddr("lzendpoint");
+        uint16 chainId = 0x123;
+        lzEndpoint = new LZEndpointMock(chainId);
         admin = makeAddr("admin");
-        chedda = new CheddaToken(lzEndpoint, admin);
+        chedda = new CheddaToken(address(lzEndpoint), admin);
     }
 
     function testInitialSupply() external view {

@@ -6,8 +6,11 @@ import {console2} from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {MockERC20, ERC20} from "./mocks/MockERC20.sol";
+import {MockCheddaToken} from "./mocks/MockCheddaToken.sol";
 import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
 import {MockLendingPool} from "./mocks/MockLendingPool.sol";
+import {MockLockingGauge} from "./mocks/MockLockingGauge.sol";
+import {MockRewardsDistributor} from "./mocks/MockRewardsDistributor.sol";
 import {LendingPoolLens} from "../contracts/lens/LendingPoolLens.sol";
 import {AddressRegistry} from "../contracts/config/AddressRegistry.sol";
 
@@ -15,6 +18,7 @@ contract LendingPoolLensTest is Test {
 
     LendingPoolLens public lens;
     AddressRegistry public registry;
+    MockCheddaToken public chedda;
     MockLendingPool public pool1;
     MockLendingPool public pool2;
     MockLendingPool public unregistered;
@@ -33,7 +37,9 @@ contract LendingPoolLensTest is Test {
         owner = makeAddr("owner");
         bob = makeAddr("bob");
 
+        chedda = new MockCheddaToken();
         registry = new AddressRegistry(owner);
+        MockRewardsDistributor distributor = new MockRewardsDistributor();
 
         priceFeed = new MockPriceFeed(18);
         asset1 = new MockERC20("Asset 1", "AST1", 18, 1_000_000e18);
@@ -41,17 +47,28 @@ contract LendingPoolLensTest is Test {
 
         collateral1 = new MockERC20("Collateral 1", "C1", 18, 1_000_000e18);
         collateral2 = new MockERC20("Collateral 2", "C2", 18, 1_000_000e18);
+
+        priceFeed.setPrice(address(asset1), 1.8e8);
+        priceFeed.setPrice(address(asset2), 1.0e8);
+        priceFeed.setPrice(address(collateral1), 100e8);
+        priceFeed.setPrice(address(collateral2), 120e8);
+        priceFeed.setPrice(address(chedda), 10e8);
         lens = new LendingPoolLens(address(registry));
         address[] memory collaterals = new address[](2);//[address(0x1), address(0x2)];
         collaterals[0] = address(collateral1);
         collaterals[1] = address(collateral2);
         pool1 = new MockLendingPool(name1, address(asset1), address(priceFeed), collaterals);
         pool2 = new MockLendingPool(name2, address(asset2), address(priceFeed), collaterals);
+        pool1.setGauge(address(new MockLockingGauge()));
+        pool2.setGauge(address(new MockLockingGauge()));
         unregistered = new MockLendingPool(name3, address(asset1), address(priceFeed), collaterals);
 
         vm.startPrank(owner);
+        registry.setCheddaToken(address(chedda));
+        registry.setCheddaPriceOracle(address(priceFeed));
         registry.registerPool(address(pool1), true);
         registry.registerPool(address(pool2), true);
+        registry.setRewardsDistributor(address(distributor));
         vm.stopPrank();
     }
 
@@ -61,7 +78,7 @@ contract LendingPoolLensTest is Test {
         assertEq(lens.activePools().length, 2);
     }
 
-    function testPoolStats() external {
+    function testSinglePoolStats() external {
         uint256 feesPaid = 120e18;
         uint256 tvl = 1_000_000e18;
         pool1.setTvl(tvl);
@@ -146,6 +163,11 @@ contract LendingPoolLensTest is Test {
         pool2.setTvl(tvl2);
         LendingPoolLens.AggregateStats memory stats = lens.getAggregateStats(false);
         assertEq(stats.tvl, tvl1 + tvl2);
+        assertEq(stats.numberOfVaults, 2);
         console2.log("aggregate tvl = %d", stats.tvl);
+    }
+
+    function testPoolDailyRewards() external {
+        
     }
 }

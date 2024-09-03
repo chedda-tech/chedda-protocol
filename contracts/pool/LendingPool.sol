@@ -20,7 +20,6 @@ import {IStakingPool} from "../rewards/IStakingPool.sol";
 import {StakingPool} from "../rewards/StakingPool.sol";
 import {ILockingGauge} from "../rewards/ILockingGauge.sol";
 import {CheddaLockingGauge} from "../rewards/CheddaLockingGauge.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title LendingPool
 /// @notice Implements supply and borrow functionality.
@@ -147,6 +146,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @param gauge The gauge address.
     /// @param caller The account that set the gauge.
     event GaugeSet(address indexed gauge, address indexed caller);
+
+    /// @notice Emitted when the staking pool for this lending pool is set
+    /// @param pool The pool address.
+    /// @param caller The account that set the gauge.
+    event StakingPoolSet(address indexed pool, address indexed caller);
 
     /// @notice Emitted when the supply cap is set.
     /// @param cap The new supply cap.
@@ -340,6 +344,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     function setGauge(address _gauge) external onlyOwner {
         gauge = ILockingGauge(_gauge);
         emit GaugeSet(_gauge, msg.sender);
+    }
+
+    /// @notice Set the staking pool for this pool.
+    /// @dev Can only be called by contract owner
+    /// Emits StakingPoolSet(sPool, caller).
+    function setStakingPool(address sPool) external onlyOwner {
+        stakingPool = IStakingPool(sPool);
+        emit StakingPoolSet(sPool, msg.sender);
     }
 
     /// @notice Sets the supply cap in this pool.
@@ -825,13 +837,16 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 borrowRatePerSecond = interestRates.borrowRate / SECONDS_PER_YEAR;
         uint256 supplyRatePerSecond = interestRates.supplyRate / SECONDS_PER_YEAR;
 
-        console2.log("[totalDebt = %d, interestPerSecond = %d, time = %d]",
-            totalDebt, borrowRatePerSecond, elapsedTime);
         uint256 borrowInterest = ud(totalDebt).mul(ud(borrowRatePerSecond * elapsedTime)).unwrap();
         uint256 supplyInterest = ud(totalDebt).mul(ud(supplyRatePerSecond * elapsedTime)).unwrap();
+        uint256 mintAmount = convertToShares(ud(borrowInterest).mul(ud(feeBps)).unwrap());
+
         debtToken.addInterest(borrowInterest);
+        _addSupplyInterest(supplyInterest);
+        _mintToTreasury(mintAmount);
+
+        // TODO: check units of debt, supply interest and amount to mint.
         _mintToTreasury(borrowInterest);
-        supplied += supplyInterest;
         
         _lastAccrual = timestamp;
         emit InterestAccrued(
@@ -843,8 +858,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         );
     }
 
-    function _mintToTreasury(uint256 debtAmount) private {
-        uint256 mintAmount = ud(debtAmount).mul(ud(feeBps)).unwrap();
+    /// @dev accrues supply interest
+    function _addSupplyInterest(uint256 interestAmount) private {
+        supplied += interestAmount;
+    }
+
+    function _mintToTreasury(uint256 mintAmount) private {
         feesPaid += mintAmount;
         _mint(treasury, mintAmount);
 

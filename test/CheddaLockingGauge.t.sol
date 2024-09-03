@@ -6,13 +6,13 @@ import {console2} from "forge-std/console2.sol";
 import {CheddaLockingGauge} from "../contracts/rewards/CheddaLockingGauge.sol";
 import {Lock, LockTime} from "../contracts/rewards/ILockingGauge.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
-import {MockRebaseERC20} from "./mocks/MockRebaseERC20.sol";
+import {MockCheddaToken} from "./mocks/MockCheddaToken.sol";
 import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 
 contract CheddaLockingGaugeTest is Test {
 
     CheddaLockingGauge public gauge;
-    MockRebaseERC20 public token;
+    MockCheddaToken public mockChedda;
     MockAddressRegistry public registry;
     address alice;
     address bob;
@@ -27,30 +27,30 @@ contract CheddaLockingGaugeTest is Test {
         dean = makeAddr("dean");
         minter = makeAddr("minter");
 
-        token = new MockRebaseERC20("mock", "mock", 18, 1_000_000e18, minter);
+        mockChedda = new MockCheddaToken();
         registry = new MockAddressRegistry();
-        registry.setCheddaToken(address(token));
+        registry.setCheddaToken(address(mockChedda));
         gauge = new CheddaLockingGauge(address(registry));
 
-        token.mint(alice, 1_000_000e18);
-        token.mint(bob, 1_000_000e18);
-        token.mint(carol, 1_000_000e18);
-        token.mint(dean, 1_000_000e18);
+        mockChedda.mint(alice, 1_000_000e18);
+        mockChedda.mint(bob, 1_000_000e18);
+        mockChedda.mint(carol, 1_000_000e18);
+        mockChedda.mint(dean, 1_000_000e18);
     }
 
     function testCreateSingleLock() external {
         uint256 amount = 1000e18;
 
-        uint256 initialBobBalance = token.balanceOf(bob);
+        uint256 initialBobBalance = mockChedda.balanceOf(bob);
         vm.startPrank(bob);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.thirtyDays);
         Lock memory lock = gauge.getLock(bob);
         vm.stopPrank();
 
         assertEq(gauge.totalLocked(), amount);
         assertEq(lock.amount, amount);
-        assertEq(initialBobBalance - amount, token.balanceOf(bob));
+        assertEq(initialBobBalance - amount, mockChedda.balanceOf(bob));
         assertApproxEqAbs(lock.expiry, block.timestamp + 30 days, 1 hours);
     }
 
@@ -60,28 +60,28 @@ contract CheddaLockingGaugeTest is Test {
         // assertEq(true, false);
 
         vm.startPrank(alice);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.thirtyDays);
         vm.stopPrank();
         
         vm.startPrank(bob);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.ninetyDays);
         vm.stopPrank();
 
         vm.startPrank(carol);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.oneEightyDays);
         vm.stopPrank();
 
         vm.startPrank(dean);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.threeSixtyDays);
         vm.stopPrank();
 
         vm.startPrank(minter);
-        token.mint(minter, rewardAmount);
-        token.approve(address(gauge), rewardAmount);
+        mockChedda.mint(minter, rewardAmount);
+        mockChedda.approve(address(gauge), rewardAmount);
         gauge.addRewards(rewardAmount);
         vm.stopPrank();
 
@@ -98,17 +98,17 @@ contract CheddaLockingGaugeTest is Test {
        uint256 amount = 1000e18;
 
         vm.startPrank(bob);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         vm.expectRevert(CheddaLockingGauge.ZeroAmount.selector);
         gauge.createLock(0, LockTime.thirtyDays);
     }
 
     function testWithdrawLock() external {
         uint256 amount = 1000e18;
-        uint256 initialBobBalance = token.balanceOf(bob);
+        uint256 initialBobBalance = mockChedda.balanceOf(bob);
 
         vm.startPrank(bob);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         uint256 expiry = gauge.createLock(amount, LockTime.thirtyDays);
 
         vm.expectRevert(abi.encodeWithSelector(CheddaLockingGauge.LockNotExpired.selector, expiry));
@@ -119,7 +119,7 @@ contract CheddaLockingGaugeTest is Test {
         vm.stopPrank();
 
         assertEq(withdrawn, amount);
-        assertEq(initialBobBalance, token.balanceOf(bob));
+        assertEq(initialBobBalance, mockChedda.balanceOf(bob));
         assertEq(gauge.claimable(bob), 0);
     }
 
@@ -127,7 +127,7 @@ contract CheddaLockingGaugeTest is Test {
        uint256 amount = 1000e18;
 
         vm.startPrank(bob);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.thirtyDays); 
         vm.stopPrank();
 
@@ -141,20 +141,20 @@ contract CheddaLockingGaugeTest is Test {
         uint256 amount = 1000e18;
         uint256 rewardAmount = 2500e18;
         uint256 mintAmount = 1_000_000e18;
-        token.mint(minter, mintAmount);
+        mockChedda.mint(minter, mintAmount);
 
         vm.startPrank(bob);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.thirtyDays);
         vm.stopPrank();
 
         vm.startPrank(alice);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.ninetyDays);
         vm.stopPrank();
 
         vm.startPrank(minter);
-        token.approve(address(gauge), rewardAmount);
+        mockChedda.approve(address(gauge), rewardAmount);
         gauge.addRewards(rewardAmount);
         vm.stopPrank();
 
@@ -163,9 +163,9 @@ contract CheddaLockingGaugeTest is Test {
 
         vm.startPrank(bob);
         uint256 bobClaimable = gauge.claimable(bob);
-        uint256 bobBalanceBefore = token.balanceOf(bob);
+        uint256 bobBalanceBefore = mockChedda.balanceOf(bob);
         gauge.claim();
-        uint256 bobBalanceAfter = token.balanceOf(bob);
+        uint256 bobBalanceAfter = mockChedda.balanceOf(bob);
         assertEq(bobBalanceAfter, bobBalanceBefore + bobClaimable);
         assertEq(gauge.claimable(bob), 0);
         vm.stopPrank();
@@ -174,7 +174,7 @@ contract CheddaLockingGaugeTest is Test {
     function testExtendLock() external {
         uint256 amount = 1000e18;
         vm.startPrank(bob);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         uint256 initialExpiry = gauge.createLock(amount, LockTime.ninetyDays);
         Lock memory initialLock = gauge.getLock(bob);
 
@@ -196,11 +196,11 @@ contract CheddaLockingGaugeTest is Test {
     function testAddToLock() external {
         uint256 amount = 1000e18;
         vm.startPrank(bob);
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.createLock(amount, LockTime.thirtyDays);
         Lock memory initialLock = gauge.getLock(bob);
 
-        token.approve(address(gauge), amount);
+        mockChedda.approve(address(gauge), amount);
         gauge.addToLock(amount);
         Lock memory newLock = gauge.getLock(bob);
         assertEq(initialLock.amount * 2, newLock.amount);

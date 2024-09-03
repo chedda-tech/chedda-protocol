@@ -31,7 +31,7 @@ contract DefaultInterstRateTest is Test {
         assertEq(rates.supplyRate, 0);
     }
 
-    function testSlopeIncrease() public {
+    function testSlopeIncrease() public view {
         InterestRates memory rates1 = irModel.calculateInterestRates(0.01e18);
         InterestRates memory rates2 = irModel.calculateInterestRates(0.02e18);
         InterestRates memory rates3 = irModel.calculateInterestRates(0.11e18);
@@ -39,7 +39,7 @@ contract DefaultInterstRateTest is Test {
         assertEq(rates1.borrowRate + irModel.rateSlope1() / 10, rates3.borrowRate);
     }
 
-    function testSlope2Increase() public {
+    function testSlope2Increase() public view {
         InterestRates memory rates1 = irModel.calculateInterestRates(irModel.targetUtilization());
         InterestRates memory rates2 = irModel.calculateInterestRates(irModel.targetUtilization() + 0.01e18);
         assertEq(rates1.borrowRate + irModel.rateSlope2() / 100, rates2.borrowRate);
