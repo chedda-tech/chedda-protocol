@@ -102,7 +102,6 @@ contract LendingPoolLens {
     using SafeCast for int256;
     using MathLib for uint256;
 
-    address[] private _pools;
     IAddressRegistry public registry;
 
 
@@ -157,7 +156,7 @@ contract LendingPoolLens {
             totalBorrowedValue: totalBorrowedValue,
             totalAvailableValue: totalAvailableValue,
             totalFeesPaid: totalFeesPaid,
-            numberOfVaults: _pools.length,
+            numberOfVaults: poolsLength,
             tvl: tvl
         });
         return stats;
@@ -344,10 +343,13 @@ contract LendingPoolLens {
     function poolDailyRewards(address poolAddress) public view returns (uint256) {
         IRewardsDistributor distributor = IRewardsDistributor(registry.rewardsDistributor());
         CheddaToken chedda = CheddaToken(registry.cheddaToken());
+        uint256 totalWeight = distributor.totalWeightSum();
+        if (totalWeight == 0) {
+            return 0;
+        }
         uint256 dailyRewards = chedda.emissionPerSecond() * 
             1 days * 
-            ICheddaPool(poolAddress).gauge().totalWeight() / 
-            distributor.totalWeightSum();
+            ICheddaPool(poolAddress).gauge().totalWeight() / totalWeight;
         return dailyRewards;
     }
 
