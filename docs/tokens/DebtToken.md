@@ -48,28 +48,16 @@ error ZeroAssets()
 error ZeroShares()
 ```
 
+### ZeroDebt
+
+```solidity
+error ZeroDebt()
+```
+
 ### NotVault
 
 ```solidity
 error NotVault()
-```
-
-### STARTING_INTEREST_RATE_PER_SECOND
-
-```solidity
-uint64 STARTING_INTEREST_RATE_PER_SECOND
-```
-
-### ONE_PERCENT
-
-```solidity
-uint64 ONE_PERCENT
-```
-
-### PER_SECOND
-
-```solidity
-uint64 PER_SECOND
 ```
 
 ### vault
@@ -249,4 +237,10 @@ function accrue() external
 Accrues interest
 
 _External wrapper to internal `_accrue()` function._
+
+### addInterest
+
+```solidity
+function addInterest(uint256 interest) external
+```
 

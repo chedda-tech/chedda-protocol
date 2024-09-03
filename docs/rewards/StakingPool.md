@@ -129,7 +129,7 @@ The staking token
 ### rewardToken
 
 ```solidity
-contract IRebaseToken rewardToken
+contract ICheddaToken rewardToken
 ```
 
 The reward token

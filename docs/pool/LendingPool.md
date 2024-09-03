@@ -35,12 +35,12 @@ struct CollateralInfo {
 }
 ```
 
-### CollateralDeposited
+### CollateralDeposit
 
 _Information about collateral deposited to the pool._
 
 ```solidity
-struct CollateralDeposited {
+struct CollateralDeposit {
   address token;
   enum LendingPool.TokenType tokenType;
   uint256 amount;
@@ -57,6 +57,26 @@ struct AccountCollateralValue {
   address token;
   uint256 amount;
   int256 value;
+}
+```
+
+### PoolParams
+
+```solidity
+struct PoolParams {
+  uint256 supplyCap;
+  uint256 minBorrowAmount;
+  uint256 maxBorrowAmount;
+}
+```
+
+### PoolConfig
+
+```solidity
+struct PoolConfig {
+  uint256 supplyCap;
+  uint256 feeRatio;
+  address feeRecipient;
 }
 ```
 
@@ -125,6 +145,41 @@ Emitted when borrowed assets are repaid.
 | account | address | The account that repaid assets. |
 | amount | uint256 | The amount of assets repaid. |
 | debtBurned | uint256 | The amount of debt token burned. |
+
+### InterestAccrued
+
+```solidity
+event InterestAccrued(address caller, uint256 borrowInterest, uint256 supplyInterest, uint256 totalDebt, uint256 totalAssets)
+```
+
+Emitted when interest is accrued
+
+_called on all state changing functions._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| caller | address | indexed param of the caller of the action that triggered interest accrual. |
+| borrowInterest | uint256 | The amount of borrow interest added. |
+| supplyInterest | uint256 | The amount of supply interest added. |
+| totalDebt | uint256 | The total amount debt pending. |
+| totalAssets | uint256 | The total amount of assets including interest. |
+
+### MintToTreasury
+
+```solidity
+event MintToTreasury(address caller, uint256 amountMinted)
+```
+
+Emitted when pool share tokens are minted to treasury to cover fees.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| caller | address | Caller of function that triggered event |
+| amountMinted | uint256 | The token amount minted |
 
 ### GaugeSet
 
@@ -368,7 +423,7 @@ mapping(address => uint256) collateralFactor
 ### accountCollateralDeposited
 
 ```solidity
-mapping(address => mapping(address => struct LendingPool.CollateralDeposited)) accountCollateralDeposited
+mapping(address => mapping(address => struct LendingPool.CollateralDeposit)) accountCollateralDeposited
 ```
 
 ### tokenCollateralDeposited
@@ -393,13 +448,41 @@ uint256 supplyCap
 
 _pool asset supply cap_
 
+### feeBps
+
+```solidity
+uint256 feeBps
+```
+
+### treasury
+
+```solidity
+address treasury
+```
+
+### InitParams
+
+initialization
+
+```solidity
+struct InitParams {
+  string name;
+  address asset;
+  address priceFeed;
+  address interestRatesModel;
+  address registry;
+  address treasury;
+  address owner;
+  uint256 feeBps;
+  struct LendingPool.CollateralInfo[] collateralTokens;
+}
+```
+
 ### constructor
 
 ```solidity
-constructor(string _name, contract ERC20 _asset, address _priceFeed, address _registry, struct LendingPool.CollateralInfo[] _collateralTokens) public
+constructor(struct LendingPool.InitParams initParams) public
 ```
-
-initialization
 
 ### setGauge
 
@@ -776,6 +859,12 @@ function updatePoolState() external
 
 _take a snapshot of the current pool state._
 
+### accrueInterest
+
+```solidity
+function accrueInterest() public
+```
+
 ### poolAsset
 
 ```solidity
@@ -827,6 +916,54 @@ _This includes assets that have been borrowed._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | amount The total assets supplied to pool. |
+
+### transfer
+
+```solidity
+function transfer(address to, uint256 amount) public returns (bool)
+```
+
+Transfer tokens from caller to another address.
+
+_Overrides ERC-20 transfer to add health checks after transfers_
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| to | address | address to send to |
+| amount | uint256 | amount to send |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | bool | true if transfer is successful, false otherwise. |
+
+### transferFrom
+
+```solidity
+function transferFrom(address from, address to, uint256 amount) public returns (bool)
+```
+
+Transfer tokens from a given address to another.
+
+_Overrides ERC-20 transferFrom to add health checks after transfers. 
+Caller must have an allowance to transfer from `from` address._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| from | address | address to send from |
+| to | address | address to send to |
+| amount | uint256 | amount to send |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | bool | true if transfer is successful, false otherwise. |
 
 ### available
 

@@ -140,7 +140,7 @@ contract IAddressRegistry registry
 ### token
 
 ```solidity
-contract IRebaseToken token
+contract ICheddaToken token
 ```
 
 ### rewardPerShare
