@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {IInterestRatesModel, InterestRates} from "./IInterestRatesModel.sol";
+import {IInterestRateModel, InterestRates} from "./IInterestRateModel.sol";
 
 /// @title InterestRatesProjector
 /// @notice Allows you to view the interest rates at various utilizations
@@ -12,7 +12,7 @@ contract InterestRatesProjector {
     /// @param utilizations An array of utilizations to return interest rates for. 1e18 = 100% utilization.
     /// @return interestRates An array of interest rates corresponding to utilizations passed in.
     function projection(address interestRatesModel, uint256[] calldata utilizations) external view returns (InterestRates[] memory) {
-        IInterestRatesModel model = IInterestRatesModel(interestRatesModel);
+        IInterestRateModel model = IInterestRateModel(interestRatesModel);
         uint256 len = utilizations.length;
         InterestRates[] memory rates = new InterestRates[](len);
         for (uint256 i = 0; i < len; i++) {

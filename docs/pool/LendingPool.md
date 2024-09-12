@@ -379,7 +379,7 @@ struct InterestRates interestRates
 ### interestRatesModel
 
 ```solidity
-contract IInterestRatesModel interestRatesModel
+contract IInterestRateModel interestRatesModel
 ```
 
 ### gauge

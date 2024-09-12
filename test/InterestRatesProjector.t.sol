@@ -4,17 +4,17 @@ pragma solidity ^0.8.20;
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
-import { InterestRates } from "../contracts/interestrates/IInterestRatesModel.sol";
-import { MockInterestRatesModel } from "./mocks/MockInterestRatesModel.sol";
+import { InterestRates } from "../contracts/interestrates/IInterestRateModel.sol";
+import { MockInterestRateModel } from "./mocks/MockInterestRateModel.sol";
 import { InterestRatesProjector } from "../contracts/interestrates/InterestRatesProjector.sol";
 
 contract InterestRatesProjectorTest is Test {
     
-    MockInterestRatesModel public model;
+    MockInterestRateModel public model;
     InterestRatesProjector public projector;
 
     function setUp() external {
-        model = new MockInterestRatesModel();
+        model = new MockInterestRateModel();
         projector = new InterestRatesProjector();
     }
 

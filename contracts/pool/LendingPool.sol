@@ -9,7 +9,7 @@ import {UD60x18, ud} from "prb-math/UD60x18.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {DebtToken} from "../tokens/DebtToken.sol";
-import {IInterestRatesModel, InterestRates} from "../interestrates/IInterestRatesModel.sol";
+import {IInterestRateModel, InterestRates} from "../interestrates/IInterestRateModel.sol";
 import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {ILendingPool} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
@@ -235,7 +235,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     IAddressRegistry public immutable registry;
     IPriceFeed public immutable priceFeed;
     InterestRates public interestRates;
-    IInterestRatesModel public interestRatesModel;
+    IInterestRateModel public interestRatesModel;
     ILockingGauge public gauge;
     IStakingPool public stakingPool;
 
@@ -310,7 +310,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         )
     {
         // TODO: set interest rates strategy externally and pass in as constructor param
-        interestRatesModel = IInterestRatesModel(initParams.interestRatesModel);
+        interestRatesModel = IInterestRateModel(initParams.interestRatesModel);
         characterization = initParams.name;
         priceFeed = IPriceFeed(initParams.priceFeed);
         registry = IAddressRegistry(initParams.registry);

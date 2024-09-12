@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.19;
 
-import { IInterestRatesModel, InterestRates } from "./IInterestRatesModel.sol";
+import { IInterestRateModel, InterestRates } from "./IInterestRateModel.sol";
 
-contract DefaultInterestRateModel is IInterestRatesModel {
+contract DefaultInterestRateModel is IInterestRateModel {
     uint256 public baseBorrowRate;  // Initial interest rate
     uint256 public rateSlope1; // rate of increase when utilization <= targetUtilization
     uint256 public rateSlope2; // rate of increase when utilization > targetUtilization

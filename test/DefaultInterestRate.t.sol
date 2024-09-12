@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {console2} from "forge-std/console2.sol";
 import {Test} from "forge-std/Test.sol";
-import {InterestRates} from "../contracts/interestrates/IInterestRatesModel.sol";
+import {InterestRates} from "../contracts/interestrates/IInterestRateModel.sol";
 import {DefaultInterestRateModel} from "../contracts/interestrates/DefaultInterestRateModel.sol";
 
 contract DefaultInterstRateTest is Test {

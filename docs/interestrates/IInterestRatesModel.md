@@ -10,7 +10,7 @@ struct InterestRates {
 }
 ```
 
-## IInterestRatesModel
+## IInterestRateModel
 
 ### calculateInterestRates
 

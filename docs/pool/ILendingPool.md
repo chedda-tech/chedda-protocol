@@ -83,7 +83,7 @@ function priceFeed() external view returns (contract IPriceFeed)
 ### interestRatesModel
 
 ```solidity
-function interestRatesModel() external view returns (contract IInterestRatesModel)
+function interestRatesModel() external view returns (contract IInterestRateModel)
 ```
 
 ### collaterals

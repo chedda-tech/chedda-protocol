@@ -5,7 +5,7 @@ import { ERC20 } from "solmate/tokens/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPriceFeed } from "../../contracts/oracle/IPriceFeed.sol";
 import { ILendingPool } from "../../contracts/pool/ILendingPool.sol";
-import { IInterestRatesModel } from "../../contracts/interestrates/IInterestRatesModel.sol";
+import { IInterestRateModel } from "../../contracts/interestrates/IInterestRateModel.sol";
 import { ILiquidityGauge } from "../../contracts/gauge/ILiquidityGauge.sol";
 import { DebtToken } from "../../contracts/tokens/DebtToken.sol";
 import { MockERC20 } from "./MockERC20.sol";
@@ -119,8 +119,8 @@ contract MockLendingPool is ILendingPool {
         return ILiquidityGauge(_gauge);
     }
 
-    function interestRatesModel() external pure returns (IInterestRatesModel) {
-        return IInterestRatesModel(address(0));
+    function interestRatesModel() external pure returns (IInterestRateModel) {
+        return IInterestRateModel(address(0));
     }
 
     function collaterals() external view returns (address [] memory) {

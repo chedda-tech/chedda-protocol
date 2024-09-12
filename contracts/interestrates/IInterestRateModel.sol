@@ -14,6 +14,8 @@ struct InterestRates {
     uint256 borrowRate;
 }
 
-interface IInterestRatesModel {
+/// @title IInterestRateModel 
+/// @dev Interface representing interest rate model
+interface IInterestRateModel {
     function calculateInterestRates(uint256 utilization) external view returns (InterestRates memory);
 }

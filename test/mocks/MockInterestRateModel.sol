@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-import {IInterestRatesModel, InterestRates} from "../../contracts/interestrates/IInterestRatesModel.sol";
+import {IInterestRateModel, InterestRates} from "../../contracts/interestrates/IInterestRateModel.sol";
 
-contract MockInterestRatesModel is IInterestRatesModel {
+contract MockInterestRateModel is IInterestRateModel {
 
     function calculateInterestRates(uint256 utilization) external pure returns (InterestRates memory) {
         return InterestRates({
