@@ -9,6 +9,7 @@ contract MockInterestRatesModel is IInterestRatesModel {
         return InterestRates({
             utilization: utilization,
             supplyRate: utilization/2,
+            effectiveSupplyRate: utilization/3,
             borrowRate: utilization
         });
     }

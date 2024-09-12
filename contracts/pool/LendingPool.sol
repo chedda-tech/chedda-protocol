@@ -125,14 +125,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @notice Emitted when interest is accrued
     /// @dev called on all state changing functions.
     /// @param caller indexed param of the caller of the action that triggered interest accrual.
-    /// @param borrowInterest The amount of borrow interest added.
-    /// @param supplyInterest The amount of supply interest added.
+    /// @param interest The amount of interest accrued.
     /// @param totalDebt The total amount debt pending.
     /// @param totalAssets The total amount of assets including interest.
     event InterestAccrued(
         address indexed caller,
-        uint256 borrowInterest,
-        uint256 supplyInterest,
+        uint256 interest,
         uint256 totalDebt,
         uint256 totalAssets
     );
@@ -835,24 +833,21 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         }
         // interestRates already updated
         uint256 borrowRatePerSecond = interestRates.borrowRate / SECONDS_PER_YEAR;
-        uint256 supplyRatePerSecond = interestRates.supplyRate / SECONDS_PER_YEAR;
 
-        uint256 borrowInterest = ud(totalDebt).mul(ud(borrowRatePerSecond * elapsedTime)).unwrap();
-        uint256 supplyInterest = ud(totalDebt).mul(ud(supplyRatePerSecond * elapsedTime)).unwrap();
-        uint256 mintAmount = convertToShares(ud(borrowInterest).mul(ud(feeBps)).unwrap());
+        uint256 interest = ud(totalDebt).mul(ud(borrowRatePerSecond * elapsedTime)).unwrap();
+        _addSupplyInterest(interest);
+        uint256 mintAmount = convertToShares(ud(interest).mul(ud(feeBps)).unwrap());
 
-        debtToken.addInterest(borrowInterest);
-        _addSupplyInterest(supplyInterest);
+        debtToken.addInterest(interest);
         _mintToTreasury(mintAmount);
 
         // TODO: check units of debt, supply interest and amount to mint.
-        _mintToTreasury(borrowInterest);
+        // _mintToTreasury(interest);
         
         _lastAccrual = timestamp;
         emit InterestAccrued(
             msg.sender, 
-            borrowInterest, 
-            supplyInterest, 
+            interest, 
             debtToken.totalDebt(), 
             totalAssets()
         );
@@ -863,11 +858,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         supplied += interestAmount;
     }
 
-    function _mintToTreasury(uint256 mintAmount) private {
-        feesPaid += mintAmount;
-        _mint(treasury, mintAmount);
+    function _mintToTreasury(uint256 shares) private {
+        // TODO: calculate fees from asset, not shares
+        feesPaid += shares;
+        _mint(treasury, shares);
 
-        emit MintToTreasury(msg.sender, mintAmount);
+        emit MintToTreasury(msg.sender, shares);
     }
 
     ///////////////////////////////////////////////////////////////////////////

@@ -33,6 +33,7 @@ contract BorrowSupplyRatesModel is IInterestRatesModel {
         return InterestRates({
             utilization: utilization,
             supplyRate: supplyRate,
+            effectiveSupplyRate: supplyRate,
             borrowRate: borrowRate
         });
     }

@@ -28,6 +28,7 @@ contract DefaultInterestRateModel is IInterestRatesModel {
     function calculateInterestRates(uint256 utilization) public view returns (InterestRates memory) {
         uint256 borrowRate;
         uint256 supplyRate;
+        uint256 effectiveSupplyRate;
         if (utilization <= targetUtilization) {
             // Linear increase until the target utilization is reached
             borrowRate = baseBorrowRate + (utilization * rateSlope1) / 1e18;
@@ -37,10 +38,12 @@ contract DefaultInterestRateModel is IInterestRatesModel {
             borrowRate = baseBorrowRate + (targetUtilization * rateSlope1) / 1e18 + (excessUtilization * rateSlope2) / 1e18;
         }
         uint256 feeAmount = (borrowRate * feeBps) / 1e18;
-        supplyRate = (borrowRate - feeAmount) * utilization / 1e18;
+        supplyRate = borrowRate * utilization / 1e18;
+        effectiveSupplyRate = (borrowRate - feeAmount) * utilization / 1e18;
         return InterestRates({
             utilization: utilization,
             supplyRate: supplyRate,
+            effectiveSupplyRate: effectiveSupplyRate,
             borrowRate: borrowRate
         });
     }
