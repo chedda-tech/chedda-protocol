@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.27;
 
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.27;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
