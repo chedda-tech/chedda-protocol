@@ -19,7 +19,7 @@ interface ILendingPool {
     function baseBorrowAPY() external view returns (uint256);
     function utilization() external view returns (uint256);
     function tvl() external view returns (uint256);
-    function feesPaid() external view returns (uint256);
+    function totalReserveShares() external view returns (uint256);
     function priceFeed() external view returns (IPriceFeed);
     function interestRatesModel() external view returns (IInterestRateModel);
     function collaterals() external view returns (address [] memory);

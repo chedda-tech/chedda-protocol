@@ -12,13 +12,13 @@ contract CheckDefaultInterestRateModel is Script {
         uint256 rateSlope1 = 0.088e18;
         uint256 rateSlope2 = 8e18;
         uint256 targetUtilization = 0.92e18;
-        uint256 feeBps = 0.1e18;
+        uint256 reserveFactor = 0.1e18;
         strategy = new DefaultInterestRateModel(
             baseBorrowRate,
             rateSlope1,
             rateSlope2,
             targetUtilization,
-            feeBps
+            reserveFactor
         );
     }
 

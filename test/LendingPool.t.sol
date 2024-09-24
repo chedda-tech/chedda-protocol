@@ -8,9 +8,10 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
-import {LinearInterestRatesModel} from "../contracts/interestrates/LinearInterestRatesModel.sol";
+import {DefaultInterestRateModel} from "../contracts/interestrates/DefaultInterestRateModel.sol";
 import {LendingPool} from "../contracts/pool/LendingPool.sol";
 import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
+import {MockSteadyInterestRatesModel} from "./mocks/MockSteadyInterestRatesModel.sol";
 import {MathLib} from "../contracts/library/MathLib.sol";
 
 contract LendingPoolTest is Test {
@@ -23,7 +24,8 @@ contract LendingPoolTest is Test {
     uint256 public assetFactor = 0.9e18;
     uint256 public c1Factor = 0.8e18;
     uint256 public c2Factor = 0.7e18;
-    uint256 public supplyCap = 100_000e8;
+    uint256 public baseFeeBps = 0.1e18;
+    uint256 public supplyCap = 1_000_000e8;
 
     address public poolAddress;
     address public c1Address;
@@ -37,9 +39,16 @@ contract LendingPoolTest is Test {
 
     using SafeCast for int256;
     using MathLib for uint256;
+    struct InterestRatesParams {
+        uint256 baseBorrowRate;
+        uint256 rateSlope1;
+        uint256 rateSlope2;
+        uint256 targetUtilization;
+        uint256 reserveFactor;
+    }
 
     function setUp() public virtual {
-        asset = new MockERC20("Asset", "AST", 8, 1_000_000e8);
+        asset = new MockERC20("Asset", "AST", 18, 1_000_000e18);
         collateral1 = new MockERC20("Collateral 1", "COL1", 18, 1_000_000e18);
         collateral2 = new MockERC20("Collateral 2", "COL2", 18, 1_000_000e18);
         c1Address = address(collateral1);
@@ -69,26 +78,20 @@ contract LendingPoolTest is Test {
             tokenType: LendingPool.TokenType.ERC20
         });
 
-        LinearInterestRatesModel irModel = new LinearInterestRatesModel(
-            0,
-            0.05e18,
-            0.1e18,
-            0.9e18
-        );
+        MockSteadyInterestRatesModel steadyRates = new MockSteadyInterestRatesModel(0.1e18, 0.05e18, 0.1e18);
         MockAddressRegistry registry = new MockAddressRegistry();
 
         LendingPool.InitParams memory params = LendingPool.InitParams({
             name: POOL_NAME,
             asset: address(asset),
             priceFeed: address(priceFeed),
-            interestRatesModel: address(irModel),
-            registry: address(registry),
-            treasury: admin,
+            interestRatesModel: address(steadyRates),
             owner: admin,
-            feeBps: 0.1e18,
+            registry: address(registry),
+            reserve: admin,
+            reserveFactor: baseFeeBps,
             collateralTokens: collateralTypes
         });
-        // pool = new LendingPool(POOL_NAME, asset, address(priceFeed), address(registry), collateralTypes);
         pool = new LendingPool(params);
 
         vm.prank(admin);
@@ -441,6 +444,16 @@ contract LendingPoolTest is Test {
         // assertGt(asset.balanceOf(bob), assetAmount);
         // assertEq(pool.totalAssets(), 0);
     }
+    
+    function testLTVRatio() public {
+        // what should the calculation be for max loan to value ratio?
+        // LTV = sum(collateralMarketValue * collateralFactor)
+        //       ----------------------------------------------
+        //              loanValue
+        // define Max LTV
+                
+    }
+
     function testWithdraw() external {
         uint256 assetAmount = 1000e8;
         asset.transfer(bob, assetAmount);
@@ -635,8 +648,107 @@ contract LendingPoolTest is Test {
     }
 }
 
-// contract LendingPoolInterestTests is LendingPoolTest {
-//     function setUp() public override {
-//         super.setUp();
-//     }
-// }
+contract LendingPoolInterestTests is LendingPoolTest {
+    uint256 public constant YEAR = 365.25 days;
+
+    function setUp() public override {
+        super.setUp();
+    }
+
+    function testBorrowInterest() public {
+        uint256 assetDeposits = 200000e8;
+        uint256 amountToTake = 100000e8;
+
+        asset.transfer(alice, assetDeposits);
+        
+        vm.startPrank(alice);
+        asset.approve(poolAddress, assetDeposits);
+        pool.supply(assetDeposits, alice, true);
+        uint256 taken = pool.take(amountToTake);
+        uint borrowed = pool.accountAssetsBorrowed(alice);
+        assertNotEq(borrowed, 0);
+
+        uint256 borrowRate = pool.baseBorrowAPY();
+        vm.warp(block.timestamp + YEAR);
+        pool.accrueInterest();
+        borrowed = pool.accountAssetsBorrowed(alice);
+
+        // check interest including rounding
+        assertApproxEqRel(borrowed, taken + (taken * borrowRate / 1e18), 0.0001e18); // within 0.01% delta
+        console2.log("[taken = %d, borrowed = %d]", taken, borrowed);
+        vm.stopPrank();
+    }
+
+  // borrow 100k
+    // after 1 year, accumulate 12k interest.
+    // supply interest should be 12k * 0.9 (1.0 - 0.1 fee)
+    function testSupplyInterest() public {
+        uint256 assetDeposits = 200_000e8;
+        uint256 amountToTake = 100_000e8;
+        asset.transfer(alice, assetDeposits);
+        
+        vm.startPrank(alice);
+        asset.approve(poolAddress, assetDeposits);
+        uint256 shares = pool.supply(assetDeposits, alice, true);
+        uint256 taken = pool.take(amountToTake);
+        uint256 shareValue = pool.convertToAssets(shares);
+        console2.log("Before accrue totalAssets now = %d", pool.totalAssets());
+        console2.log("Supplied = %d, shares = %d, shareValue = %d", assetDeposits, shares, shareValue);
+        console2.log("Before accrue alice assets = %d", pool.convertToAssets(pool.balanceOf(alice)));
+        console2.log("Before accrue admin assets = %d", pool.convertToAssets(pool.balanceOf(admin)));
+
+        uint256 supplyRate = pool.baseSupplyAPY();
+        vm.warp(block.timestamp + YEAR);
+        pool.accrueInterest();
+        console2.log("After accrue totalAssets now = %d", pool.totalAssets());
+        console2.log("After accrue alice assets = %d", pool.convertToAssets(pool.balanceOf(alice)));
+        console2.log("After accrue admin assets = %d", pool.convertToAssets(pool.balanceOf(admin)));
+        shareValue = pool.convertToAssets(shares);
+        console2.log("After 1 year\nSupplied = %d, shares = %d, shareValue = %d", assetDeposits, shares, shareValue);
+        uint256 borrowed = pool.accountAssetsBorrowed(alice);
+
+        // // check interest including rounding
+        // assertApproxEqAbs(shareValue, assetDeposits + (assetDeposits * supplyRate / 1e18), 1e1);
+        uint zeroPtOnePct = 0.0001e18;
+        assertApproxEqRel(pool.totalAssets(), assetDeposits + (assetDeposits * supplyRate / 1e18), zeroPtOnePct);
+
+        // check that alice interest = total interest * (1 - feeBPS)
+        assertApproxEqRel(pool.assetBalance(alice), assetDeposits + ((assetDeposits * supplyRate / 1e18) * (1e18 - baseFeeBps)/1e18), zeroPtOnePct);
+        //admin interest =  total interest * feeBPS
+        // assertApproxEqRel(pool.assetBalance(admin), (assetDeposits * supplyRate / 1e18) * baseFeeBps/1e18, zeroPtOnePct);
+
+        // total interest = alice interest + admin interest
+        // assertApproxEqAbs(pool.totalAssets(), pool.assetBalance(alice) + pool.assetBalance(admin), 1);
+        console2.log("[0.0001 e18 = %d]", uint(0.0001e18));
+        console2.log("[taken = %d, borrowed = %d]", taken, borrowed);
+        vm.stopPrank();
+    }
+
+    /// fee test should be:
+    /// borrow 1000 @ 10% interest and 10% reserveFactor
+    /// after 1 year interest earned should be 100, fees collected 100
+    function testFeeAccumulation() public {
+        uint256 assetDeposits = 20000e8;
+        uint256 amountToTake = 1000e8;
+
+        asset.transfer(alice, assetDeposits);
+        
+        vm.startPrank(alice);
+        asset.approve(poolAddress, assetDeposits);
+        pool.supply(assetDeposits, alice, true);
+        /* uint256 taken =  */ pool.take(amountToTake);
+        uint256 borrowedT0 = pool.borrowed();
+        vm.warp(block.timestamp + YEAR);
+        pool.accrueInterest();
+        uint256 totalReserveShares = pool.totalReserveShares();
+        uint256 borrowedT1 = pool.borrowed();
+        // uint256 balanceAfter = pool.balanceOf(admin);
+        console2.log("[borrowedT0 = %d, borrowedT1 = %d, diff = %d]", 
+            borrowedT0, borrowedT1, borrowedT1 - borrowedT0);
+        console2.log("fees paid = %d, fee in assets = %d", totalReserveShares, pool.convertToAssets(totalReserveShares));
+        console2.log("[diff = %d, ,admin balance = %d]", (borrowedT1 - borrowedT0), pool.assetBalance(admin));
+        console2.log("[diff*bps = %d, totalSupply = %d, admin balance = %d]", 
+            ud(borrowedT1 - borrowedT0).mul(ud(pool.reserveFactor())).unwrap(), pool.totalSupply(), pool.assetBalance(admin));
+        assertApproxEqAbs(ud(borrowedT1 - borrowedT0).mul(ud(pool.reserveFactor())).unwrap(), pool.assetBalance(admin), 1);
+    }
+}

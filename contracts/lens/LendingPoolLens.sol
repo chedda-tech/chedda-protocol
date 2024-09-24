@@ -35,7 +35,7 @@ contract LendingPoolLens {
         uint256 dailyRewards;
         uint256 rewardsAPY;
         uint256 utilization;
-        uint256 feesPaid;
+        uint256 totalReserveShares;
         uint256 tvl;
         address[] collaterals;
     }
@@ -148,7 +148,7 @@ contract LendingPoolLens {
             totalSuppliedValue += ud(pool.supplied().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
             totalBorrowedValue += ud(pool.borrowed().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
             totalAvailableValue += ud(pool.available().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
-            totalFeesPaid += pool.feesPaid();
+            totalFeesPaid += pool.totalReserveShares();
             tvl += pool.tvl();
         }
         AggregateStats memory stats = AggregateStats({
@@ -218,7 +218,7 @@ contract LendingPoolLens {
             dailyRewards: poolDailyRewards(poolAddress),
             rewardsAPY:poolRewardRate(poolAddress),
             utilization: pool.utilization(),
-            feesPaid: pool.feesPaid(),
+            totalReserveShares: pool.totalReserveShares(),
             tvl: pool.tvl(),
             collaterals: pool.collaterals()
         });

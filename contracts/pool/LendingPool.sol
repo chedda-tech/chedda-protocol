@@ -135,10 +135,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 totalAssets
     );
 
-    /// @notice Emitted when pool share tokens are minted to treasury to cover fees.
+    /// @notice Emitted when pool share tokens are minted to reserve to cover fees.
     /// @param caller Caller of function that triggered event
     /// @param amountMinted The token amount minted
-    event MintToTreasury(address indexed caller, uint256 amountMinted);
+    event MintToReserve(address indexed caller, uint256 amountMinted);
 
     /// @notice Emitted when the rewards gauge is set
     /// @param gauge The gauge address.
@@ -226,7 +226,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// state vars
     uint256 public supplied;
-    uint256 public feesPaid;
+
+    /// @dev lifetime shares minted to reserve
+    uint256 public totalReserveShares;
 
     string public characterization;
 
@@ -270,18 +272,20 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev The amount of asset token that has been deposited as collateral
     uint256 private _assetCollateralDeposited;
 
-
     /// @dev Flag to determine if collateral being deposited has already been counted as asset.
     bool private _assetCounted;
 
     /// @dev timestamp of when interest last accrued
     uint256 private _lastAccrual;
 
+    /// @dev number of seconds in a year. Used to calculate annual interest rates
     uint256 private constant SECONDS_PER_YEAR = 365.25 days;
 
-    uint256 public feeBps = 1e17;
+    /// @dev Percentage of interest that goes to reserve. 1e18 = 100%
+    uint256 public reserveFactor = 1e17;
 
-    address public treasury;
+    /// @dev address to receive reserve funds
+    address public reserve;
 
     ///////////////////////////////////////////////////////////////////////////
     ///                         initialization
@@ -292,10 +296,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address asset;
         address priceFeed;
         address interestRatesModel;
-        address registry;
-        address treasury;
         address owner;
-        uint256 feeBps;
+        address registry;
+        address reserve;
+        uint256 reserveFactor;
         CollateralInfo[] collateralTokens;
     }
 
@@ -309,15 +313,15 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             string(abi.encodePacked("ch", ERC20(initParams.asset).symbol()))
         )
     {
-        // TODO: set interest rates strategy externally and pass in as constructor param
         interestRatesModel = IInterestRateModel(initParams.interestRatesModel);
         characterization = initParams.name;
+        reserveFactor = initParams.reserveFactor;
         priceFeed = IPriceFeed(initParams.priceFeed);
         registry = IAddressRegistry(initParams.registry);
         debtToken = new DebtToken(ERC20(initParams.asset), address(this));
         stakingPool = new StakingPool(initParams.registry, address(this));
         gauge = new CheddaLockingGauge(initParams.registry);
-        treasury = initParams.treasury;
+        reserve = initParams.reserve;
         _initialize(initParams.collateralTokens);
     }
 
@@ -835,15 +839,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 borrowRatePerSecond = interestRates.borrowRate / SECONDS_PER_YEAR;
 
         uint256 interest = ud(totalDebt).mul(ud(borrowRatePerSecond * elapsedTime)).unwrap();
-        _addSupplyInterest(interest);
-        uint256 mintAmount = convertToShares(ud(interest).mul(ud(feeBps)).unwrap());
-
         debtToken.addInterest(interest);
-        _mintToTreasury(mintAmount);
+        _addSupplyInterest(interest);
+        uint256 mintAmount = convertToShares(ud(interest).mul(ud(reserveFactor)).unwrap());
 
-        // TODO: check units of debt, supply interest and amount to mint.
-        // _mintToTreasury(interest);
-        
+        _mintToReserve(mintAmount);
+
         _lastAccrual = timestamp;
         emit InterestAccrued(
             msg.sender, 
@@ -858,12 +859,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         supplied += interestAmount;
     }
 
-    function _mintToTreasury(uint256 shares) private {
+    function _mintToReserve(uint256 shares) private {
         // TODO: calculate fees from asset, not shares
-        feesPaid += shares;
-        _mint(treasury, shares);
+        totalReserveShares += shares;
+        _mint(reserve, shares);
 
-        emit MintToTreasury(msg.sender, shares);
+        emit MintToReserve(msg.sender, shares);
     }
 
     ///////////////////////////////////////////////////////////////////////////

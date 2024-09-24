@@ -8,20 +8,20 @@ contract DefaultInterestRateModel is IInterestRateModel {
     uint256 public rateSlope1; // rate of increase when utilization <= targetUtilization
     uint256 public rateSlope2; // rate of increase when utilization > targetUtilization
     uint256 public targetUtilization; // Target utilization rate
-    uint256 public feeBps;  // Protocol fee
+    uint256 public reserveFactor;  // Protocol fee
 
     constructor(
         uint256 _baseBorrowRate,
         uint256 _rateSlope1,
         uint256 _rateSlope2,
         uint256 _targetUtilization,
-        uint256 _feeBps
+        uint256 _reserveFactor
     ) {
         baseBorrowRate = _baseBorrowRate;
         rateSlope1 = _rateSlope1;
         rateSlope2 = _rateSlope2;
         targetUtilization = _targetUtilization;
-        feeBps = _feeBps;
+        reserveFactor = _reserveFactor;
     }
 
     // Calculate the interest rate based on utilization
@@ -37,7 +37,7 @@ contract DefaultInterestRateModel is IInterestRateModel {
             uint256 excessUtilization = utilization - targetUtilization;
             borrowRate = baseBorrowRate + (targetUtilization * rateSlope1) / 1e18 + (excessUtilization * rateSlope2) / 1e18;
         }
-        uint256 feeAmount = (borrowRate * feeBps) / 1e18;
+        uint256 feeAmount = (borrowRate * reserveFactor) / 1e18;
         supplyRate = borrowRate * utilization / 1e18;
         effectiveSupplyRate = (borrowRate - feeAmount) * utilization / 1e18;
         return InterestRates({

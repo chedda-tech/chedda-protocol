@@ -18,7 +18,7 @@ contract MockLendingPool is ILendingPool {
     string public characterization;
 
     uint256 private _tvl;
-    uint256 private _feesPaid;
+    uint256 private _reserveShares;
     uint256 public supplyCap = 1_000_000e18;
     address private _stakingPool;
     address private _gauge;
@@ -53,8 +53,8 @@ contract MockLendingPool is ILendingPool {
         _stakingPool = s;
     }
 
-    function setFeesPaid(uint256 fees) external {
-        _feesPaid = fees;
+    function setReserveShares(uint256 fees) external {
+        _reserveShares = fees;
     }
 
     function setAccountSupplied(address account, uint256 amount) external {
@@ -111,8 +111,8 @@ contract MockLendingPool is ILendingPool {
         return _tvl;
     }
 
-    function feesPaid() external view returns (uint256) {
-        return _feesPaid;
+    function totalReserveShares() external view returns (uint256) {
+        return _reserveShares;
     }
 
     function gauge() external view returns (ILiquidityGauge) {

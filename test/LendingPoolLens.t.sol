@@ -79,16 +79,16 @@ contract LendingPoolLensTest is Test {
     }
 
     function testSinglePoolStats() external {
-        uint256 feesPaid = 120e18;
+        uint256 totalReserveShares = 120e18;
         uint256 tvl = 1_000_000e18;
         pool1.setTvl(tvl);
-        pool1.setFeesPaid(feesPaid);
+        pool1.setReserveShares(totalReserveShares);
         LendingPoolLens.PoolStats memory stats = lens.getPoolStats(address(pool1));
         assertEq(stats.pool, address(pool1));
         assertEq(stats.asset, address(asset1));
         assertEq(stats.characterization, name1);
         assertEq(stats.tvl, tvl);
-        assertEq(stats.feesPaid, feesPaid);
+        assertEq(stats.totalReserveShares, totalReserveShares);
         console2.log("Stats asset is %s ", stats.asset);
 
         vm.expectRevert(
