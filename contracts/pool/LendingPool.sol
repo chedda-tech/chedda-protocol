@@ -65,17 +65,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         int256 value;
     }
 
-    struct PoolParams {
-        uint256 supplyCap;
-        uint256 minBorrowAmount;
-        uint256 maxBorrowAmount;
-    }
-
-    struct PoolConfig {
-        uint256 supplyCap;
-        uint256 feeRatio;
-        address feeRecipient;
-    }
     /// Events
 
     /// @notice Emitted when collateral is added
@@ -230,6 +219,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev lifetime shares minted to reserve
     uint256 public totalReserveShares;
 
+    /// @dev display name of thi spool
     string public characterization;
 
     /// Debt and interest
