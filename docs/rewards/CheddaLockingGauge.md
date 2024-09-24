@@ -143,6 +143,13 @@ contract IAddressRegistry registry
 contract ICheddaToken token
 ```
 
+The token locked to this gauge.
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+
 ### rewardPerShare
 
 ```solidity

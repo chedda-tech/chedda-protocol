@@ -26,16 +26,16 @@ uint256 rateSlope2
 uint256 targetUtilization
 ```
 
-### feeBps
+### reserveFactor
 
 ```solidity
-uint256 feeBps
+uint256 reserveFactor
 ```
 
 ### constructor
 
 ```solidity
-constructor(uint256 _baseBorrowRate, uint256 _rateSlope1, uint256 _rateSlope2, uint256 _targetUtilization, uint256 _feeBps) public
+constructor(uint256 _baseBorrowRate, uint256 _rateSlope1, uint256 _rateSlope2, uint256 _targetUtilization, uint256 _reserveFactor) public
 ```
 
 ### calculateInterestRates

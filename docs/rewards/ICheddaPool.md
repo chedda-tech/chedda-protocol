@@ -2,6 +2,18 @@
 
 ## ICheddaPool
 
+### setGauge
+
+```solidity
+function setGauge(address gauge) external
+```
+
+### setStakingPool
+
+```solidity
+function setStakingPool(address stakingPool) external
+```
+
 ### gauge
 
 ```solidity

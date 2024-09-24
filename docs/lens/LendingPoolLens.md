@@ -23,7 +23,7 @@ struct PoolStats {
   uint256 dailyRewards;
   uint256 rewardsAPY;
   uint256 utilization;
-  uint256 feesPaid;
+  uint256 totalReserveShares;
   uint256 tvl;
   address[] collaterals;
 }

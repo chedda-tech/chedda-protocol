@@ -30,6 +30,20 @@ struct Lock {
 
 ## ILockingGauge
 
+### token
+
+```solidity
+function token() external view returns (contract ICheddaToken)
+```
+
+The token locked to this gauge.
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | contract ICheddaToken | The token address. |
+
 ### totalWeight
 
 ```solidity

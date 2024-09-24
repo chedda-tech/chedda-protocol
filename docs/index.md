@@ -58,7 +58,7 @@ struct PoolStats {
   uint256 baseBorrowAPY;
   uint256 maxBorrowAPY;
   uint256 utilization;
-  uint256 feesPaid;
+  uint256 totalReserveShares;
   uint256 tvl;
   address[] collaterals;
 }
@@ -466,10 +466,10 @@ function utilization() external view returns (uint256)
 function tvl() external view returns (uint256)
 ```
 
-### feesPaid
+### totalReserveShares
 
 ```solidity
-function feesPaid() external view returns (uint256)
+function totalReserveShares() external view returns (uint256)
 ```
 
 ### priceFeed
@@ -796,10 +796,10 @@ uint256 supplied
 
 state vars
 
-### feesPaid
+### totalReserveShares
 
 ```solidity
-uint256 feesPaid
+uint256 totalReserveShares
 ```
 
 ### characterization

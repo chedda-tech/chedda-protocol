@@ -149,7 +149,7 @@ Emitted when borrowed assets are repaid.
 ### InterestAccrued
 
 ```solidity
-event InterestAccrued(address caller, uint256 borrowInterest, uint256 supplyInterest, uint256 totalDebt, uint256 totalAssets)
+event InterestAccrued(address caller, uint256 interest, uint256 totalDebt, uint256 totalAssets)
 ```
 
 Emitted when interest is accrued
@@ -161,18 +161,17 @@ _called on all state changing functions._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | caller | address | indexed param of the caller of the action that triggered interest accrual. |
-| borrowInterest | uint256 | The amount of borrow interest added. |
-| supplyInterest | uint256 | The amount of supply interest added. |
+| interest | uint256 | The amount of interest accrued. |
 | totalDebt | uint256 | The total amount debt pending. |
 | totalAssets | uint256 | The total amount of assets including interest. |
 
-### MintToTreasury
+### MintToReserve
 
 ```solidity
-event MintToTreasury(address caller, uint256 amountMinted)
+event MintToReserve(address caller, uint256 amountMinted)
 ```
 
-Emitted when pool share tokens are minted to treasury to cover fees.
+Emitted when pool share tokens are minted to reserve to cover fees.
 
 #### Parameters
 
@@ -194,6 +193,21 @@ Emitted when the rewards gauge is set
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | gauge | address | The gauge address. |
+| caller | address | The account that set the gauge. |
+
+### StakingPoolSet
+
+```solidity
+event StakingPoolSet(address pool, address caller)
+```
+
+Emitted when the staking pool for this lending pool is set
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| pool | address | The pool address. |
 | caller | address | The account that set the gauge. |
 
 ### SupplyCapSet
@@ -338,11 +352,13 @@ uint256 supplied
 
 state vars
 
-### feesPaid
+### totalReserveShares
 
 ```solidity
-uint256 feesPaid
+uint256 totalReserveShares
 ```
+
+_lifetime shares minted to reserve_
 
 ### characterization
 
@@ -448,17 +464,21 @@ uint256 supplyCap
 
 _pool asset supply cap_
 
-### feeBps
+### reserveFactor
 
 ```solidity
-uint256 feeBps
+uint256 reserveFactor
 ```
 
-### treasury
+_Percentage of interest that goes to reserve. 1e18 = 100%_
+
+### reserve
 
 ```solidity
-address treasury
+address reserve
 ```
+
+_address to receive reserve funds_
 
 ### InitParams
 
@@ -470,10 +490,10 @@ struct InitParams {
   address asset;
   address priceFeed;
   address interestRatesModel;
-  address registry;
-  address treasury;
   address owner;
-  uint256 feeBps;
+  address registry;
+  address reserve;
+  uint256 reserveFactor;
   struct LendingPool.CollateralInfo[] collateralTokens;
 }
 ```
@@ -494,6 +514,17 @@ Set the rewards gauge for this pool.
 
 _Can only be called by contract owner
 Emits GaugeSet(gauge, caller)._
+
+### setStakingPool
+
+```solidity
+function setStakingPool(address sPool) external
+```
+
+Set the staking pool for this pool.
+
+_Can only be called by contract owner
+Emits StakingPoolSet(sPool, caller)._
 
 ### setSupplyCap
 

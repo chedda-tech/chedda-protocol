@@ -3,6 +3,7 @@
 ## StakingPool
 
 Manages staking tokens and rewards.
+Use cases: LendigPool LP staking, $CHEDDA token LP token.
 
 ### Staked
 
