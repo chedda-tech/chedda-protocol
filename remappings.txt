@@ -8,4 +8,5 @@ prb-math/=lib/prb-math/src/
 LayerZero-v2/=lib/LayerZero-v2/
 @layerzero-v2/=lib/LayerZero-v2/oapp/
 @layerzerolabs/lz-evm-protocol-v2/=lib/LayerZero-v2/protocol/
+@layerzerolabs/examples/=lib/solidity-examples/contracts/
 ds-test/=lib/LayerZero-v2/lib/forge-std/lib/ds-test/src/
