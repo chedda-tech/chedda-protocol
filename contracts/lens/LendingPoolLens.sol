@@ -246,8 +246,7 @@ contract LendingPoolLens {
                 token: collateral,
                 decimals: collateralDecimals,
                 amount: collateralAmount,
-                value: pool.getTokenCollateralValue(collateral, collateralAmount),
-                tokenIds: new uint256[](0)
+                value: pool.getTokenMarketValue(collateral, collateralAmount),
             });
             collateralDeposited[i] = deposited;
         }

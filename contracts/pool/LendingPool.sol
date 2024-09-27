@@ -41,13 +41,18 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     }
 
     /// @notice Holds information about the type of collateral held in vault.
-    /// @param token The address of the token
-    /// @param collateralFactor The collateral factor.
-    /// @param tokenType The type of token (ERC20, ERC721, ERC1155)
+    /// @param ltv The max loan to value ration for this collateral. 1e18 = 100%
+    /// @param liqThreshold The liquidation threshold
+    /// @param liqPenalty The liquidation penalty
     struct CollateralInfo {
+        uint256 ltv;
+        uint256 liqThreshold;
+        uint256 liqPenalty;
+    }
+
+    struct CollateralInfoInit {
         address token;
-        uint256 collateralFactor;
-        TokenType tokenType;
+        CollateralInfo info;
     }
 
     /// @dev Information about collateral deposited to the pool.
@@ -125,9 +130,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     );
 
     /// @notice Emitted when pool share tokens are minted to reserve to cover fees.
-    /// @param caller Caller of function that triggered event
-    /// @param amountMinted The token amount minted
-    event MintToReserve(address indexed caller, uint256 amountMinted);
+    /// @param caller Caller of function that triggered event.
+    /// @param shares The amount of shares to mint.
+    /// @param amount The corresponding amount of asset for shares minted.
+    event MintToReserve(address indexed caller, uint256 shares, uint256 amount);
 
     /// @notice Emitted when the rewards gauge is set
     /// @param gauge The gauge address.
@@ -207,7 +213,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     error CheddaPool_AsssetMustBeWithdrawn();
 
     /// @dev Thrown when withdrawing or depositing zero shares
-    error CheddaPool_ZeroShsares();
+    error CheddaPool_ZeroShares();
 
     using MathLib for uint256;
     using SafeCast for int256;
@@ -243,7 +249,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     mapping(address => TokenType) public collateralTokenTypes;
 
     // Determines Loan to Value ratio for token
-    mapping(address => uint256) public collateralFactor;
+    // TODO: remove collateralFactor
+    // mapping(address => uint256) public collateralFactor;
+    mapping(address => CollateralInfo) public collateralInfo;
 
     // account => token => amount
     mapping(address => mapping(address => CollateralDeposit))
@@ -256,13 +264,18 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev The max value for account health. This is returned if user has no debt.
     uint256 public constant maxAccountHealth = 100e18;
 
-    /// @dev pool asset supply cap
+    /// @dev Pool asset supply cap
     uint256 public supplyCap;
+
+    /// @dev Borrow cap per collateral token. This represents the max amount of asset
+    /// that can be borrowed with a given collateral token.
+    mapping(address => uint256) public borrowCap;
 
     /// @dev The amount of asset token that has been deposited as collateral
     uint256 private _assetCollateralDeposited;
 
     /// @dev Flag to determine if collateral being deposited has already been counted as asset.
+    /// TODO: Review the use of this flag. Doesn't seem necessary
     bool private _assetCounted;
 
     /// @dev timestamp of when interest last accrued
@@ -290,7 +303,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address registry;
         address reserve;
         uint256 reserveFactor;
-        CollateralInfo[] collateralTokens;
+        CollateralInfoInit[] collaterals;
     }
 
     constructor(
@@ -312,21 +325,16 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         stakingPool = new StakingPool(initParams.registry, address(this));
         gauge = new CheddaLockingGauge(initParams.registry);
         reserve = initParams.reserve;
-        _initialize(initParams.collateralTokens);
+        _initCollaterals(collaterals);
     }
 
-    function _initialize(CollateralInfo[] memory _collateralTokens) private {
-        _setCollateralTokenList(_collateralTokens);
-    }
-
-    /// @notice Sets the list of tokens that can be used as collateral in this pool.
-    function _setCollateralTokenList(CollateralInfo[] memory list) private {
-        for (uint256 i = 0; i < list.length; i++) {
-            address collateral = list[i].token;
+    /// @dev initializes collateral tokens
+    function _initCollaterals(CollateralInfoInit[] memory collaterals) private {
+        for (uint256 i = 0; i < collaterals.length; i++) {
+            address collateral = collaterals[i].token;
             collateralTokenList.push(collateral);
             collateralAllowed[collateral] = true;
-            collateralTokenTypes[collateral] = list[i].tokenType;
-            collateralFactor[collateral] = list[i].collateralFactor;
+            collateralInfo[collaterals[i].token] = collaterals[i].info;
         }
     }
 
@@ -408,9 +416,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             _removeCollateral(address(asset), collateralToRemove, false);
             _assetCollateralDeposited -= collateralToRemove;
         }
-        if (shares == 0) {
-            revert CheddaPool_ZeroShsares();
-        }
+        require(shares != 0, CheddaPool_ZeroShares());
         _updatePoolState();
         return shares;
     }
@@ -616,21 +622,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         emit CollateralRemoved(token, account, TokenType.ERC20, amount);
     }
 
-    /// @notice Get the token IDs deposited by this account
-    /// @dev `collateral` parameter should be an ERC-721 token.
-    /// @param account The account to check for
-    /// @param collateral The collateral to check for
-    /// @return tokenIds the token ids from the `collateral` NFT deposited by `account`.
-    function accountCollateralTokenIds(
-        address account,
-        address collateral
-    ) external view returns (uint256[] memory) {
-        CollateralDeposit memory c = accountCollateralDeposited[account][
-            collateral
-        ];
-        return c.tokenIds;
-    }
-
     /// @notice Returns the total value of collateral deposited by an account.
     /// @param account The account to get collateral value for.
     /// @return totalValue The value of collateral deposited by account.
@@ -644,7 +635,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
                 account
             ][token];
             if (collateral.amount != 0) {
-                uint256 collateralValue = getTokenCollateralValue(
+                uint256 collateralValue = tokenMaxLoanValue(
                     token,
                     collateral.amount
                 );
@@ -747,9 +738,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 amount
     ) public view returns (uint256) {
         int256 price = priceFeed.readPrice(token, 0);
-        // if (price < 0) {
-        //     revert CheddaPool_InvalidPrice(price, token);
-        // }
+        if (price < 0) {
+            return 0;
+        }
         return
             ud(price.toUint256().normalized(priceFeed.decimals(), 18))
                 .mul(ud(amount.normalized(ERC20(token).decimals(), 18)))
@@ -761,20 +752,20 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @param token The token to return value for.
     /// @param amount The amount of token to calculate the value of.
     /// @return value The collateral value of `amount` of `token`.
-    function getTokenCollateralValue(
+    function tokenMaxLoanValue(
         address token,
         uint256 amount
     ) public view returns (uint256) {
         int256 price = priceFeed.readPrice(token, 0);
-        // if (price < 0) {
-        //     revert CheddaPool_InvalidPrice(price, token);
-        // }
+        if (price <= 0) {
+            return 0;
+        }
         return
             (
                 ud(price.toUint256().normalized(priceFeed.decimals(), 18)).mul(
                     ud(amount.normalized(ERC20(token).decimals(), 18))
                 )
-            ).mul(ud(collateralFactor[token])).unwrap();
+            ).mul(ud(collateralInfo[token]).ltv).unwrap();
     }
 
     /// @dev take a snapshot of the current pool state.
@@ -799,8 +790,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// 1. Check that funds are available.
     function _validateBorrow(address, uint256 amount) private view {
         uint256 amountAvailable = available();
-        if (amountAvailable < amount) {
-            revert CheddaPool_InsufficientAssetBalance(amountAvailable, amount);
+        require((amountAvailable >= amount),
+            revert CheddaPool_InsufficientAssetBalance(amountAvailable, amount));
         }
     }
 
@@ -827,13 +818,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         }
         // interestRates already updated
         uint256 borrowRatePerSecond = interestRates.borrowRate / SECONDS_PER_YEAR;
-
         uint256 interest = ud(totalDebt).mul(ud(borrowRatePerSecond * elapsedTime)).unwrap();
+
         debtToken.addInterest(interest);
         _addSupplyInterest(interest);
-        uint256 mintAmount = convertToShares(ud(interest).mul(ud(reserveFactor)).unwrap());
-
-        _mintToReserve(mintAmount);
+        _mintToReserve(ud(interest).mul(ud(reserveFactor)).unwrap());
 
         _lastAccrual = timestamp;
         emit InterestAccrued(
@@ -849,12 +838,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         supplied += interestAmount;
     }
 
-    function _mintToReserve(uint256 shares) private {
-        // TODO: calculate fees from asset, not shares
+    function _mintToReserve(uint256 reserveAmount) private {
+        uint256 shares = convertToShares(reserveAmount);
         totalReserveShares += shares;
         _mint(reserve, shares);
 
-        emit MintToReserve(msg.sender, shares);
+        emit MintToReserve(msg.sender, shares, reserveAmount);
     }
 
     ///////////////////////////////////////////////////////////////////////////

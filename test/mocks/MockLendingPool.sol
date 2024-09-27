@@ -155,7 +155,7 @@ contract MockLendingPool is ILendingPool {
         return _accountCollateralAmount[account];
     }
 
-    function getTokenCollateralValue(address, uint256) external pure returns (uint256) {
+    function tokenMaxLoanValue(address, uint256) external pure returns (uint256) {
         return 100e18;
     }
 

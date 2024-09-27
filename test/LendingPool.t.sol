@@ -459,7 +459,7 @@ contract LendingPoolTest is Test {
         asset.transfer(bob, assetAmount);
 
         vm.startPrank(bob);
-        vm.expectRevert(LendingPool.CheddaPool_ZeroShsares.selector);
+        vm.expectRevert(LendingPool.CheddaPool_ZeroShares.selector);
         pool.withdraw(0, bob, bob);
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, bob, true);
