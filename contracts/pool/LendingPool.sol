@@ -11,7 +11,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {DebtToken} from "../tokens/DebtToken.sol";
 import {IInterestRateModel, InterestRates} from "../interestrates/IInterestRateModel.sol";
 import {IPriceFeed} from "../oracle/IPriceFeed.sol";
-import {ILendingPool} from "./ILendingPool.sol";
+import {ILendingPool, CollateralInfo, CollateralInfoInit, TokenType, CollateralDeposit, AccountCollateralValue} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
 import {MathLib} from "../library/MathLib.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
@@ -30,45 +30,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// TODO:
     /// 1. collateralize while supplying.
     /// 2. collateralize/uncollateralize after supply
-
-    /// @dev The type of the collateral.
-    /// Options are Invalid, ERC20, ERC721 and ERC1155.
-    enum TokenType {
-        Invalid,
-        ERC20,
-        ERC721,
-        ERC155
-    }
-
-    /// @notice Holds information about the type of collateral held in vault.
-    /// @param ltv The max loan to value ration for this collateral. 1e18 = 100%
-    /// @param liqThreshold The liquidation threshold
-    /// @param liqPenalty The liquidation penalty
-    struct CollateralInfo {
-        uint256 ltv;
-        uint256 liqThreshold;
-        uint256 liqPenalty;
-    }
-
-    struct CollateralInfoInit {
-        address token;
-        CollateralInfo info;
-    }
-
-    /// @dev Information about collateral deposited to the pool.
-    struct CollateralDeposit {
-        address token;
-        TokenType tokenType;
-        uint256 amount;
-        uint256[] tokenIds;
-    }
-
-    /// @dev The value of a collateral token deposited by an account.
-    struct AccountCollateralValue {
-        address token;
-        uint256 amount;
-        int256 value;
-    }
 
     /// Events
 
@@ -251,7 +212,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     // Determines Loan to Value ratio for token
     // TODO: remove collateralFactor
     // mapping(address => uint256) public collateralFactor;
-    mapping(address => CollateralInfo) public collateralInfo;
+    mapping(address => CollateralInfo) public _collateralInfo;
 
     // account => token => amount
     mapping(address => mapping(address => CollateralDeposit))
@@ -324,17 +285,20 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         debtToken = new DebtToken(ERC20(initParams.asset), address(this));
         stakingPool = new StakingPool(initParams.registry, address(this));
         gauge = new CheddaLockingGauge(initParams.registry);
+        icm = initParams.icm;
         reserve = initParams.reserve;
-        _initCollaterals(collaterals);
+        _initCollaterals(initParams.collaterals);
+
+        poolConfig = initParams;
     }
 
     /// @dev initializes collateral tokens
-    function _initCollaterals(CollateralInfoInit[] memory collaterals) private {
-        for (uint256 i = 0; i < collaterals.length; i++) {
-            address collateral = collaterals[i].token;
+    function _initCollaterals(CollateralInfoInit[] memory cInit) private {
+        for (uint256 i = 0; i < cInit.length; i++) {
+            address collateral = cInit[i].token;
             collateralTokenList.push(collateral);
             collateralAllowed[collateral] = true;
-            collateralInfo[collaterals[i].token] = collaterals[i].info;
+            _collateralInfo[cInit[i].token] = cInit[i].info;
         }
     }
 
@@ -765,7 +729,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
                 ud(price.toUint256().normalized(priceFeed.decimals(), 18)).mul(
                     ud(amount.normalized(ERC20(token).decimals(), 18))
                 )
-            ).mul(ud(collateralInfo[token]).ltv).unwrap();
+            ).mul(ud(_collateralInfo[token].ltv)).unwrap();
+    }
+
+    /// @notice Returns the collateral configuration for a given token;
+    /// @param token The token to return collateral info for.
+    /// @return The `CollateralInfo` for requested token.
+    function collateralInfo(address token) external view returns (CollateralInfo memory) {
+        return _collateralInfo[token];
     }
 
     /// @dev take a snapshot of the current pool state.
@@ -790,9 +761,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// 1. Check that funds are available.
     function _validateBorrow(address, uint256 amount) private view {
         uint256 amountAvailable = available();
-        require((amountAvailable >= amount),
-            revert CheddaPool_InsufficientAssetBalance(amountAvailable, amount));
-        }
+        require(amountAvailable >= amount,
+            CheddaPool_InsufficientAssetBalance(amountAvailable, amount));
     }
 
     // TODO: Interest accrual

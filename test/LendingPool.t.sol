@@ -10,6 +10,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
 import {DefaultInterestRateModel} from "../contracts/interestrates/DefaultInterestRateModel.sol";
 import {LendingPool} from "../contracts/pool/LendingPool.sol";
+import {ILendingPool, CollateralInfo, CollateralInfoInit, TokenType} from "../contracts/pool/ILendingPool.sol";
 import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 import {MockSteadyInterestRatesModel} from "./mocks/MockSteadyInterestRatesModel.sol";
 import {MathLib} from "../contracts/library/MathLib.sol";
@@ -61,21 +62,30 @@ contract LendingPoolTest is Test {
         priceFeed.setPrice(c1Address, 50e8);
         priceFeed.setPrice(c2Address, 25e8);
 
-        LendingPool.CollateralInfo[] memory collateralTypes = new LendingPool.CollateralInfo[](3);
-        collateralTypes[0] = LendingPool.CollateralInfo({
+        CollateralInfoInit[] memory collateralTypes = new CollateralInfoInit[](3);
+        collateralTypes[0] = CollateralInfoInit({
             token: address(asset),
-            collateralFactor: assetFactor,
-            tokenType: LendingPool.TokenType.ERC20
+            info: CollateralInfo({
+                ltv: assetFactor,
+                liqThreshold: 0.5e18,
+                liqPenalty: 0.1e18
+            })
         });
-        collateralTypes[1] = LendingPool.CollateralInfo({
+        collateralTypes[1] = CollateralInfoInit({
             token: c1Address,
-            collateralFactor: c1Factor,
-            tokenType: LendingPool.TokenType.ERC20
+            info: CollateralInfo({
+                ltv: c1Factor,
+                liqThreshold: 0.5e18,
+                liqPenalty: 0.1e18
+            })
         });
-        collateralTypes[2] = LendingPool.CollateralInfo({
+        collateralTypes[2] = CollateralInfoInit({
             token: c2Address,
-            collateralFactor: c2Factor,
-            tokenType: LendingPool.TokenType.ERC20
+            info: CollateralInfo({
+                ltv: c2Factor,
+                liqThreshold: 0.5e18,
+                liqPenalty: 0.1e18
+            })
         });
 
         MockSteadyInterestRatesModel steadyRates = new MockSteadyInterestRatesModel(0.1e18, 0.05e18, 0.1e18);
@@ -90,7 +100,8 @@ contract LendingPoolTest is Test {
             registry: address(registry),
             reserve: admin,
             reserveFactor: baseFeeBps,
-            collateralTokens: collateralTypes
+            icm: false,
+            collaterals: collateralTypes
         });
         pool = new LendingPool(params);
 
@@ -110,8 +121,8 @@ contract LendingPoolTest is Test {
         assertEq(pool.collateralAllowed(address(asset)), true);
         assertEq(pool.collateralAllowed(c1Address), true);
         assertEq(pool.collateralAllowed(c2Address), true);
-        assertEq(pool.collateralFactor(c1Address), c1Factor);
-        assertEq(pool.collateralFactor(c2Address), c2Factor);
+        assertEq(pool.collateralInfo(c1Address).ltv, c1Factor);
+        assertEq(pool.collateralInfo(c2Address).ltv, c2Factor);
         address[] memory collaterals = pool.collaterals();
         assertEq(collaterals[0], address(asset));
         assertEq(collaterals[1], c1Address);

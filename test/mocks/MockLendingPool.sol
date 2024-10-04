@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPriceFeed } from "../../contracts/oracle/IPriceFeed.sol";
-import { ILendingPool } from "../../contracts/pool/ILendingPool.sol";
+import { ILendingPool, CollateralInfo } from "../../contracts/pool/ILendingPool.sol";
 import { IInterestRateModel } from "../../contracts/interestrates/IInterestRateModel.sol";
 import { ILiquidityGauge } from "../../contracts/gauge/ILiquidityGauge.sol";
 import { DebtToken } from "../../contracts/tokens/DebtToken.sol";
@@ -169,5 +169,13 @@ contract MockLendingPool is ILendingPool {
 
     function recapitalize() external pure returns (uint256) {
         return 0;
+    }
+
+    function collateralInfo(address) external pure returns (CollateralInfo memory) {
+        return CollateralInfo({
+            ltv: 0,
+            liqThreshold: 0,
+            liqPenalty: 0
+        });
     }
 }

@@ -7,6 +7,45 @@ import { ILiquidityGauge } from "../gauge/ILiquidityGauge.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { DebtToken } from "../tokens/DebtToken.sol";
 
+ /// @dev The type of the collateral.
+/// Options are Invalid, ERC20, ERC721 and ERC1155.
+enum TokenType {
+    Invalid,
+    ERC20,
+    ERC721,
+    ERC155
+}
+
+/// @notice Holds information about the type of collateral held in vault.
+/// @param ltv The max loan to value ration for this collateral. 1e18 = 100%
+/// @param liqThreshold The liquidation threshold
+/// @param liqPenalty The liquidation penalty
+struct CollateralInfo {
+    uint256 ltv;
+    uint256 liqThreshold;
+    uint256 liqPenalty;
+}
+
+struct CollateralInfoInit {
+    address token;
+    CollateralInfo info;
+}
+
+/// @dev Information about collateral deposited to the pool.
+struct CollateralDeposit {
+    address token;
+    TokenType tokenType;
+    uint256 amount;
+    uint256[] tokenIds;
+}
+
+/// @dev The value of a collateral token deposited by an account.
+struct AccountCollateralValue {
+    address token;
+    uint256 amount;
+    int256 value;
+}
+
 interface ILendingPool {
     function poolAsset() external view returns (ERC20);
     function debtToken() external view returns (DebtToken);
@@ -23,7 +62,7 @@ interface ILendingPool {
     function priceFeed() external view returns (IPriceFeed);
     function interestRatesModel() external view returns (IInterestRateModel);
     function collaterals() external view returns (address [] memory);
-    function collateralFactor(address) external view returns (uint256);
+    function collateralInfo(address) external view returns (CollateralInfo memory);
     function tokenCollateralDeposited(address) external view returns (uint256);
     function accountHealth(address account) external view returns (uint256);
     function assetBalance(address account) external view returns (uint256);

@@ -137,14 +137,14 @@ contract LendingPoolLensTest is Test {
         assertEq(collateralInfo[0].amountDeposited, pool1.tokenCollateralDeposited(address(collateral1)));
         assertEq(collateralInfo[0].value, 
         pool1.getTokenMarketValue(address(collateral1), pool1.tokenCollateralDeposited(address(collateral1))));
-        assertEq(collateralInfo[0].collateralFactor, pool1.collateralFactor(address(collateral1)));
+        assertEq(collateralInfo[0].ltv, pool1.collateralInfo(address(collateral1)).ltv);
 
         assertEq(collateralInfo[1].collateral, address(collateral2));
         assertEq(collateralInfo[1].decimals, collateral2.decimals());
         assertEq(collateralInfo[1].amountDeposited, pool1.tokenCollateralDeposited(address(collateral2)));
         assertEq(collateralInfo[1].value, 
         pool1.getTokenMarketValue(address(collateral2), pool1.tokenCollateralDeposited(address(collateral2))));
-        assertEq(collateralInfo[1].collateralFactor, pool1.collateralFactor(address(collateral2)));
+        assertEq(collateralInfo[1].ltv, pool1.collateralInfo(address(collateral2)).ltv);
     }
 
     function testPoolMarketInfo() external view {

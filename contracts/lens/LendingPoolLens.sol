@@ -5,7 +5,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ILendingPool } from "../pool/ILendingPool.sol";
+import { ILendingPool, CollateralInfo } from "../pool/ILendingPool.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { MathLib } from "../library/MathLib.sol";
 import { IAddressRegistry } from "../config/IAddressRegistry.sol";
@@ -54,7 +54,9 @@ contract LendingPoolLens {
         uint8 decimals;
         uint256 amountDeposited;
         uint256 value;
-        uint256 collateralFactor;
+        uint256 ltv;
+        uint256 liqThreshold;
+        uint256 liqPenalty;
     }
 
     struct LendingPoolInfo {
@@ -69,7 +71,6 @@ contract LendingPoolLens {
         uint8 decimals;
         uint256 amount;
         uint256 value;
-        uint256[] tokenIds;
     }
 
     struct AccountInfo {
@@ -246,7 +247,7 @@ contract LendingPoolLens {
                 token: collateral,
                 decimals: collateralDecimals,
                 amount: collateralAmount,
-                value: pool.getTokenMarketValue(collateral, collateralAmount),
+                value: pool.getTokenMarketValue(collateral, collateralAmount)
             });
             collateralDeposited[i] = deposited;
         }
@@ -306,12 +307,15 @@ contract LendingPoolLens {
         for (uint256 i = 0; i < collaterals.length; i++) {
             collateral = collaterals[i];
             uint256 collateralAmount = pool.tokenCollateralDeposited(collateral);
+            CollateralInfo memory cInfo = pool.collateralInfo(collateral);
             infoList[i] = PoolCollateralInfo({
                 collateral: collateral,
                 decimals: ERC20(collateral).decimals(),
                 amountDeposited: collateralAmount,
                 value: pool.getTokenMarketValue(collateral, collateralAmount),
-                collateralFactor: pool.collateralFactor(collateral)
+                ltv: cInfo.ltv,
+                liqThreshold: cInfo.liqThreshold,
+                liqPenalty: cInfo.liqPenalty
             });
         }
         return infoList;
