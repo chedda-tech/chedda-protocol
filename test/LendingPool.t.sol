@@ -100,6 +100,7 @@ contract LendingPoolTest is Test {
             registry: address(registry),
             reserve: admin,
             reserveFactor: baseFeeBps,
+            stalePriceThreshold: 3600,
             icm: false,
             collaterals: collateralTypes
         });
@@ -645,9 +646,10 @@ contract LendingPoolTest is Test {
     }
 
     function _calculateAssetValue(address assetAddress, uint256 amount) internal view returns (uint256) {
+        (int256 assetPrice, ) = priceFeed.readPrice(assetAddress, 0);
         return ud(
             amount.normalized(MockERC20(assetAddress).decimals(), 18))
-            .mul(ud(priceFeed.readPrice(assetAddress, 0).toUint256().normalized(priceFeed.decimals(), 18))).unwrap();
+            .mul(ud(assetPrice.toUint256().normalized(priceFeed.decimals(), 18))).unwrap();
     }
 
     function _calculateCollateralValue(

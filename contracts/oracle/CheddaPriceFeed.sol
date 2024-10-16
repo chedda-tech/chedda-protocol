@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.3
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -13,10 +13,10 @@ contract CheddaPriceFeed is IPriceFeed, Ownable {
     mapping(address => string) private _symbols;
 
     uint8 public decimals;
+
     constructor(uint8 _decimals) Ownable(msg.sender) {
         decimals = _decimals;
     }
-    
 
     /// @notice Sets the priceed feed for a token
     /// @param _token The token address
@@ -30,11 +30,12 @@ contract CheddaPriceFeed is IPriceFeed, Ownable {
     function readPrice(
         address _token,
         uint256 
-    ) public view override returns (int price) {
+    ) public view override returns (int price, uint256 lastUpdated) {
         if (_token == address(0)) {
             revert ZeroAddress();
         }
         price = _prices[_token];
+        lastUpdated = block.timestamp;
     }
 
     function token() external pure returns (address) {

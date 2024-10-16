@@ -67,28 +67,13 @@ contract AccountActor {
         uint256 totalSuppliedValue;
         uint256 totalBorrowedValue;
         uint256 totalLockedValue;
+        AccountPoolSummary memory summary;
 
         for (uint256 i = 0; i < pools.length; i++) {
-            ILendingPool pool = ILendingPool(pools[i]);
-            uint8 assetDecimals = pool.poolAsset().decimals();
-            uint256 normalizedAssetPrice = pool
-                .priceFeed()
-                .readPrice(address(pool.poolAsset()), 0)
-                .toUint256()
-                .normalized(pool.priceFeed().decimals(), 18);
-            uint256 supplied = pool.assetBalance(account);
-            uint256 borrowed = pool.debtToken().convertToAssets(
-                pool.debtToken().balanceOf(account)
-            );
-            totalSuppliedValue += ud(supplied.normalized(assetDecimals, 18))
-                .mul(ud(normalizedAssetPrice))
-                .unwrap();
-            totalBorrowedValue += ud(borrowed.normalized(assetDecimals, 18))
-                .mul(ud(normalizedAssetPrice))
-                .unwrap();
-            totalLockedValue += _getCheddaTokenValue(
-                ICheddaPool(pools[i]).gauge().getLock(account).amount
-            );
+             summary = _accountPoolSummary(account, pools[i]);
+            totalSuppliedValue += summary.supplied;
+            totalBorrowedValue += summary.borrowed;
+            totalLockedValue += summary.locked;
         }
 
         return
@@ -102,12 +87,38 @@ contract AccountActor {
             });
     }
 
+    struct AccountPoolSummary {
+        uint256 supplied;
+        uint256 borrowed;
+        uint256 locked;
+    }
+    function _accountPoolSummary(address account, address poolAddress) private view returns (AccountPoolSummary memory) {
+        AccountPoolSummary memory result;
+        ILendingPool pool = ILendingPool(poolAddress);
+            uint8 assetDecimals = pool.poolAsset().decimals();
+            (int256 assetPrice, ) = pool.priceFeed().readPrice(address(pool.poolAsset()), 0);
+            uint256 normalizedAssetPrice = assetPrice
+                .toUint256()
+                .normalized(pool.priceFeed().decimals(), 18);
+            result.supplied = ud(pool.assetBalance(account).normalized(assetDecimals, 18))
+                .mul(ud(normalizedAssetPrice))
+                .unwrap();
+            result.borrowed = ud(pool.debtToken().convertToAssets(
+                pool.debtToken().balanceOf(account)).normalized(assetDecimals, 18))
+                .mul(ud(normalizedAssetPrice))
+                .unwrap();
+            result.locked = _getCheddaTokenValue(
+                ICheddaPool(poolAddress).gauge().getLock(account).amount
+            ); 
+            return result;
+    }
+
     function _getCheddaTokenValue(
         uint256 amount
     ) private view returns (uint256) {
         IPriceFeed cheddaPriceFeed = IPriceFeed(registry.cheddaPriceOracle());
-        uint256 normalizedCheddaPrice = cheddaPriceFeed
-            .readPrice(registry.cheddaToken(), 0)
+        (int256 cheddaPrice, ) = cheddaPriceFeed.readPrice(registry.cheddaToken(), 0);
+        uint256 normalizedCheddaPrice = cheddaPrice
             .toUint256()
             .normalized(cheddaPriceFeed.decimals(), 18);
         // NOTE: assumes 18 decimals on amount. Safe assumption since only used for Chedda token
@@ -154,6 +165,8 @@ contract AccountActor {
             // claim pool staking rewards
             uint256 amountToClaim = stakingPool.claimable(account);
             if (amountToClaim > 0) {
+                // TODO: This should be a delegate call. 
+                // Removes the need for the `claimFor()` function.
                 totalClaimed += stakingPool.claimFor(account);
             }
 
@@ -205,12 +218,13 @@ contract AccountActor {
         uint256 borrowed = pool.debtToken().convertToAssets(
             pool.debtToken().balanceOf(account)
         );
-        uint256 normalizedAssetPrice = priceFeed
-            .readPrice(address(pool.poolAsset()), 0)
+        (int256 assetPrice, ) = priceFeed
+            .readPrice(address(pool.poolAsset()), 0);
+        uint256 normalizedAssetPrice = assetPrice
             .toUint256()
             .normalized(priceFeed.decimals(), 18);
-        IStakingPool stakingPool = ICheddaPool(poolAddress).stakingPool();
-        ILockingGauge gauge = ICheddaPool(poolAddress).gauge();
+        // IStakingPool stakingPool = ICheddaPool(poolAddress).stakingPool();
+        // ILockingGauge gauge = ICheddaPool(poolAddress).gauge();
         // can't declare additioal variables due to stack too deep.
         Position memory position = Position({
             account: account,
@@ -227,10 +241,10 @@ contract AccountActor {
                 .unwrap(),
             collateralValue: pool.totalAccountCollateralValue(account),
             healthFactor: pool.accountHealth(account),
-            staked: stakingPool.stakingBalance(account),
-            locked: gauge.getLock(account).amount,
-            stakeRewardsClaimable: stakingPool.claimable(account),
-            lockRewardsClaimable: gauge.claimable(account),
+            staked: ICheddaPool(poolAddress).stakingPool().stakingBalance(account),
+            locked: ICheddaPool(poolAddress).gauge().getLock(account).amount,
+            stakeRewardsClaimable: ICheddaPool(poolAddress).stakingPool().claimable(account),
+            lockRewardsClaimable: ICheddaPool(poolAddress).gauge().claimable(account),
             exposure: _getExposure(account, poolAddress)
         });
         return position;

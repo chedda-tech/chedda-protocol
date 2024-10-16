@@ -2,7 +2,6 @@
 pragma solidity 0.8.27;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { ILendingPool, CollateralInfo } from "../pool/ILendingPool.sol";
@@ -144,8 +143,9 @@ contract LendingPoolLens {
         for (uint256 i = 0; i < poolsLength; i++) {
             pool = ILendingPool(pools[i]);
             priceFeed = pool.priceFeed();
+            int256 price = getPrice(address(pool), address(pool.poolAsset()));
             assetDecimals = pool.poolAsset().decimals();
-            UD60x18 assetPrice = ud(priceFeed.readPrice(address(pool.poolAsset()), 0).toUint256().normalized(priceFeed.decimals(), 18));
+            UD60x18 assetPrice = ud(price.toUint256().normalized(priceFeed.decimals(), 18));
             totalSuppliedValue += ud(pool.supplied().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
             totalBorrowedValue += ud(pool.borrowed().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
             totalAvailableValue += ud(pool.available().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
@@ -200,8 +200,8 @@ contract LendingPoolLens {
         uint256 borrowed = pool.borrowed();
         uint8 assetDecimals = pool.poolAsset().decimals();
         IPriceFeed priceFeed = pool.priceFeed();
-        uint256 normalizedAssetPrice = priceFeed.readPrice(address(pool.poolAsset()), 0).toUint256()
-            .normalized(priceFeed.decimals(), 18);
+        int256 assetPrice = getPrice(poolAddress, address(pool.poolAsset()));
+        uint256 normalizedAssetPrice = assetPrice.toUint256().normalized(priceFeed.decimals(), 18);
 
         PoolStats memory stats = PoolStats({
             pool: poolAddress,
@@ -289,9 +289,9 @@ contract LendingPoolLens {
             return 0;
         }
         uint256 freeCollateralValue = collateralValue - debtValue;
-        uint256 collateralUnitValue = priceFeed.readPrice(token, 0).toUint256();
+        int256 collateralUnitValue = getPrice(poolAddress, token);
         uint256 freeCollateralAmountE18 = ud(freeCollateralValue)
-            .div(ud(collateralUnitValue.normalized(priceFeed.decimals(), 18))).unwrap();
+            .div(ud(collateralUnitValue.toUint256().normalized(priceFeed.decimals(), 18))).unwrap();
         uint256 collateralAmount = freeCollateralAmountE18.normalized(18, ERC20(token).decimals());
         return maxCollateralAmount > collateralAmount ? collateralAmount : maxCollateralAmount;
     }
@@ -328,7 +328,7 @@ contract LendingPoolLens {
         ILendingPool pool = ILendingPool(poolAddress);
 
         MarketInfo memory info = MarketInfo({
-            oraclePrice: pool.priceFeed().readPrice(address(pool.poolAsset()), 0),
+            oraclePrice: getPrice(poolAddress, address(pool.poolAsset())),
             oraclePriceDecimals: pool.priceFeed().decimals(),
             interestFee: 0.002e18,// Todo: set fee in pool, pool.feePercentage()
             supplyCap: pool.supplyCap(),
@@ -363,16 +363,25 @@ contract LendingPoolLens {
         ILendingPool lPool = ILendingPool(poolAddress);
         CheddaToken chedda = CheddaToken(registry.cheddaToken());
         IPriceFeed cheddaOracle = IPriceFeed(registry.cheddaPriceOracle());
-        IPriceFeed assetOracle = lPool.priceFeed();
+        (int256 cheddaPrice, ) = cheddaOracle.readPrice(registry.cheddaToken(), 0);
         uint256 annualRewards = chedda.emissionPerSecond() * 365.25 days;
         return 
             ud(annualRewards)
             .mul(
-                ud(cheddaOracle.readPrice(address(registry.cheddaToken()), 0).toUint256().normalized(cheddaOracle.decimals(), 18))
+                ud(cheddaPrice.toUint256().normalized(cheddaOracle.decimals(), 18))
             ).div(
                 ud(lPool.supplied().normalized(lPool.poolAsset().decimals(), 18))
-                .mul(ud(assetOracle.readPrice(address(lPool.poolAsset()), 0).toUint256().normalized(assetOracle.decimals(), 18)))
+                .mul(ud(getPrice(poolAddress, address(lPool.poolAsset()))
+                    .toUint256()
+                    .normalized(lPool.priceFeed().decimals(), 18))
+                    )
             ).unwrap();
+    }
+
+    function getPrice(address pool, address asset) public view returns (int256) {
+        IPriceFeed priceFeed = ILendingPool(pool).priceFeed();
+        (int256 assetPrice, ) = priceFeed.readPrice(asset, 0);
+        return assetPrice;
     }
 
     /// @dev returns the version of the lens
