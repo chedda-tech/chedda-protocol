@@ -10,24 +10,10 @@ function decimals() external view returns (uint8)
 
 _The decimals of values returned by this feed._
 
-### token
-
-```solidity
-function token() external view returns (address)
-```
-
-The token this feed returns a price for.
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | address | address token addrss. |
-
 ### readPrice
 
 ```solidity
-function readPrice(address token, uint256 tokenID) external view returns (int256 price)
+function readPrice(address token, uint256 tokenID) external view returns (int256 price, uint256 lastUpdated)
 ```
 
 Get latest price of asset. For ERC-20 tokens, `tokenID` parameter is unused.
@@ -45,4 +31,5 @@ tokenID parameter is for forwards compatibility.
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | price | int256 | the price of the asset |
+| lastUpdated | uint256 |  |
 

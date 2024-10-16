@@ -532,10 +532,10 @@ function totalAccountCollateralValue(address account) external view returns (uin
 function accountCollateralAmount(address account, address collateral) external view returns (uint256)
 ```
 
-### getTokenCollateralValue
+### tokenMaxLoanValue
 
 ```solidity
-function getTokenCollateralValue(address token, uint256 amount) external view returns (uint256)
+function tokenMaxLoanValue(address token, uint256 amount) external view returns (uint256)
 ```
 
 ## LendingPool
@@ -1208,10 +1208,10 @@ Returns the market value of a given number of token.
 | ---- | ---- | ----------- |
 | [0] | uint256 | value The market value of `amount` of `token`. |
 
-### getTokenCollateralValue
+### tokenMaxLoanValue
 
 ```solidity
-function getTokenCollateralValue(address token, uint256 amount) public view returns (uint256)
+function tokenMaxLoanValue(address token, uint256 amount) public view returns (uint256)
 ```
 
 Returns the value as collateral for a given amount of token

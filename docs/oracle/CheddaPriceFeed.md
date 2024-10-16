@@ -40,7 +40,7 @@ Sets the priceed feed for a token
 ### readPrice
 
 ```solidity
-function readPrice(address _token, uint256) public view returns (int256 price)
+function readPrice(address _token, uint256) public view returns (int256 price, uint256 lastUpdated)
 ```
 
 _Reads the latest price reported for a given token._
@@ -50,18 +50,11 @@ _Reads the latest price reported for a given token._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | price | int256 | the latest price |
+| lastUpdated | uint256 |  |
 
 ### token
 
 ```solidity
 function token() external pure returns (address)
 ```
-
-The token this feed returns a price for.
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | address | address token addrss. |
 

@@ -1,5 +1,70 @@
 # Solidity API
 
+## TokenType
+
+_The type of the collateral.
+Options are Invalid, ERC20, ERC721 and ERC1155._
+
+```solidity
+enum TokenType {
+  Invalid,
+  ERC20,
+  ERC721,
+  ERC155
+}
+```
+
+## CollateralInfo
+
+Holds information about the type of collateral held in vault.
+
+### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+
+```solidity
+struct CollateralInfo {
+  uint256 ltv;
+  uint256 liqThreshold;
+  uint256 liqPenalty;
+}
+```
+
+## CollateralInfoInit
+
+```solidity
+struct CollateralInfoInit {
+  address token;
+  struct CollateralInfo info;
+}
+```
+
+## CollateralDeposit
+
+_Information about collateral deposited to the pool._
+
+```solidity
+struct CollateralDeposit {
+  address token;
+  enum TokenType tokenType;
+  uint256 amount;
+  uint256[] tokenIds;
+}
+```
+
+## AccountCollateralValue
+
+_The value of a collateral token deposited by an account._
+
+```solidity
+struct AccountCollateralValue {
+  address token;
+  uint256 amount;
+  int256 value;
+}
+```
+
 ## ILendingPool
 
 ### poolAsset
@@ -92,10 +157,10 @@ function interestRatesModel() external view returns (contract IInterestRateModel
 function collaterals() external view returns (address[])
 ```
 
-### collateralFactor
+### collateralInfo
 
 ```solidity
-function collateralFactor(address) external view returns (uint256)
+function collateralInfo(address) external view returns (struct CollateralInfo)
 ```
 
 ### tokenCollateralDeposited
@@ -134,10 +199,10 @@ function totalAccountCollateralValue(address account) external view returns (uin
 function accountCollateralAmount(address account, address collateral) external view returns (uint256)
 ```
 
-### getTokenCollateralValue
+### tokenMaxLoanValue
 
 ```solidity
-function getTokenCollateralValue(address token, uint256 amount) external view returns (uint256)
+function tokenMaxLoanValue(address token, uint256 amount) external view returns (uint256)
 ```
 
 ### getTokenMarketValue

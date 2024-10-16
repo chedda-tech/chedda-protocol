@@ -50,7 +50,9 @@ struct PoolCollateralInfo {
   uint8 decimals;
   uint256 amountDeposited;
   uint256 value;
-  uint256 collateralFactor;
+  uint256 ltv;
+  uint256 liqThreshold;
+  uint256 liqPenalty;
 }
 ```
 
@@ -73,7 +75,6 @@ struct AccountCollateralDeposited {
   uint8 decimals;
   uint256 amount;
   uint256 value;
-  uint256[] tokenIds;
 }
 ```
 
@@ -351,6 +352,12 @@ Returns the reward rate (APY) a pool receives.
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | The reward rate a pool receives. |
+
+### getPrice
+
+```solidity
+function getPrice(address pool, address asset) public view returns (int256)
+```
 
 ### version
 

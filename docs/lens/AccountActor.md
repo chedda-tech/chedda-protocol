@@ -95,6 +95,16 @@ Returns the account status summed up.
 | ---- | ---- | ----------- |
 | [0] | struct AccountActor.AccountSummary | the `AccountSummary` object containing account stats. |
 
+### AccountPoolSummary
+
+```solidity
+struct AccountPoolSummary {
+  uint256 supplied;
+  uint256 borrowed;
+  uint256 locked;
+}
+```
+
 ### allClaimableRewards
 
 ```solidity

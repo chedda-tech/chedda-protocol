@@ -4,86 +4,10 @@
 
 TODO: check prices are positive and no overflow/underflow when using prices
 
-### TokenType
-
-_The type of the collateral.
-Options are Invalid, ERC20, ERC721 and ERC1155._
-
-```solidity
-enum TokenType {
-  Invalid,
-  ERC20,
-  ERC721,
-  ERC155
-}
-```
-
-### CollateralInfo
-
-Holds information about the type of collateral held in vault.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-
-```solidity
-struct CollateralInfo {
-  address token;
-  uint256 collateralFactor;
-  enum LendingPool.TokenType tokenType;
-}
-```
-
-### CollateralDeposit
-
-_Information about collateral deposited to the pool._
-
-```solidity
-struct CollateralDeposit {
-  address token;
-  enum LendingPool.TokenType tokenType;
-  uint256 amount;
-  uint256[] tokenIds;
-}
-```
-
-### AccountCollateralValue
-
-_The value of a collateral token deposited by an account._
-
-```solidity
-struct AccountCollateralValue {
-  address token;
-  uint256 amount;
-  int256 value;
-}
-```
-
-### PoolParams
-
-```solidity
-struct PoolParams {
-  uint256 supplyCap;
-  uint256 minBorrowAmount;
-  uint256 maxBorrowAmount;
-}
-```
-
-### PoolConfig
-
-```solidity
-struct PoolConfig {
-  uint256 supplyCap;
-  uint256 feeRatio;
-  address feeRecipient;
-}
-```
-
 ### CollateralAdded
 
 ```solidity
-event CollateralAdded(address token, address account, enum LendingPool.TokenType ofType, uint256 amount)
+event CollateralAdded(address token, address account, enum TokenType ofType, uint256 amount)
 ```
 
 Emitted when collateral is added
@@ -94,13 +18,13 @@ Emitted when collateral is added
 | ---- | ---- | ----------- |
 | token | address | The token added |
 | account | address | The account that added the collateral. |
-| ofType | enum LendingPool.TokenType | The type of collateral |
+| ofType | enum TokenType | The type of collateral |
 | amount | uint256 | The amount of token added as collateral |
 
 ### CollateralRemoved
 
 ```solidity
-event CollateralRemoved(address token, address account, enum LendingPool.TokenType ofType, uint256 amount)
+event CollateralRemoved(address token, address account, enum TokenType ofType, uint256 amount)
 ```
 
 Emitted when collateral is removed
@@ -111,7 +35,7 @@ Emitted when collateral is removed
 | ---- | ---- | ----------- |
 | token | address | The token removed. |
 | account | address | The account that removed the collateral. |
-| ofType | enum LendingPool.TokenType | The type of collateral |
+| ofType | enum TokenType | The type of collateral |
 | amount | uint256 | The amount of token removed as collateral |
 
 ### AssetBorrowed
@@ -168,7 +92,7 @@ _called on all state changing functions._
 ### MintToReserve
 
 ```solidity
-event MintToReserve(address caller, uint256 amountMinted)
+event MintToReserve(address caller, uint256 shares, uint256 amount)
 ```
 
 Emitted when pool share tokens are minted to reserve to cover fees.
@@ -177,8 +101,9 @@ Emitted when pool share tokens are minted to reserve to cover fees.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| caller | address | Caller of function that triggered event |
-| amountMinted | uint256 | The token amount minted |
+| caller | address | Caller of function that triggered event. |
+| shares | uint256 | The amount of shares to mint. |
+| amount | uint256 | The corresponding amount of asset for shares minted. |
 
 ### GaugeSet
 
@@ -336,13 +261,29 @@ error CheddaPool_AsssetMustBeWithdrawn()
 
 _Thrown when a caller tries to remove asset token from collateral. `withdraw` must be used instead._
 
-### CheddaPool_ZeroShsares
+### CheddaPool_ZeroShares
 
 ```solidity
-error CheddaPool_ZeroShsares()
+error CheddaPool_ZeroShares()
 ```
 
 _Thrown when withdrawing or depositing zero shares_
+
+### CheddaPool_BadPrice
+
+```solidity
+error CheddaPool_BadPrice(address asset, int256 price)
+```
+
+_Thrown if the asset price is invalid._
+
+### CheddaPool_StalePrice
+
+```solidity
+error CheddaPool_StalePrice(address asset, uint256 lastUpdated)
+```
+
+_Thrown if the asset price is stale._
 
 ### supplied
 
@@ -365,6 +306,8 @@ _lifetime shares minted to reserve_
 ```solidity
 string characterization
 ```
+
+_display name of thi spool_
 
 ### debtToken
 
@@ -424,22 +367,16 @@ Collateral
 mapping(address => bool) collateralAllowed
 ```
 
-### collateralTokenTypes
+### _collateralInfo
 
 ```solidity
-mapping(address => enum LendingPool.TokenType) collateralTokenTypes
-```
-
-### collateralFactor
-
-```solidity
-mapping(address => uint256) collateralFactor
+mapping(address => struct CollateralInfo) _collateralInfo
 ```
 
 ### accountCollateralDeposited
 
 ```solidity
-mapping(address => mapping(address => struct LendingPool.CollateralDeposit)) accountCollateralDeposited
+mapping(address => mapping(address => struct CollateralDeposit)) accountCollateralDeposited
 ```
 
 ### tokenCollateralDeposited
@@ -462,7 +399,16 @@ _The max value for account health. This is returned if user has no debt._
 uint256 supplyCap
 ```
 
-_pool asset supply cap_
+_Pool asset supply cap_
+
+### borrowCap
+
+```solidity
+mapping(address => uint256) borrowCap
+```
+
+_Borrow cap per collateral token. This represents the max amount of asset
+that can be borrowed with a given collateral token._
 
 ### reserveFactor
 
@@ -472,6 +418,12 @@ uint256 reserveFactor
 
 _Percentage of interest that goes to reserve. 1e18 = 100%_
 
+### stalePriceThreshold
+
+```solidity
+uint256 stalePriceThreshold
+```
+
 ### reserve
 
 ```solidity
@@ -479,6 +431,20 @@ address reserve
 ```
 
 _address to receive reserve funds_
+
+### icm
+
+```solidity
+bool icm
+```
+
+Flag indicating if pool is operating in isolated collateral mode (ICM).
+
+### icmAccountCollateral
+
+```solidity
+mapping(address => address) icmAccountCollateral
+```
 
 ### InitParams
 
@@ -494,7 +460,9 @@ struct InitParams {
   address registry;
   address reserve;
   uint256 reserveFactor;
-  struct LendingPool.CollateralInfo[] collateralTokens;
+  uint256 stalePriceThreshold;
+  bool icm;
+  struct CollateralInfoInit[] collaterals;
 }
 ```
 
@@ -719,28 +687,29 @@ _Emits CollateralRemoved(token, account, type, amount)._
 | token | address | The collateral token to remove. |
 | amount | uint256 | The amount to remove. |
 
-### accountCollateralTokenIds
+### getPrice
 
 ```solidity
-function accountCollateralTokenIds(address account, address collateral) external view returns (uint256[])
+function getPrice(address asset, bool checkAge) public view returns (uint256)
 ```
 
-Get the token IDs deposited by this account
+View functions
+Reads the price of an asset from the oracle
 
-_`collateral` parameter should be an ERC-721 token._
+_Explain to a developer any extra details_
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| account | address | The account to check for |
-| collateral | address | The collateral to check for |
+| asset | address | The asset to return price for |
+| checkAge | bool | Check if the price has been updated recently. Revert if `checkAge` is true and price is stale. |
 
 #### Return Values
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| [0] | uint256[] | tokenIds the token ids from the `collateral` NFT deposited by `account`. |
+| [0] | uint256 | The price of the asset. |
 
 ### totalAccountCollateralValue
 
@@ -786,7 +755,7 @@ Returns the amount of a given token an account has deposited as collateral
 ### freeAccountCollateralAmount
 
 ```solidity
-function freeAccountCollateralAmount(address account, address token) public view returns (uint256)
+function freeAccountCollateralAmount(address account, address token) external view returns (uint256)
 ```
 
 ### accountAssetsBorrowed
@@ -859,10 +828,10 @@ Returns the market value of a given number of token.
 | ---- | ---- | ----------- |
 | [0] | uint256 | value The market value of `amount` of `token`. |
 
-### getTokenCollateralValue
+### tokenMaxLoanValue
 
 ```solidity
-function getTokenCollateralValue(address token, uint256 amount) public view returns (uint256)
+function tokenMaxLoanValue(address token, uint256 amount) public view returns (uint256)
 ```
 
 Returns the value as collateral for a given amount of token
@@ -881,6 +850,26 @@ _This takes into account the collateral factor of the token._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | uint256 | value The collateral value of `amount` of `token`. |
+
+### collateralInfo
+
+```solidity
+function collateralInfo(address token) external view returns (struct CollateralInfo)
+```
+
+Returns the collateral configuration for a given token;
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| token | address | The token to return collateral info for. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | struct CollateralInfo | The `CollateralInfo` for requested token. |
 
 ### updatePoolState
 
