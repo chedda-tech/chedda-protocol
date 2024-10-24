@@ -459,6 +459,7 @@ struct InitParams {
   address owner;
   address registry;
   address reserve;
+  uint256 initialSupplyCap;
   uint256 reserveFactor;
   uint256 stalePriceThreshold;
   bool icm;

@@ -273,6 +273,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address owner;
         address registry;
         address reserve;
+        uint256 initialSupplyCap;
         uint256 reserveFactor;
         uint256 stalePriceThreshold;
         bool icm;
@@ -300,6 +301,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         icm = initParams.icm;
         reserve = initParams.reserve;
         stalePriceThreshold = initParams.stalePriceThreshold;
+        supplyCap = initParams.initialSupplyCap;
         _initCollaterals(initParams.collaterals);
 
         // poolConfig = initParams;
@@ -338,7 +340,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         supplyCap = _supplyCap;
         emit SupplyCapSet(_supplyCap, msg.sender);
     }
-    
+
     /*///////////////////////////////////////////////////////////////
                         borrow/repay logic
     //////////////////////////////////////////////////////////////*/
