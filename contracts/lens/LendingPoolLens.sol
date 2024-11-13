@@ -334,8 +334,8 @@ contract LendingPoolLens {
             supplyCap: pool.supplyCap(),
             liquidity: pool.available(),
             utilization: pool.utilization(),
-            liquidationThreshold: 0.95e18, // get from pool
-            liquidationPenalty: 0.05e18 // get from pool
+            liquidationThreshold: 0.75e18, // get from pool
+            liquidationPenalty: 0.1e18 // get from pool
         });
         return info;
     }
