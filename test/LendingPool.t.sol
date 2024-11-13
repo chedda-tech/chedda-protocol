@@ -26,7 +26,7 @@ contract LendingPoolTest is Test {
     uint256 public c1Factor = 0.8e18;
     uint256 public c2Factor = 0.7e18;
     uint256 public baseFeeBps = 0.1e18;
-    uint256 public supplyCap = 1_000_000e8;
+    uint256 public supplyCap = 1_000_000e18;
 
     address public poolAddress;
     address public c1Address;
@@ -100,6 +100,7 @@ contract LendingPoolTest is Test {
             registry: address(registry),
             reserve: admin,
             reserveFactor: baseFeeBps,
+            initialSupplyCap: 1_000_000e18, // decimals must match asset decimals
             stalePriceThreshold: 3600,
             icm: false,
             collaterals: collateralTypes
