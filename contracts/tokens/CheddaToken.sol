@@ -50,12 +50,12 @@ contract CheddaToken is OFT, ICheddaToken {
     
     // TODO: Start at 32% inflation
     uint256[6] private _inflationRates = [
-        0.32e18, 
-        0.24e18, 
-        0.16e18, 
-        0.12e18, 
-        0.08e18, 
-        0.04e18
+        0.0032e18, 
+        0.0024e18, 
+        0.0016e18, 
+        0.0012e18, 
+        0.008e18, 
+        0.004e18
     ];
     uint256[6] private _targetBaseSupply = [
         400_000_000e18, 
