@@ -78,6 +78,11 @@ contract LendingPoolLensTest is Test {
         assertEq(lens.activePools().length, 2);
     }
 
+    function testEmptyPoolStats() external view {
+       LendingPoolLens.PoolStats memory stats = lens.getPoolStats(address(pool1));
+        assertEq(stats.pool, address(pool1)); 
+    }
+
     function testSinglePoolStats() external {
         uint256 totalReserveShares = 120e18;
         uint256 tvl = 1_000_000e18;

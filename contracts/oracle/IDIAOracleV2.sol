@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /// @dev DIA oracle interface
-interface IDIAOracleV2{
+interface IDIAOracleV2 {
 
     /// @notice Returns the price and last update time of a given price feed.
     /// @param key The key to get price for. e.g BTCUSD

@@ -365,16 +365,21 @@ contract LendingPoolLens {
         IPriceFeed cheddaOracle = IPriceFeed(registry.cheddaPriceOracle());
         (int256 cheddaPrice, ) = cheddaOracle.readPrice(registry.cheddaToken(), 0);
         uint256 annualRewards = chedda.emissionPerSecond() * 365.25 days;
+        uint256 suppliedN = lPool.supplied().normalized(lPool.poolAsset().decimals(), 18);
+        uint256 assetPriceN = getPrice(poolAddress, address(lPool.poolAsset()))
+                    .toUint256()
+                    .normalized(lPool.priceFeed().decimals(), 18);
+
+        if (suppliedN == 0 || assetPriceN == 0) {
+            return 0;
+        }
         return 
             ud(annualRewards)
             .mul(
                 ud(cheddaPrice.toUint256().normalized(cheddaOracle.decimals(), 18))
             ).div(
-                ud(lPool.supplied().normalized(lPool.poolAsset().decimals(), 18))
-                .mul(ud(getPrice(poolAddress, address(lPool.poolAsset()))
-                    .toUint256()
-                    .normalized(lPool.priceFeed().decimals(), 18))
-                    )
+                ud(suppliedN)
+                .mul(ud(assetPriceN))
             ).unwrap();
     }
 
