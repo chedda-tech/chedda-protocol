@@ -335,8 +335,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         stalePriceThreshold = initParams.stalePriceThreshold;
         supplyCap = initParams.initialSupplyCap;
         _initCollaterals(initParams.collaterals);
-
-        // poolConfig = initParams;
     }
 
     /// @dev initializes collateral tokens
@@ -683,11 +681,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
         // Transfer collateral to the liquidator
         uint256 collateralAmount = calculateCollateralAmount(collateralAssetAmount, collateralToken, false);
-        _liquidateCollateral(collateralToken, borrower, msg.sender, collateralAmount);
-        ERC20(collateralToken).safeTransfer(msg.sender, collateralAmount);
-
         uint256 reserveAmount = collateralAmount / 10;
-        _liquidateCollateral(collateralToken, borrower, msg.sender, reserveAmount);
+        _liquidateCollateral(collateralToken, borrower, msg.sender, collateralAmount + reserveAmount);
+        ERC20(collateralToken).safeTransfer(msg.sender, collateralAmount);
         ERC20(collateralToken).safeTransfer(reserve, reserveAmount);
         emit AssetRepaid(borrower, msg.sender, repayAmount, debtBurned);
         emit PositionLiquidated(borrower, msg.sender, collateralToken, collateralAmount + reserveAmount);
