@@ -11,7 +11,14 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {DebtToken} from "../tokens/DebtToken.sol";
 import {IInterestRateModel, InterestRates} from "../interestrates/IInterestRateModel.sol";
 import {IPriceFeed} from "../oracle/IPriceFeed.sol";
-import {ILendingPool, CollateralInfo, CollateralInfoInit, TokenType, CollateralDeposit, AccountCollateralValue} from "./ILendingPool.sol";
+import {
+    ILendingPool, 
+    CollateralInfo, 
+    CollateralInfoInit, 
+    TokenType, 
+    CollateralDeposit, 
+    AccountCollateralValue, 
+    AccountValue} from "./ILendingPool.sol";
 import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
 import {MathLib} from "../library/MathLib.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
@@ -177,6 +184,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 amountRequested,
         uint256 amountDeposited
     );
+
+    /// @dev Thrown when the account does not have sufficient collateral.
+    error CheddaPool_AccountNotCollateralized(address account);
 
     /// @dev Thrown when a withdrawing an amount of collateral would put the account in an insolvent state.
     error CheddaPool_AccountInsolvent(address account, uint256 health);
@@ -422,10 +432,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             uint256 collateralToRemove = assetAmount > collateralAmount
                 ? collateralAmount
                 : assetAmount;
-            _removeCollateral(address(asset), collateralToRemove, false);
+            _removeCollateral(owner, address(asset), collateralToRemove, false);
             _assetCollateralDeposited -= collateralToRemove;
         }
         require(shares != 0, CheddaPool_ZeroShares());
+        _checkIsCollateralized(msg.sender);
         _updatePoolState();
         return shares;
     }
@@ -444,8 +455,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ) public override nonReentrant returns (uint256) {
         uint256 assetAmount = super.redeem(shares, receiver, owner);
         if (_accountHasCollateral(msg.sender, address(asset))) {
-            _removeCollateral(address(asset), assetAmount, false);
+            _removeCollateral(owner, address(asset), assetAmount, false);
         }
+        _checkIsCollateralized(msg.sender);
         // zero_assets handled in ERC-4626
         _updatePoolState();
         return assetAmount;
@@ -462,7 +474,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         _validateBorrow(account, amount);
 
         uint256 debt = debtToken.createDebt(amount, account);
-        _checkAccountHealth(account);
+        _checkIsCollateralized(account);
 
         asset.safeTransfer(account, amount);
         _updatePoolState();
@@ -509,7 +521,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             revert CheddaPool_Overpayment();
         }
         uint256 amountToTransfer = debtToken.convertToAssets(shares);
-        asset.safeTransferFrom(msg.sender, address(this), amountToTransfer);
+        asset.safeTransferFrom(account, address(this), amountToTransfer);
         uint256 amountRepaid = debtToken.repayShare(shares, account);
         _updatePoolState();
 
@@ -585,15 +597,16 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (token == address(asset)) {
             revert CheddaPool_AsssetMustBeWithdrawn();
         }
-        _removeCollateral(token, amount, true);
+        _removeCollateral(msg.sender, token, amount, true);
+        _checkIsCollateralized(msg.sender);
     }
 
     function _removeCollateral(
+        address account,
         address token,
         uint256 amount,
         bool doTransfer
     ) private {
-        address account = msg.sender;
         if (amount == 0) {
             revert CheddaPool_ZeroAmount();
         }
@@ -617,8 +630,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         } else {
             accountCollateralDeposited[account][token].amount -= amount;
         }
-
-        _checkAccountHealth(account);
 
         if (doTransfer) {
             ERC20(token).safeTransfer(account, amount);
@@ -682,7 +693,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         // Transfer collateral to the liquidator
         uint256 collateralAmount = calculateCollateralAmount(collateralAssetAmount, collateralToken, false);
         uint256 reserveAmount = collateralAmount / 10;
-        _liquidateCollateral(collateralToken, borrower, msg.sender, collateralAmount + reserveAmount);
+        _liquidateCollateral(borrower, msg.sender, collateralToken, collateralAmount + reserveAmount);
         ERC20(collateralToken).safeTransfer(msg.sender, collateralAmount);
         ERC20(collateralToken).safeTransfer(reserve, reserveAmount);
         emit AssetRepaid(borrower, msg.sender, repayAmount, debtBurned);
@@ -692,9 +703,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     }
 
     function _liquidateCollateral(
-        address token,
         address borrower,
-        address caller,
+        address liquidator,
+        address token,
         uint256 amount
     ) private {
         uint256 accountCollateral = accountCollateralAmount(borrower, token);
@@ -718,7 +729,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             accountCollateralDeposited[borrower][token].amount -= amount;
         }
 
-        emit CollateralLiquidated(token, borrower, caller, amount);
+        emit CollateralLiquidated(token, borrower, liquidator, amount);
     }
 
     /// View functions
@@ -738,11 +749,13 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         return price.toUint256();
     }
 
-    /// @notice Returns the total value of collateral deposited by an account.
+    /// @notice Returns the total value of an account including asset and collateral.
     /// @param account The account to get collateral value for.
+    /// @param valueType Determines how the value is calculated. This is of enum `AccountValue`.
     /// @return totalValue The value of collateral deposited by account.
     function totalAccountCollateralValue(
-        address account
+        address account,
+        AccountValue valueType
     ) public view returns (uint256) {
         uint256 totalValue = 0;
         for (uint256 i = 0; i < collateralTokenList.length; i++) {
@@ -751,10 +764,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
                 account
             ][token];
             if (collateral.amount != 0) {
-                uint256 collateralValue = tokenMaxLoanValue(
-                    token,
-                    collateral.amount
-                );
+                uint256 collateralValue;
+                if (valueType == AccountValue.Loan) {
+                    collateralValue = tokenLoanValue(token, collateral.amount);
+                } else if (valueType == AccountValue.Liquidation) {
+                    collateralValue = tokenLiquidationValue(token, collateral.amount);
+                } else {
+                    collateralValue = tokenMarketValue(token, collateral.amount);
+                }
                 if (collateralValue > 0) {
                     totalValue += collateralValue;
                 }
@@ -779,7 +796,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address account,
         address token
     ) external view returns (uint256) {
-        uint256 debtValue = getTokenMarketValue(
+        uint256 debtValue = tokenMarketValue(
             address(asset),
             accountAssetsBorrowed(account)
         );
@@ -787,7 +804,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (debtValue == 0) {
             return maxCollateralAmount;
         }
-        uint256 collateralValue = totalAccountCollateralValue(account);
+        uint256 collateralValue = totalAccountCollateralValue(account, AccountValue.Loan);
         if (collateralValue == 0 || debtValue >= collateralValue) {
             return 0;
         }
@@ -819,14 +836,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     function accountHealth(address account) public view returns (uint256) {
         // TODO: add test for max account health
         uint256 health;
-        uint256 debtValue = getTokenMarketValue(
+        uint256 debtValue = tokenMarketValue(
             address(asset),
             accountAssetsBorrowed(account)
         );
         if (debtValue == 0) {
             health = type(uint256).max;
         } else {
-            health = ud(totalAccountCollateralValue(account))
+            health = ud(totalAccountCollateralValue(account, AccountValue.Liquidation))
                 .div(ud(debtValue))
                 .unwrap();
         }
@@ -843,21 +860,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     function collaterals() external view returns (address[] memory) {
         return collateralTokenList;
-    }
-
-    /// @notice Returns the market value of a given number of token.
-    /// @param token The token to return value for.
-    /// @param amount The amount of token to calculate the value of.
-    /// @return value The market value of `amount` of `token`.
-    function getTokenMarketValue(
-        address token,
-        uint256 amount
-    ) public view returns (uint256) {
-        uint256 price = getPrice(token, false);
-        return
-            ud(price.normalized(priceFeed.decimals(), 18))
-                .mul(ud(amount.normalized(ERC20(token).decimals(), 18)))
-                .unwrap();
     }
 
     /// @notice Calculates the amount of collateral token required for a given asset amount.
@@ -880,12 +882,28 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             .unwrap();
     }
 
+
+    /// @notice Returns the market value of a given number of token.
+    /// @param token The token to return value for.
+    /// @param amount The amount of token to calculate the value of.
+    /// @return value The market value of `amount` of `token`.
+    function tokenMarketValue(
+        address token,
+        uint256 amount
+    ) public view returns (uint256) {
+        uint256 price = getPrice(token, false);
+        return
+            ud(price.normalized(priceFeed.decimals(), 18))
+                .mul(ud(amount.normalized(ERC20(token).decimals(), 18)))
+                .unwrap();
+    }
+
     /// @notice Returns the value as collateral for a given amount of token
-    /// @dev This takes into account the collateral factor of the token.
+    /// @dev This takes into account the loan to value (LTV) ratio.
     /// @param token The token to return value for.
     /// @param amount The amount of token to calculate the value of.
     /// @return value The collateral value of `amount` of `token`.
-    function tokenMaxLoanValue(
+    function tokenLoanValue(
         address token,
         uint256 amount
     ) public view returns (uint256) {
@@ -896,6 +914,25 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
                     ud(amount.normalized(ERC20(token).decimals(), 18))
                 )
             ).mul(ud(_collateralInfo[token].ltv)).unwrap();
+
+    }
+
+    /// @notice Returns the value as collateral for a given amount of token
+    /// @dev This takes into account the liquidation threshold.
+    /// @param token The token to return value for.
+    /// @param amount The amount of token to calculate the value of.
+    /// @return value The collateral value of `amount` of `token`.
+    function tokenLiquidationValue(
+        address token,
+        uint256 amount
+    ) public view returns (uint256) {
+        uint256 price = getPrice(token, false);
+        return
+            (
+                ud(price.normalized(priceFeed.decimals(), 18)).mul(
+                    ud(amount.normalized(ERC20(token).decimals(), 18))
+                )
+            ).mul(ud(_collateralInfo[token].liqThreshold)).unwrap();
     }
 
     /// @notice Returns the collateral configuration for a given token;
@@ -915,6 +952,34 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (health < 1.0e18) {
             revert CheddaPool_AccountInsolvent(account, health);
         }
+    }
+
+    /// @notice Checks if account is solvent.
+    /// In simple terms, an account is solvent if collateralMarketValue * liquidation threshold > debt.
+    /// @param account account to check for.
+    /// @return If the account is solvent.
+    function isSolvent(address account) public view returns (bool) {
+        uint256 debtValue = tokenMarketValue(
+            address(asset),
+            accountAssetsBorrowed(account)
+        );
+        return totalAccountCollateralValue(account, AccountValue.Liquidation) >= debtValue;
+    }
+
+    /// @notice Checks if account has enough collateral after currnet operation completes.
+    /// @dev In simple terms, an account is collateralized if collateralMarketValue * ltv > debt.
+    /// @param account account to check for.
+    /// @return If the account is collateralized.
+    function isCollateralized(address account) public view returns (bool) {
+        uint256 debtValue = tokenMarketValue(
+            address(asset),
+            accountAssetsBorrowed(account)
+        );
+        return totalAccountCollateralValue(account, AccountValue.Loan) >= debtValue;
+    }
+
+    function _checkIsCollateralized(address account) private view {
+        require (isCollateralized(account), CheddaPool_AccountNotCollateralized(account));
     }
 
     //// @notice Checks that the amount being borrowed is less than the borrow cap.
@@ -1066,7 +1131,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @return tvl The total value locked in pool.
     function tvl() external view returns (uint256) {
         UD60x18 assetValue = ud(
-            getTokenMarketValue(address(asset), totalAssets())
+            tokenMarketValue(address(asset), totalAssets())
         );
         UD60x18 totalCollateralValue;
         address collateral;
@@ -1074,11 +1139,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             collateral = collateralTokenList[i];
             uint256 collateralAmount = tokenCollateralDeposited[collateral];
             UD60x18 marketValue = ud(
-                getTokenMarketValue(collateral, collateralAmount)
+                tokenMarketValue(collateral, collateralAmount)
             );
             if (collateral == address(asset)) {
                 UD60x18 collateralDepositedValue = ud(
-                    getTokenMarketValue(collateral, _assetCollateralDeposited)
+                    tokenMarketValue(collateral, _assetCollateralDeposited)
                 );
                 totalCollateralValue = totalCollateralValue.add(
                     marketValue.sub(collateralDepositedValue)

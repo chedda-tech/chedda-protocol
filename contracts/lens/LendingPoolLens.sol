@@ -4,7 +4,7 @@ pragma solidity 0.8.27;
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { ILendingPool, CollateralInfo } from "../pool/ILendingPool.sol";
+import { ILendingPool, CollateralInfo, AccountValue } from "../pool/ILendingPool.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { MathLib } from "../library/MathLib.sol";
 import { IAddressRegistry } from "../config/IAddressRegistry.sol";
@@ -235,7 +235,7 @@ contract LendingPoolLens {
         // uint256 supplied = pool.assetBalance(account);
         // uint256 borrowed = pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account));
         // uint256 healthFactor = pool.accountHealth(account);
-        // uint256 collateralValue = pool.totalAccountCollateralValue(account);
+        // uint256 collateralValue = pool.tokenLiquidationValue(account);
         address[] memory collaterals = pool.collaterals();
         AccountCollateralDeposited[] memory collateralDeposited = new AccountCollateralDeposited[](collaterals.length);
         address collateral;
@@ -247,7 +247,7 @@ contract LendingPoolLens {
                 token: collateral,
                 decimals: collateralDecimals,
                 amount: collateralAmount,
-                value: pool.getTokenMarketValue(collateral, collateralAmount)
+                value: pool.tokenMarketValue(collateral, collateralAmount)
             });
             collateralDeposited[i] = deposited;
         }
@@ -257,7 +257,7 @@ contract LendingPoolLens {
             borrowed: pool.debtToken().convertToAssets(pool.debtToken().balanceOf(account)),
             decimals: ERC20(pool.poolAsset()).decimals(),
             healthFactor: pool.accountHealth(account),
-            totalCollateralValue: pool.totalAccountCollateralValue(account),
+            totalCollateralValue: pool.totalAccountCollateralValue(account, AccountValue.Market),
             collateralDeposited: collateralDeposited
         });
         
@@ -276,7 +276,7 @@ contract LendingPoolLens {
     ) public view returns (uint256) {
         ILendingPool pool = ILendingPool(poolAddress);
         IPriceFeed priceFeed = pool.priceFeed();
-        uint256 debtValue = pool.getTokenMarketValue(
+        uint256 debtValue = pool.tokenMarketValue(
             address(pool.poolAsset()),
             pool.accountAssetsBorrowed(account)
         );
@@ -284,7 +284,7 @@ contract LendingPoolLens {
         if (debtValue == 0) {
             return maxCollateralAmount;
         }
-        uint256 collateralValue = pool.totalAccountCollateralValue(account);
+        uint256 collateralValue = pool.totalAccountCollateralValue(account, AccountValue.Loan);
         if (collateralValue == 0 || debtValue >= collateralValue) {
             return 0;
         }
@@ -312,7 +312,7 @@ contract LendingPoolLens {
                 collateral: collateral,
                 decimals: ERC20(collateral).decimals(),
                 amountDeposited: collateralAmount,
-                value: pool.getTokenMarketValue(collateral, collateralAmount),
+                value: pool.tokenMarketValue(collateral, collateralAmount),
                 ltv: cInfo.ltv,
                 liqThreshold: cInfo.liqThreshold,
                 liqPenalty: cInfo.liqPenalty

@@ -16,14 +16,23 @@ enum TokenType {
     ERC155
 }
 
+enum AccountValue {
+    Market, 
+    Loan, 
+    Liquidation
+}
+
 /// @notice Holds information about the type of collateral held in vault.
+/// ltv + liqPenalty + liqDiscount must be < liqThreshold
 /// @param ltv The max loan to value ration for this collateral. 1e18 = 100%
-/// @param liqThreshold The liquidation threshold
-/// @param liqPenalty The liquidation penalty
+/// @param liqThreshold The liquidation threshold. Used in calculation of health factor.
+/// @param liqPenalty The liquidation penalty that goes to reserve.
+/// @param liqDiscount The discount rate liquidators get for this collateral
 struct CollateralInfo {
     uint256 ltv;
     uint256 liqThreshold;
     uint256 liqPenalty;
+    uint256 liqDiscount;
 }
 
 struct CollateralInfoInit {
@@ -67,9 +76,10 @@ interface ILendingPool {
     function accountHealth(address account) external view returns (uint256);
     function assetBalance(address account) external view returns (uint256);
     function accountAssetsBorrowed(address account) external view returns (uint256);
-    function totalAccountCollateralValue(address account) external view returns (uint256);
     function accountCollateralAmount(address account, address collateral) external view returns (uint256);
-    function tokenMaxLoanValue(address token, uint256 amount) external view returns (uint256);
-    function getTokenMarketValue(address token, uint256 amount) external view returns (uint256);
+    function tokenMarketValue(address token, uint256 amount) external view returns (uint256);
+    function tokenLoanValue(address token, uint256 amount) external view returns (uint256);
+    function tokenLiquidationValue(address token, uint256 amount) external view returns (uint256);
+    function totalAccountCollateralValue( address account, AccountValue valueType) external view returns (uint256);
     function recapitalize() external returns (uint256);
 }
