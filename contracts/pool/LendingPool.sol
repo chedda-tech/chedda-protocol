@@ -393,7 +393,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @param useAsCollateral Whethe this deposit should be marked as collateral
     /// @return shares The amount of shares minted.
     /// @dev if `useAsCollateral` is true, and `receiver != msg.sender`, collateral is added to
-    /// `msg.sender`'s collateral balance.
+    /// `receiver`'s collateral balance.
     function supply(
         uint256 amount,
         address receiver,
@@ -402,7 +402,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 shares = deposit(amount, receiver);
         if (useAsCollateral) {
             _assetCounted = true;
-            _addCollateral(address(asset), amount, false);
+            _addCollateral(receiver, address(asset), amount, false);
             _assetCollateralDeposited += amount;
             _assetCounted = false;
         }
@@ -436,7 +436,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             _assetCollateralDeposited -= collateralToRemove;
         }
         require(shares != 0, CheddaPool_ZeroShares());
-        _checkIsCollateralized(msg.sender);
+        _checkIsCollateralized(owner);
         _updatePoolState();
         return shares;
     }
@@ -454,10 +454,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address owner
     ) public override nonReentrant returns (uint256) {
         uint256 assetAmount = super.redeem(shares, receiver, owner);
-        if (_accountHasCollateral(msg.sender, address(asset))) {
+        if (_accountHasCollateral(owner, address(asset))) {
             _removeCollateral(owner, address(asset), assetAmount, false);
         }
-        _checkIsCollateralized(msg.sender);
+        _checkIsCollateralized(owner);
         // zero_assets handled in ERC-4626
         _updatePoolState();
         return assetAmount;
@@ -534,6 +534,15 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ///                     Managing collateral logic
     ///////////////////////////////////////////////////////////////////////////
 
+    function collateralize(bool true) external {
+
+    }
+
+    function _collateralize(bool useAcCollateral) private {
+        if (useAsCollateral) {
+            
+        }
+    }
     /// @notice Add ERC-20 token collateral to pool.
     /// @dev Emits CollateralAdded(address token, address account, uint tokenType, uint amount).
     /// @param token The token to deposit as collateral.
@@ -545,10 +554,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (token == address(asset)) {
             revert CheddaPool_AssetMustBeSupplied();
         }
-        _addCollateral(token, amount, true);
+        _addCollateral(msg.sender, token, amount, true);
     }
 
     function _addCollateral(
+        address account,
         address token,
         uint256 amount,
         bool doTransfer
@@ -562,8 +572,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (amount == 0) {
             revert CheddaPool_ZeroAmount();
         }
-
-        address account = msg.sender;
 
         if (doTransfer) {
             ERC20(token).safeTransferFrom(account, address(this), amount);
@@ -792,6 +800,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         return accountCollateralDeposited[account][collateral].amount;
     }
 
+    /// @notice Returns the free collateral the account has for a given collateral token.
+    /// @param account The account to check for.
+    /// @param token The collateral.
+    /// @return The free collateral amount.
     function freeAccountCollateralAmount(
         address account,
         address token
@@ -947,13 +959,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         _updatePoolState();
     }
 
-    function _checkAccountHealth(address account) private view {
-        uint256 health = accountHealth(account);
-        if (health < 1.0e18) {
-            revert CheddaPool_AccountInsolvent(account, health);
-        }
-    }
-
     /// @notice Checks if account is solvent.
     /// In simple terms, an account is solvent if collateralMarketValue * liquidation threshold > debt.
     /// @param account account to check for.
@@ -1095,8 +1100,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @return true if transfer is successful, false otherwise.
     function transfer(address to, uint256 amount) public override returns (bool) {
         bool success = super.transfer(to, amount);
-        _checkAccountHealth(msg.sender);
-        _checkAccountHealth(to);
+        _checkIsCollateralized(msg.sender);
+        _checkIsCollateralized(to);
         return success;
     }
 
@@ -1109,8 +1114,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @return true if transfer is successful, false otherwise.
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         bool success = super.transferFrom(from, to, amount);
-        _checkAccountHealth(from);
-        _checkAccountHealth(to);
+        _checkIsCollateralized(from);
+        _checkIsCollateralized(to);
         return success;
     }
     

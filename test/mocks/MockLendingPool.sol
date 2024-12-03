@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPriceFeed } from "../../contracts/oracle/IPriceFeed.sol";
-import { ILendingPool, CollateralInfo } from "../../contracts/pool/ILendingPool.sol";
+import { ILendingPool, CollateralInfo, AccountValue } from "../../contracts/pool/ILendingPool.sol";
 import { IInterestRateModel } from "../../contracts/interestrates/IInterestRateModel.sol";
 import { ILiquidityGauge } from "../../contracts/gauge/ILiquidityGauge.sol";
 import { DebtToken } from "../../contracts/tokens/DebtToken.sol";
@@ -147,7 +147,7 @@ contract MockLendingPool is ILendingPool {
         return _accountBorrowed[account];
     }
 
-    function totalAccountCollateralValue(address account) external view returns (uint256) {
+    function tokenLiquidationValue(address account) external view returns (uint256) {
         return _accountCollateralValue[account];
     }
 
@@ -155,12 +155,20 @@ contract MockLendingPool is ILendingPool {
         return _accountCollateralAmount[account];
     }
 
-    function tokenMaxLoanValue(address, uint256) external pure returns (uint256) {
+    function tokenLoanValue(address, uint256) external pure returns (uint256) {
         return 100e18;
     }
 
-    function getTokenMarketValue(address, uint256) external pure returns (uint256) {
+    function tokenMarketValue(address, uint256) external pure returns (uint256) {
         return 250e18;
+    }
+
+    function tokenLiquidationValue(address, uint256) external pure returns (uint256) {
+        return 200e18;
+    }
+
+    function totalAccountCollateralValue( address, AccountValue) public pure returns (uint256) {
+        return 1000e18;
     }
 
     function stakingPool() external view returns (address) {
@@ -175,7 +183,8 @@ contract MockLendingPool is ILendingPool {
         return CollateralInfo({
             ltv: 0,
             liqThreshold: 0,
-            liqPenalty: 0
+            liqPenalty: 0,
+            liqDiscount: 0.1e18
         });
     }
 }
