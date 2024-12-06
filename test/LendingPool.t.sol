@@ -363,20 +363,20 @@ contract LendingPoolTest is Test {
     }
 
     function testTvlAndState() external {
-        uint256 assetAmount = 100e8;
+        uint256 assetAmount = 100e18;
+        uint256 borrowAmount = 50e18;
 
         // assertEq(0, pool.tvl());
         asset.transfer(bob, assetAmount);
         vm.startPrank(bob);
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, bob, true);
-        console2.log("^^^tokenCollateralDeposited[%s] = %d", address(asset), pool.tokenCollateralDeposited(address(asset)));
-        // uint256 assetValue = ud(assetAmount).mul(ud(priceFeed.readPrice(address(asset), 0).toUint256())).unwrap();
+        pool.take(borrowAmount);
+
         uint256 assetValue = _calculateAssetValue(address(asset), assetAmount);
 
-        // /// check tvl when supplying as collateral
-        console2.log("pool tvl = %d", pool.tvl());
-        assertEq(assetValue, pool.tvl());
+        assertEq(assetValue, pool.tvl(true));
+        assertEq(pool.tvl(false), pool.tvl(true) - borrowAmount);
         vm.stopPrank();
     }
 
