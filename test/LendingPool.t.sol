@@ -41,13 +41,6 @@ contract LendingPoolTest is Test {
 
     using SafeCast for int256;
     using MathLib for uint256;
-    struct InterestRatesParams {
-        uint256 baseBorrowRate;
-        uint256 rateSlope1;
-        uint256 rateSlope2;
-        uint256 targetUtilization;
-        uint256 reserveFactor;
-    }
 
     function setUp() public virtual {
         asset = new MockERC20("Asset", "AST", 18, 1_000_000e18);
@@ -672,36 +665,36 @@ contract LendingPoolTest is Test {
     }
 }
 
-// contract LendingPoolInterestTests is LendingPoolTest {
-//     uint256 public constant YEAR = 365.25 days;
+contract LendingPoolInterestTests is LendingPoolTest {
+    uint256 public constant YEAR = 365.25 days;
 
-//     function setUp() public override {
-//         super.setUp();
-//     }
+    function setUp() public override {
+        super.setUp();
+    }
 
-//     function testBorrowInterest() public {
-//         uint256 assetDeposits = 200000e8;
-//         uint256 amountToTake = 100000e8;
+    function testBorrowInterest() public {
+        uint256 assetDeposits = 200000e8;
+        uint256 amountToTake = 100000e8;
 
-//         asset.transfer(alice, assetDeposits);
+        asset.transfer(alice, assetDeposits);
         
-//         vm.startPrank(alice);
-//         asset.approve(poolAddress, assetDeposits);
-//         pool.supply(assetDeposits, alice, true);
-//         uint256 taken = pool.take(amountToTake);
-//         uint borrowed = pool.accountAssetsBorrowed(alice);
-//         assertNotEq(borrowed, 0);
+        vm.startPrank(alice);
+        asset.approve(poolAddress, assetDeposits);
+        pool.supply(assetDeposits, alice, true);
+        uint256 taken = pool.take(amountToTake);
+        uint borrowed = pool.assetsBorrowed(alice);
+        assertNotEq(borrowed, 0);
 
-//         uint256 borrowRate = pool.baseBorrowAPY();
-//         vm.warp(block.timestamp + YEAR);
-//         pool.accrueInterest();
-//         borrowed = pool.accountAssetsBorrowed(alice);
+        uint256 borrowRate = pool.baseBorrowAPY();
+        vm.warp(block.timestamp + YEAR);
+        pool.accrueInterest();
+        borrowed = pool.assetsBorrowed(alice);
 
-//         // check interest including rounding
-//         assertApproxEqRel(borrowed, taken + (taken * borrowRate / 1e18), 0.0001e18); // within 0.01% delta
-//         console2.log("[taken = %d, borrowed = %d]", taken, borrowed);
-//         vm.stopPrank();
-//     }
+        // check interest including rounding
+        assertApproxEqRel(borrowed, taken + (taken * borrowRate / 1e18), 0.0001e18); // within 0.01% delta
+        console2.log("[taken = %d, borrowed = %d]", taken, borrowed);
+        vm.stopPrank();
+    }
 
 //   // borrow 100k
 //     // after 1 year, accumulate 12k interest.
@@ -719,17 +712,17 @@ contract LendingPoolTest is Test {
 //         console2.log("Before accrue totalAssets now = %d", pool.totalAssets());
 //         console2.log("Supplied = %d, shares = %d, shareValue = %d", assetDeposits, shares, shareValue);
 //         console2.log("Before accrue alice assets = %d", pool.convertToAssets(pool.balanceOf(alice)));
-//         console2.log("Before accrue admin assets = %d", pool.convertToAssets(pool.balanceOf(admin)));
+//         console2.log("Before accrue reserve assets = %d", pool.convertToAssets(pool.balanceOf(reserve)));
 
 //         uint256 supplyRate = pool.baseSupplyAPY();
 //         vm.warp(block.timestamp + YEAR);
 //         pool.accrueInterest();
 //         console2.log("After accrue totalAssets now = %d", pool.totalAssets());
 //         console2.log("After accrue alice assets = %d", pool.convertToAssets(pool.balanceOf(alice)));
-//         console2.log("After accrue admin assets = %d", pool.convertToAssets(pool.balanceOf(admin)));
+//         console2.log("After accrue reserve assets = %d", pool.convertToAssets(pool.balanceOf(reserve)));
 //         shareValue = pool.convertToAssets(shares);
 //         console2.log("After 1 year\nSupplied = %d, shares = %d, shareValue = %d", assetDeposits, shares, shareValue);
-//         uint256 borrowed = pool.accountAssetsBorrowed(alice);
+//         uint256 borrowed = pool.assetsBorrowed(alice);
 
 //         // // check interest including rounding
 //         // assertApproxEqAbs(shareValue, assetDeposits + (assetDeposits * supplyRate / 1e18), 1e1);
@@ -738,11 +731,11 @@ contract LendingPoolTest is Test {
 
 //         // check that alice interest = total interest * (1 - feeBPS)
 //         assertApproxEqRel(pool.assetBalance(alice), assetDeposits + ((assetDeposits * supplyRate / 1e18) * (1e18 - baseFeeBps)/1e18), zeroPtOnePct);
-//         //admin interest =  total interest * feeBPS
-//         // assertApproxEqRel(pool.assetBalance(admin), (assetDeposits * supplyRate / 1e18) * baseFeeBps/1e18, zeroPtOnePct);
+//         //reserve interest =  total interest * feeBPS
+//         // assertApproxEqRel(pool.assetBalance(reserve), (assetDeposits * supplyRate / 1e18) * baseFeeBps/1e18, zeroPtOnePct);
 
-//         // total interest = alice interest + admin interest
-//         // assertApproxEqAbs(pool.totalAssets(), pool.assetBalance(alice) + pool.assetBalance(admin), 1);
+//         // total interest = alice interest + reserve interest
+//         // assertApproxEqAbs(pool.totalAssets(), pool.assetBalance(alice) + pool.assetBalance(reserve), 1);
 //         console2.log("[0.0001 e18 = %d]", uint(0.0001e18));
 //         console2.log("[taken = %d, borrowed = %d]", taken, borrowed);
 //         vm.stopPrank();
@@ -766,175 +759,246 @@ contract LendingPoolTest is Test {
 //         pool.accrueInterest();
 //         uint256 totalReserveShares = pool.totalReserveShares();
 //         uint256 borrowedT1 = pool.borrowed();
-//         // uint256 balanceAfter = pool.balanceOf(admin);
+//         // uint256 balanceAfter = pool.balanceOf(reserve);
 //         console2.log("[borrowedT0 = %d, borrowedT1 = %d, diff = %d]", 
 //             borrowedT0, borrowedT1, borrowedT1 - borrowedT0);
 //         console2.log("fees paid = %d, fee in assets = %d", totalReserveShares, pool.convertToAssets(totalReserveShares));
-//         console2.log("[diff = %d, ,admin balance = %d]", (borrowedT1 - borrowedT0), pool.assetBalance(admin));
-//         console2.log("[diff*bps = %d, totalSupply = %d, admin balance = %d]", 
-//             ud(borrowedT1 - borrowedT0).mul(ud(pool.reserveFactor())).unwrap(), pool.totalSupply(), pool.assetBalance(admin));
-//         assertApproxEqAbs(ud(borrowedT1 - borrowedT0).mul(ud(pool.reserveFactor())).unwrap(), pool.assetBalance(admin), 1);
+//         console2.log("[diff = %d, ,reserve balance = %d]", (borrowedT1 - borrowedT0), pool.assetBalance(reserve));
+//         console2.log("[diff*bps = %d, totalSupply = %d, reserve balance = %d]", 
+//             ud(borrowedT1 - borrowedT0).mul(ud(pool.reserveFactor())).unwrap(), pool.totalSupply(), pool.assetBalance(reserve));
+//         assertApproxEqAbs(ud(borrowedT1 - borrowedT0).mul(ud(pool.reserveFactor())).unwrap(), pool.assetBalance(reserve), 1);
 //     }
-// }
+}
 
 
 //////////////////////////////////////////////////////////////////////////////////
 
 
-// contract LendingPoolLiquidationTests is LendingPoolTest {
-//     address supplier = address(0x012);
-//     address borrower1 = address(0x123);
-//     address borrower2 = address(0x234);
-//     address liquidator = address(0x456);
-//     address reserve = address(0x789);
+contract LendingPoolLiquidationTests is LendingPoolTest {
+    address supplier = address(0x012);
+    address borrower1 = address(0x123);
+    address borrower2 = address(0x234);
+    address liquidator = address(0x456);
 
-//     function setUp() public override {
-//         super.setUp();
-//         supplier = makeAddr("supplier");
-//         borrower1 = makeAddr("borrower1");
-//         borrower2 = makeAddr("borrower2");
-//         liquidator = makeAddr("liquidator"); 
-//         reserve = makeAddr("reserve");
-//         // vm.prank(admin);
-//         priceFeed.setPrice(c1Address, 1e8);
-//     }
+    function setUp() public override {
+        super.setUp();
+        supplier = makeAddr("supplier");
+        borrower1 = makeAddr("borrower1");
+        borrower2 = makeAddr("borrower2");
+        liquidator = makeAddr("liquidator"); 
+        // vm.prank(admin);
+        priceFeed.setPrice(c1Address, 1e8);
+    }
 
-//     function testSuccessfulLiquidation() public {
-//         // Set up pre-conditions
-//         uint256 supplyAmount = 1_000e18;
-//         uint256 borrowAmount = 400e18;
-//         uint256 collateralAmount = 600e18;
+    function testSuccessfulLiquidation() public {
+        // Set up pre-conditions
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 600e18;
+        uint256 collateralAmount = 1000e18;
+        int256 priceDrop = 0.8e8;
 
-//         asset.transfer(supplier, supplyAmount);
-//         collateral1.transfer(borrower1, collateralAmount);
+        asset.transfer(supplier, supplyAmount);
+        collateral1.transfer(borrower1, collateralAmount);
 
-//         vm.startPrank(supplier);
-//         asset.approve(address(pool), supplyAmount);
-//         pool.supply(supplyAmount, supplier, true);
+        vm.startPrank(supplier);
+        asset.approve(address(pool), supplyAmount);
+        pool.supply(supplyAmount, supplier, true);
+        vm.stopPrank();
 
-//         vm.startPrank(borrower1);
-//         collateral1.approve(address(pool), collateralAmount);
-//         pool.addCollateral(c1Address, collateralAmount);
-//         pool.take(borrowAmount);
-//         vm.stopPrank();
+        vm.startPrank(borrower1);
+        collateral1.approve(address(pool), collateralAmount);
+        pool.addCollateral(c1Address, collateralAmount);
+        pool.take(borrowAmount);
+        vm.stopPrank();
 
-//         uint256 repayAmount = 250e18;
-//         asset.transfer(liquidator, repayAmount);
-//         // vm.startPrank(liquidator);
-//         // asset.approve(address(pool), repayAmount);
+        uint256 repayAmount = 300e18;
+        asset.transfer(liquidator, repayAmount);
 
-//         // Check liquidator's and borrower's balances before liquidation
-//         uint256 liquidatorCollateralBalanceBefore = collateral1.balanceOf(liquidator);
-//         uint256 reserveBalanceBefore = collateral1.balanceOf(reserve);
+        LendingPool.LiquidateParams[] memory liquidateParams = new LendingPool.LiquidateParams[](1);
+        liquidateParams[0] = LendingPool.LiquidateParams({
+            borrower: borrower1,
+            collateral: address(collateral1),
+            repayAmount: repayAmount
+        });
 
-//         address[] memory borrowers = new address[](1);
-//         borrowers[0] = borrower1;
-//         address[] memory collaterals = new address[](1);
-//         collaterals[0] = address(collateral1);
-//         uint256[] memory amounts = new uint256[](1);
-//         amounts[0] = repayAmount;
+        // collateral price drop
+        priceFeed.setPrice(c1Address, priceDrop);
 
-//         // collateral price drop
-//         priceFeed.setPrice(c1Address, 0.8e8);
+        uint oldHealth = pool.accountHealth(borrower1);
+        vm.startPrank(liquidator);
+        asset.approve(address(pool), repayAmount);
 
-//         vm.startPrank(liquidator);
-//         asset.approve(address(pool), repayAmount);
+        uint256 repayCollateralAmount = repayAmount * 1e8 / uint(priceDrop);
+        uint256 totalAmount = repayCollateralAmount 
+            + (repayCollateralAmount * pool.collateralInfo(c1Address).liqBonus / 1e18)
+            + (repayCollateralAmount * pool.collateralInfo(c1Address).liqPenalty / 1e18);
 
-//         // Perform liquidation with single-entry arrays
-//         // vm.expectEmit(true, true, true, true);
-//         // emit LendingPool.CollateralLiquidated(address(collateral1), borrower1, liquidator, repayAmount * 11 / 10);
-//         uint256[] memory collateralLiquidated = pool.liquidate(
-//             borrowers, 
-//             collaterals, 
-//             amounts
-//         );
+        // Perform liquidation with single-entry arrays
+        vm.expectEmit(true, true, true, true);
+        emit LendingPool.PositionLiquidated(borrower1, liquidator, address(collateral1), totalAmount);
+        uint256[] memory collateralLiquidated = pool.batchLiquidate(
+            liquidateParams
+        );
+        vm.stopPrank();
 
-//         console2.log("colalteralLiquidated = %d", collateralLiquidated[0]);
-//         uint256 liquidatorCollateralBalanceAfter = collateral1.balanceOf(liquidator);
+        uint256 liquidatorCollateralBalanceAfter = collateral1.balanceOf(liquidator);
 
-//         console2.log("libBalBefore = %d, libBalAfter = %d", liquidatorCollateralBalanceBefore, liquidatorCollateralBalanceAfter);
-//         // // Check liquidator's collateral balance for discounted collateral
-//         // assertEq(liquidatorCollateralBalanceAfter, liquidatorCollateralBalanceBefore + (repayAmount * 9 / 10));
+        // total liquidated = repayment * 2 + liqPenalty + liqBonus
+        assertEq(collateralLiquidated[0], totalAmount);
 
-//         // // Check protocol's reserve balance for 10% revenue
-//         // uint256 reserveBalanceAfter = collateral1.balanceOf(reserve);
-//         // assertEq(reserveBalanceAfter, reserveBalanceBefore + (repayAmount / 10));
-//     }
+        // // Check liquidator's collateral balance for discounted collateral
+        assertEq(liquidatorCollateralBalanceAfter, repayCollateralAmount 
+            + (repayCollateralAmount * pool.collateralInfo(c1Address).liqBonus / 1e18));
 
-//     // function testLiquidationFailsIfHealthIsHigh() public {
-//     //     // Ensure the borrower's health factor is above the threshold
-//     //     uint256 repayAmount = 250e18;
+        // // Check protocol's reserve balance for 10% revenue
+        uint256 reserveBalanceAfter = collateral1.balanceOf(reserve);
+        assertEq(reserveBalanceAfter, (repayCollateralAmount * pool.collateralInfo(c1Address).liqPenalty / 1e18));
+        assertEq(collateralLiquidated[0], liquidatorCollateralBalanceAfter + reserveBalanceAfter);
+        uint newHealth = pool.accountHealth(borrower1);
+        console2.log("oldHealth = %d, newHealth = %d", oldHealth, newHealth);
+        assertGt(newHealth, oldHealth);
+    }
 
-//     //     // Attempt liquidation should fail
-//     //     vm.expectRevert(abi.encodeWithSelector(CheddaPool_AccountInsolvent.selector, borrower1, 1.1e18)); // Example health factor
-//     //     vm.prank(liquidator);
-//     //     pool.liquidate(
-//     //         new address  {borrower1           new address  {address(collaToken)}, 
-//     //         new uint256  {repayAmount}
-//     // ;
-//     // }
+    function testLiquidationFailsIfHealthIsHigh() public {
+        // Ensure the borrower's health factor is above the lltv
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 200e18;
+        uint256 collateralAmount = 1000e18;
+        uint256 repayAmount = 200e18;
+        priceFeed.setPrice(c1Address, 1.0e8);
 
-//     // function testLiquidationFailsIfRepayAmountExceedsDebt() public {
-//     //     // Set a repay amount higher than the debt owed by the borrower
-//     //     uint256 repayAmount = 600e18; // Exceeds debt of 500e18
+        asset.transfer(supplier, supplyAmount);
+        collateral1.transfer(borrower1, collateralAmount);
 
-//     //     // Expect revert due to overpayment
-//     //     vm.expectRevert(CheddaPool_Overpayment.selector);
-//     //     vm.prank(liquidator);
-//     //     pool.liquidate(
-//     //         new address  {borrower1}, 
-//     //     ew address  {address(collateralToken)}          new uint256  {repayAmount}
-//     //     );
-//     // } function testProtocolRevenueIsAllocatedCorrectly() public {
-//     //     // Set up for liquidation and check reserve balance before
-//     //     uint256 repayAmount = 250e18;
-//     //     vm.prank(liquidator);
-//     //     assetToken.approve(address(pool), repayAmount);
-//     //     uint256 reserveBalanceBefore = collateralToken.balanceOf(reserve);
+        vm.startPrank(supplier);
+        asset.approve(address(pool), supplyAmount);
+        pool.supply(supplyAmount, supplier, true);
 
-//     //     // Perform liquidation with single-entry arrays
-//     //     vm.prank(liquidator);
-//     //     pool.liquidate(
-//     //         new address  {borrower1}, 
-//     //         new addr{address(collateralToken)}, 
-//     //      w uint256  {repayAmount}
-//     //     );
+        vm.startPrank(borrower1);
+        collateral1.approve(address(pool), collateralAmount);
+        pool.addCollateral(c1Address, collateralAmount);
+        pool.take(borrowAmount);
+        vm.stopPrank();
 
-//     //     // Verif of liquidation value went to reserve
-//     //     uint256 reserveBalanceAfter = collateralToken.balanceOf(reserve);
-//     //     uint256 expectedRevenue = repayAmount / 10;
-//     //     assertEq(reserveBalanceAfter, reserveBalanceBefore + expectedRevenue);
-//     // }
+        LendingPool.LiquidateParams[] memory liquidateParams = new LendingPool.LiquidateParams[](1);
+        liquidateParams[0] = LendingPool.LiquidateParams({
+            borrower: borrower1,
+            collateral: address(collateral1),
+            repayAmount: repayAmount
+        });
+        // Attempt liquidation should fail
+        vm.prank(liquidator);
+        uint256 health = pool.accountHealth(borrower1);
+        assertGt(health, 1.0e18);
+        vm.expectRevert(abi.encodeWithSelector(LendingPool.CheddaPool_AccountSolvent.selector, borrower1, health)); // Example health factor
+        pool.batchLiquidate(
+            liquidateParams
+        );
+    }
 
-//     // function testBatchLiquidation() public {
-//     //     // Set up for multiple borrowers
-//     //     pool.supply(1_000e18, borrower1, true);
-//     //     pool.supply(1_000e18, borrower2, true);
-//     //     pool.take(500e18); // Both borrowers have debt
+    function testLiquidationFailsIfRepayAmountExceedsDebt() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 500e18;
+        uint256 collateralAmount = 1000e18;
+        uint256 repayAmount = 501e18;
+        priceFeed.setPrice(c1Address, 1.0e8);
 
-//     //     uint256 repayAmount1 = 250e18;
-//     //     uint256 repayAmount2 = 300e18;
-//     //     vm.prank(liquidator);
-//     //     assetToken.approve(address(pool), repayAmount1 + repayAmount2);
+        asset.transfer(supplier, supplyAmount);
+        collateral1.transfer(borrower1, collateralAmount);
 
-//     //     uint256 liquidatorCollateralBalanceBefore = collateralToken.balanceOf(liquidator);
-//     //     uint256 reserveBalanceBefore = collateralToken.balanceOf(reserve);
+        vm.startPrank(supplier);
+        asset.approve(address(pool), supplyAmount);
+        pool.supply(supplyAmount, supplier, true);
 
-//     //     // Perform batch liquidation
-//     //     vm.prank(liquidator);
-//     //     pool.liquidate(
-//     //         new address  {borrower1, borrower2},
-//     //         new addresddress(collateralToken), address(collateralToken           new uint256  {repayAmount1, repayAmount2}
-//     //     );
+        vm.startPrank(borrower1);
+        collateral1.approve(address(pool), collateralAmount);
+        pool.addCollateral(c1Address, collateralAmount);
+        pool.take(borrowAmount);
+        vm.stopPrank();
 
-//     //     // Chiquidator's balance for total discounted collateral received
-//     //     uint256 liquidatorCollateralBalanceAfter = collateralToken.balanceOf(liquidator);
-//     //     uint256 expectedDiscountedCollateral = (repayAmount1 * 9 / 10) + (repayAmount2 * 9 / 10);
-//     //     assertEq(liquidatorCollateralBalanceAfter, liquidatorCollateralBalanceBefore + expectedDiscountedCollateral);
+        LendingPool.LiquidateParams[] memory liquidateParams = new LendingPool.LiquidateParams[](1);
+        liquidateParams[0] = LendingPool.LiquidateParams({
+            borrower: borrower1,
+            collateral: address(collateral1),
+            repayAmount: repayAmount
+        });
 
-//     //     // Check protocol's reserve balance for total revenue from both liquidations
-//     //     uint256 reserveBalanceAfter = collateralToken.balanceOf(reserve);
-//     //     uint256 expectedRevenue = (repayAmount1 / 10) + (repayAmount2 / 10);
-//     //     assertEq(reserveBalanceAfter, reserveBalanceBefore + expectedRevenue);
-//     // }
-// }
+        priceFeed.setPrice(c1Address, 0.5e8);
+        // Attempt liquidation should fail
+        vm.prank(liquidator);
+        vm.expectRevert(abi.encodeWithSelector(LendingPool.CheddaPool_Overpayment.selector)); // Example health factor
+        pool.batchLiquidate(
+            liquidateParams
+        );
+    } 
+
+    function testBatchLiquidation() public {
+        // Set up for multiple borrowers
+        uint256 supplyAmount = 2000e18;
+        uint256 borrowAmount1 = 600e18;
+        uint256 borrowAmount2 = 350e18;
+        uint256 collateralAmount = 1000e18;
+        uint256 repayAmount1 = 300e18;
+        uint256 repayAmount2 = 200e18;
+        priceFeed.setPrice(c1Address, 1.0e8);
+        priceFeed.setPrice(c2Address, 1.0e8);
+
+        asset.transfer(supplier, supplyAmount);
+        collateral1.transfer(borrower1, collateralAmount);
+        collateral2.transfer(borrower2, collateralAmount);
+
+        vm.startPrank(supplier);
+        asset.approve(address(pool), supplyAmount);
+        pool.supply(supplyAmount, supplier, true);
+
+        vm.startPrank(borrower1);
+        collateral1.approve(address(pool), collateralAmount);
+        pool.addCollateral(c1Address, collateralAmount);
+        pool.take(borrowAmount1);
+        vm.stopPrank();
+
+        vm.startPrank(borrower2);
+        collateral2.approve(address(pool), collateralAmount);
+        pool.addCollateral(c2Address, collateralAmount);
+        pool.take(borrowAmount2);
+        vm.stopPrank();
+       
+        LendingPool.LiquidateParams[] memory liquidateParams = new LendingPool.LiquidateParams[](2);
+        liquidateParams[0] = LendingPool.LiquidateParams({
+            borrower: borrower1,
+            collateral: address(collateral1),
+            repayAmount: repayAmount1
+        });
+
+        liquidateParams[1] = LendingPool.LiquidateParams({
+            borrower: borrower2,
+            collateral: address(collateral2),
+            repayAmount: repayAmount2
+        });
+        priceFeed.setPrice(c1Address, 0.5e8);
+        priceFeed.setPrice(c2Address, 0.3e8);
+
+        asset.transfer(liquidator, repayAmount1 + repayAmount2);
+
+        vm.startPrank(liquidator);
+        asset.approve(address(pool), repayAmount1 + repayAmount2);
+
+        uint256 liquidatorBalanceBefore = asset.balanceOf(liquidator);
+        uint256 borrower1DebtBefore = pool.assetsBorrowed(borrower1);
+        uint256 borrower2DebtBefore = pool.assetsBorrowed(borrower2);
+        // Attempt liquidation should fail
+        uint256[] memory collateralLiquidated = pool.batchLiquidate(
+            liquidateParams
+        );
+        vm.stopPrank();
+
+        // check balances and debt
+        uint256 liquidatorBalanceAfter = asset.balanceOf(liquidator);
+        uint256 borrower1DebtAfter = pool.assetsBorrowed(borrower1);
+        uint256 borrower2DebtAfter = pool.assetsBorrowed(borrower2);
+        assertEq(liquidatorBalanceBefore, liquidatorBalanceAfter + repayAmount1 + repayAmount2);
+        assertEq(borrower1DebtBefore, borrower1DebtAfter + repayAmount1);
+        assertEq(borrower2DebtBefore, borrower2DebtAfter + repayAmount2);
+        console2.log("collateralLiquidated = [%d, %d]", collateralLiquidated[0], collateralLiquidated[1]);
+    }
+}
