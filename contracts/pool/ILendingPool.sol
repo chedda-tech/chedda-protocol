@@ -23,21 +23,21 @@ enum AccountValue {
 }
 
 /// @notice Holds information about the type of collateral held in vault.
-/// ltv + liqPenalty + liqDiscount must be < liqThreshold
-/// @param ltv The max loan to value ration for this collateral. 1e18 = 100%
-/// @param liqThreshold The liquidation threshold. Used in calculation of health factor.
+/// ltv + liqPenalty + liqBonus must be < lltv
+/// @param ltv The max loan to value ratio for this collateral. 1e18 = 100%
+/// @param lltv The liquidation ltv. Used in calculation of health factor.
 /// @param liqPenalty The liquidation penalty that goes to reserve.
-/// @param liqDiscount The discount rate liquidators get for this collateral
-struct CollateralInfo {
+/// @param liqBonus The discount rate liquidators get for this collateral
+struct CollateralParams {
     uint256 ltv;
-    uint256 liqThreshold;
+    uint256 lltv;
     uint256 liqPenalty;
-    uint256 liqDiscount;
+    uint256 liqBonus;
 }
 
 struct CollateralInfoInit {
     address token;
-    CollateralInfo info;
+    CollateralParams info;
 }
 
 /// @dev Information about collateral deposited to the pool.
@@ -66,16 +66,16 @@ interface ILendingPool {
     function baseSupplyAPY() external view returns (uint256);
     function baseBorrowAPY() external view returns (uint256);
     function utilization() external view returns (uint256);
-    function tvl() external view returns (uint256);
+    function tvl(bool) external view returns (uint256);
     function totalReserveShares() external view returns (uint256);
     function priceFeed() external view returns (IPriceFeed);
     function interestRatesModel() external view returns (IInterestRateModel);
     function collaterals() external view returns (address [] memory);
-    function collateralInfo(address) external view returns (CollateralInfo memory);
+    function collateralInfo(address) external view returns (CollateralParams memory);
     function tokenCollateralDeposited(address) external view returns (uint256);
     function accountHealth(address account) external view returns (uint256);
     function assetBalance(address account) external view returns (uint256);
-    function accountAssetsBorrowed(address account) external view returns (uint256);
+    function assetsBorrowed(address account) external view returns (uint256);
     function accountCollateralAmount(address account, address collateral) external view returns (uint256);
     function tokenMarketValue(address token, uint256 amount) external view returns (uint256);
     function tokenLoanValue(address token, uint256 amount) external view returns (uint256);

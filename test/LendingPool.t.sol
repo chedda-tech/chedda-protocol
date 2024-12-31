@@ -10,7 +10,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
 import {DefaultInterestRateModel} from "../contracts/interestrates/DefaultInterestRateModel.sol";
 import {LendingPool} from "../contracts/pool/LendingPool.sol";
-import {ILendingPool, CollateralInfo, CollateralInfoInit, TokenType, AccountValue} from "../contracts/pool/ILendingPool.sol";
+import {ILendingPool, CollateralParams, CollateralInfoInit, TokenType, AccountValue} from "../contracts/pool/ILendingPool.sol";
 import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 import {MockSteadyInterestRatesModel} from "./mocks/MockSteadyInterestRatesModel.sol";
 import {MathLib} from "../contracts/library/MathLib.sol";
@@ -22,9 +22,9 @@ contract LendingPoolTest is Test {
     MockERC20 public asset;
     MockERC20 public collateral1;
     MockERC20 public collateral2;
-    uint256 public assetLtv = 0.8e18;
-    uint256 public c1Ltv = 0.7e18;
-    uint256 public c2Ltv = 0.6e18;
+    uint256 public assetLtv = 0.7e18;
+    uint256 public c1Ltv = 0.65e18;
+    uint256 public c2Ltv = 0.4e18;
     uint256 public baseFeeBps = 0.1e18;
     uint256 public supplyCap = 1_000_000e18;
 
@@ -33,6 +33,7 @@ contract LendingPoolTest is Test {
     address public c2Address;
     MockPriceFeed public priceFeed;
     address public admin;
+    address public reserve;
     address public bob;
     address public alice;
 
@@ -55,6 +56,7 @@ contract LendingPoolTest is Test {
         c1Address = address(collateral1);
         c2Address = address(collateral2);
         admin = makeAddr("admin");
+        reserve = makeAddr("reserve");
         bob = makeAddr("bob");
         alice = makeAddr("alice");
         priceFeed = new MockPriceFeed(8);
@@ -65,29 +67,29 @@ contract LendingPoolTest is Test {
         CollateralInfoInit[] memory collateralTypes = new CollateralInfoInit[](3);
         collateralTypes[0] = CollateralInfoInit({
             token: address(asset),
-            info: CollateralInfo({
+            info: CollateralParams({
                 ltv: assetLtv,
-                liqThreshold: 0.9e18,
-                liqPenalty: 0.1e18,
-                liqDiscount: 0.1e18
+                lltv: 0.8e18,
+                liqPenalty: 0.05e18,
+                liqBonus: 0.05e18
             })
         });
         collateralTypes[1] = CollateralInfoInit({
             token: c1Address,
-            info: CollateralInfo({
+            info: CollateralParams({
                 ltv: c1Ltv,
-                liqThreshold: 0.5e18,
+                lltv: 0.75e18,
                 liqPenalty: 0.1e18,
-                liqDiscount: 0.1e18
+                liqBonus: 0.1e18
             })
         });
         collateralTypes[2] = CollateralInfoInit({
             token: c2Address,
-            info: CollateralInfo({
+            info: CollateralParams({
                 ltv: c2Ltv,
-                liqThreshold: 0.5e18,
+                lltv: 0.75e18,
                 liqPenalty: 0.1e18,
-                liqDiscount: 0.1e18
+                liqBonus: 0.1e18
             })
         });
 
@@ -101,7 +103,7 @@ contract LendingPoolTest is Test {
             interestRatesModel: address(steadyRates),
             owner: admin,
             registry: address(registry),
-            reserve: admin,
+            reserve: reserve,
             reserveFactor: baseFeeBps,
             initialSupplyCap: 1_000_000e18, // decimals must match asset decimals
             stalePriceThreshold: 3600,
@@ -341,7 +343,7 @@ contract LendingPoolTest is Test {
         vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
         pool.putAmount(0);
 
-        uint256 bobAssetsBorrowed = pool.accountAssetsBorrowed(bob);
+        uint256 bobAssetsBorrowed = pool.assetsBorrowed(bob);
         vm.expectRevert(LendingPool.CheddaPool_Overpayment.selector);
         pool.putAmount(bobAssetsBorrowed + 100e8);
 
@@ -544,8 +546,8 @@ contract LendingPoolTest is Test {
 
     function testAccountAssetsBorrowed() external {
         uint256 assetAmount = 1000e8;
-        uint256 bobBorrowAmount = 600e8;
-        uint256 aliceBorrowAmount = 400e8;
+        uint256 bobBorrowAmount = 400e8;
+        uint256 aliceBorrowAmount = 300e8;
 
         asset.transfer(bob, assetAmount);
         asset.transfer(alice, assetAmount);
@@ -554,15 +556,15 @@ contract LendingPoolTest is Test {
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, bob, true);
         pool.take(bobBorrowAmount);
-        assertGe(pool.accountAssetsBorrowed(bob), bobBorrowAmount); // Ge to account for interest
-        console2.log("accountAssetBorrowed = %d, borrowAmount = %d", pool.accountAssetsBorrowed(bob), bobBorrowAmount);
+        assertGe(pool.assetsBorrowed(bob), bobBorrowAmount); // Ge to account for interest
+        console2.log("accountAssetBorrowed = %d, borrowAmount = %d", pool.assetsBorrowed(bob), bobBorrowAmount);
         vm.stopPrank();
 
         vm.startPrank(alice);
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, alice, true);
         pool.take(aliceBorrowAmount);
-        assertGe(pool.accountAssetsBorrowed(alice), aliceBorrowAmount); //Ge to account for interest
+        assertGe(pool.assetsBorrowed(alice), aliceBorrowAmount); //Ge to account for interest
         vm.stopPrank();
     }
 
@@ -582,17 +584,13 @@ contract LendingPoolTest is Test {
         vm.startPrank(bob);
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, bob, true);
-        pool.take(assetAmount * 70 / 100);
-        // pool.take(10e18);
-        // health = pool.accountHealth(bob);
-        // assertGt(health, 1.0e18);
-        // vm.expectRevert(
-        //     abi.encodeWithSelector(LendingPool.CheddaPool_AccountInsolvent.selector, bob, 999999999988888888)
-        // );
-        // pool.take(assetAmount * 1 / 100);
-        // uint256 newHealth = pool.accountHealth(bob);
-        // assertEq(health, newHealth);
-        // console2.log("new health = %d", newHealth);
+        pool.take(assetAmount * 20 / 100);
+        health = pool.accountHealth(bob);
+        assertGt(health, 1.0e18);
+
+        pool.take(assetAmount * 1 / 100);
+        uint256 newHealth = pool.accountHealth(bob);
+        assertGt(health, newHealth);
         vm.stopPrank();
     }
 
