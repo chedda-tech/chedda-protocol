@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IAddressRegistry} from "../config/AddressRegistry.sol";
 import {IStakingPool} from "./IStakingPool.sol";
-import {ICheddaToken} from "../tokens/ICheddaToken.sol";
+import {ICheddaToken} from "./ICheddaToken.sol";
 
 /// @title StakingPool
 /// @notice Manages staking tokens and rewards.
@@ -84,13 +84,6 @@ contract StakingPool is IStakingPool {
         rewardToken = ICheddaToken(registry.cheddaToken());
     }
 
-    modifier onlyAccountActor() {
-        if (msg.sender != registry.accountActor()) {
-            revert NotAuthorized(msg.sender);
-        }
-        _;
-    }
-
     /// @inheritdoc IStakingPool
     function stake(uint256 amount) external returns (uint256) {
         if (amount == 0) {
@@ -153,14 +146,14 @@ contract StakingPool is IStakingPool {
         return _claimFor(msg.sender);
     }
 
-    /// @inheritdoc IStakingPool
-    function claimFor(address account) external onlyAccountActor() returns (uint256) {
-        return _claimFor(account);
+    function claimFor(address account) public returns (uint256 claimed) {
+        rewardToken.rebase();
+        claimed = _claimFor(account);
     }
 
     /// @dev Internal claim function
     function _claimFor(address account) private returns (uint256) {
-       uint256 claimAmount = claimable(account);
+        uint256 claimAmount = claimable(account);
         if (claimAmount != 0) {
             UserInfo storage user = userInfo[account];
             user.rewardDebt = user.amountStaked * rewardPerShare / 1e12;

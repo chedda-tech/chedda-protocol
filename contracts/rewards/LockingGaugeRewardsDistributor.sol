@@ -96,7 +96,7 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
         for (uint256 i = 0; i < length; i++) {
             // -> distribute to pools based on weights.
             ILockingGauge gauge = ICheddaPool(pools[i]).gauge();
-            uint256 poolRewards = available * gauge.totalWeight() / totalWeight;
+            uint256 poolRewards = (available * gauge.totalWeight()) / totalWeight;
             if (poolRewards > 0) {
                 IStakingPool pool = ICheddaPool(pools[i]).stakingPool();
                 uint256 stakingRewards = poolRewards * stakingPortion / Konstant;

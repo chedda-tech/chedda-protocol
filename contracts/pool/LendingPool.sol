@@ -550,6 +550,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             revert CheddaPool_ZeroAmount();
         }
 
+        // account is always msg.sender
         ERC20(token).safeTransferFrom(account, address(this), amount);
         tokenCollateralDeposited[token] += amount;
 

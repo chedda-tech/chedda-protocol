@@ -4,13 +4,15 @@ pragma solidity ^0.8.20;
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPriceFeed } from "../../contracts/oracle/IPriceFeed.sol";
-import { ILendingPool, CollateralInfo, AccountValue } from "../../contracts/pool/ILendingPool.sol";
+import { ILendingPool, CollateralParams, AccountValue } from "../../contracts/pool/ILendingPool.sol";
 import { IInterestRateModel } from "../../contracts/interestrates/IInterestRateModel.sol";
-import { ILiquidityGauge } from "../../contracts/gauge/ILiquidityGauge.sol";
 import { DebtToken } from "../../contracts/tokens/DebtToken.sol";
 import { MockERC20 } from "./MockERC20.sol";
+import {ICheddaPool} from "../../contracts/rewards/ICheddaPool.sol";
+import {ILockingGauge} from "../../contracts/rewards/ILockingGauge.sol";
+import {IStakingPool} from "../../contracts/rewards/IStakingPool.sol";
 
-contract MockLendingPool is ILendingPool {
+contract MockLendingPool is ILendingPool, ICheddaPool {
 
     DebtToken public debtToken;
     MockERC20 public asset;
@@ -28,7 +30,6 @@ contract MockLendingPool is ILendingPool {
     mapping (address => uint) private _accountCollateralValue;
     mapping (address => uint) private _accountCollateralAmount;
     mapping (address => uint) private _accountHealth;
-
 
     constructor(string memory _characterization, address _asset, address _priceFeed, address[] memory c) {
         asset = MockERC20(_asset);
@@ -107,16 +108,12 @@ contract MockLendingPool is ILendingPool {
         return 0.85e18;
     }
 
-    function tvl() external view returns (uint256) {
+    function tvl(bool) external view returns (uint256) {
         return _tvl;
     }
 
     function totalReserveShares() external view returns (uint256) {
         return _reserveShares;
-    }
-
-    function gauge() external view returns (ILiquidityGauge) {
-        return ILiquidityGauge(_gauge);
     }
 
     function interestRatesModel() external pure returns (IInterestRateModel) {
@@ -143,7 +140,7 @@ contract MockLendingPool is ILendingPool {
         return _accountSupplied[account];
     }
 
-    function accountAssetsBorrowed(address account) external view returns (uint256) {
+    function assetsBorrowed(address account) external view returns (uint256) {
         return _accountBorrowed[account];
     }
 
@@ -171,20 +168,24 @@ contract MockLendingPool is ILendingPool {
         return 1000e18;
     }
 
-    function stakingPool() external view returns (address) {
-        return address(_stakingPool);
+    function stakingPool() external view returns (IStakingPool) {
+        return IStakingPool(_stakingPool);
+    }
+
+    function gauge() external view returns (ILockingGauge) {
+        return ILockingGauge(_gauge);
     }
 
     function recapitalize() external pure returns (uint256) {
         return 0;
     }
 
-    function collateralInfo(address) external pure returns (CollateralInfo memory) {
-        return CollateralInfo({
+    function collateralInfo(address) external pure returns (CollateralParams memory) {
+        return CollateralParams({
             ltv: 0,
-            liqThreshold: 0,
+            lltv: 0,
             liqPenalty: 0,
-            liqDiscount: 0.1e18
+            liqBonus: 0.1e18
         });
     }
 }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ICheddaToken} from "../../contracts/tokens/ICheddaToken.sol";
+import {ICheddaToken} from "../../contracts/rewards/ICheddaToken.sol";
 
 contract MockCheddaToken is ERC20, ICheddaToken {
 

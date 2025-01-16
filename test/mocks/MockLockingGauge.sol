@@ -2,7 +2,7 @@
 pragma solidity 0.8.27;
 
 import {ILockingGauge, LockTime, Lock} from "../../contracts/rewards/ILockingGauge.sol";
-import {ICheddaToken} from "../../contracts/tokens/ICheddaToken.sol";
+import {ICheddaToken} from "../../contracts/rewards/ICheddaToken.sol";
 
 contract MockLockingGauge is ILockingGauge {
     event WeightSet(uint256 weight);
