@@ -8,8 +8,15 @@ contract CheckDefaultInterestRateModel is Script {
     DefaultInterestRateModel public strategy;
 
     function setUp() external {
-        uint256 baseBorrowRate = 0.04e18;
-        uint256 rateSlope1 = 0.088e18;
+        // 4% -> 11.1% at target utilization
+        // uint256 baseBorrowRate = 0.04e18;
+        // uint256 rateSlope1 = 0.088e18;
+        // uint256 rateSlope2 = 8e18;
+        // uint256 targetUtilization = 0.92e18;
+        // uint256 reserveFactor = 0.1e18;
+
+        uint256 baseBorrowRate = 0.05e18;
+        uint256 rateSlope1 = 0.1e18;
         uint256 rateSlope2 = 8e18;
         uint256 targetUtilization = 0.92e18;
         uint256 reserveFactor = 0.1e18;

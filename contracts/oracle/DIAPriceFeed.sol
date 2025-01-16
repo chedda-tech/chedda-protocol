@@ -9,14 +9,17 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// @notice Represents an instance of a feed that reads values from a DIA oracle.
 contract DIAPriceFeed is IPriceFeed {
 
+    /// @dev Reverts if zero addrss provided
+    error ZeroAddress();
+
     using SafeCast for uint128;
     using SafeCast for uint256;
 
     /// @dev oracle address
-    address public oracle;
+    address public immutable oracle;
 
     /// @dev number of decimals for values returned by this feed.
-    uint8 public decimals;
+    uint8 public immutable decimals;
 
     /// @dev mapping from token address to key used to fetch prices from DIA oracle.
     mapping(address => string) public feedKeyMap;
@@ -34,6 +37,7 @@ contract DIAPriceFeed is IPriceFeed {
     /// @param _decimals The number of decimals for values returned from `readPrice`.
     /// @param _initFeedMap A map of token address to feed key.
     constructor(address _oracle, uint8 _decimals, FeedKeyMap[] memory _initFeedMap) {
+        require(_oracle != address(0), ZeroAddress());
         oracle = _oracle;
         decimals = _decimals;
         uint256 len = _initFeedMap.length;

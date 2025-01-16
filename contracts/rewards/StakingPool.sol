@@ -2,7 +2,6 @@
 pragma solidity 0.8.27;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IAddressRegistry} from "../config/AddressRegistry.sol";
 import {IStakingPool} from "./IStakingPool.sol";
@@ -38,14 +37,11 @@ contract StakingPool is IStakingPool {
     /// @dev Thrown when user tries to unstake more than their staking balance.
     error InsufficientStake();
     
-    /// @dev Thrown when account other than rewardsDistributor calls the `addRewards()` function.
-    error NotAuthorized(address caller);
-
-    /// @dev Thrown when user tries to unstake when they don't have tokens staked.
-    error NoStakeFound(address caller);
-
     /// @dev Thrown when user tries to stake or unstake the zero amount.
     error ZeroAmount();
+
+    /// @dev Thrown when a zero address is specified.
+    error ZeroAddress();
 
     /// @dev Thrown when an invalid amount of rewards are added.
     error InvalidAmount(uint256 amount);
@@ -59,12 +55,12 @@ contract StakingPool is IStakingPool {
     mapping(address => UserInfo) public userInfo;
 
     /// @notice The staking token
-    IERC20 public stakingToken; // Token being staked
+    IERC20 public immutable stakingToken; // Token being staked
 
     /// @notice The reward token
-    ICheddaToken public rewardToken; // Token for rewards
+    ICheddaToken public immutable rewardToken; // Token for rewards
 
-    IAddressRegistry public registry;
+    IAddressRegistry public immutable registry;
 
     /// @notice Total amount of tokens staked
     uint256 public totalStaked;
@@ -79,6 +75,8 @@ contract StakingPool is IStakingPool {
     /// @param _registry The Chedda AddressRegistry
     /// @param _stakingToken The token being staked.
     constructor(address _registry, address _stakingToken) {
+        require (_registry != address(0) && _stakingToken != address(0),
+            ZeroAddress());
         registry = IAddressRegistry(_registry);
         stakingToken = IERC20(_stakingToken);
         rewardToken = ICheddaToken(registry.cheddaToken());

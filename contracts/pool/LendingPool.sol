@@ -162,6 +162,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 borrowRate
     );
 
+    event CollaterallizeAsset(address indexed account, bool useAsCollateral);
+
     /// Custom errors
 
     /// @dev Thrown when a caller tries to deposit a token for collateral that is not allowed
@@ -237,8 +239,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     DebtToken public immutable debtToken;
     IAddressRegistry public immutable registry;
     IPriceFeed public immutable priceFeed;
+    IInterestRateModel public immutable interestRatesModel;
     InterestRates public interestRates;
-    IInterestRateModel public interestRatesModel;
     ILockingGauge public gauge;
     IStakingPool public stakingPool;
 
@@ -340,9 +342,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// @dev initializes collateral tokens
     function _initCollaterals(CollateralInfoInit[] memory cInit) private {
-        for (uint256 i = 0; i < cInit.length; i++) {
+        uint256 len = cInit.length;
+        address collateral;
+        for (uint256 i = 0; i < len; i++) {
             _checkCollateralParams(cInit[i].info);
-            address collateral = cInit[i].token;
+            collateral = cInit[i].token;
             collateralTokenList.push(collateral);
             collateralAllowed[collateral] = true;
             _collateralParams[cInit[i].token] = cInit[i].info;
@@ -382,7 +386,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// @dev checks collateral params
     function _checkCollateralParams(CollateralParams memory params) private pure {
-        require(params.lltv < 1.0e18 && params.ltv + 0.1e18 <= params.lltv, CheddaPool_InvalidCollateralParams());
+        require(params.lltv < 1.0e18 && params.ltv <= params.lltv, CheddaPool_InvalidCollateralParams());
         require(params.lltv + params.liqBonus + params.liqPenalty < 1.0e18, CheddaPool_InvalidCollateralParams());
     }
 
@@ -515,10 +519,13 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     function collateralize(bool useAsCollateral) external {
         _collateralize(useAsCollateral, msg.sender);
+
     }
 
     function _collateralize(bool useAsCollateral, address account) private {
         assetCollateralized[account] = useAsCollateral;
+
+        emit CollaterallizeAsset(account, useAsCollateral);
     }
 
     /// @notice Add ERC-20 token collateral to pool.
@@ -1015,7 +1022,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// In simple terms, an account is solvent if collateralMarketValue * liquidation threshold > debt.
     /// @param account account to check for.
     /// @return If the account is solvent.
-    function isSolvent(address account) public view returns (bool) {
+    function isSolvent(address account) external view returns (bool) {
         uint256 accountBorrowed = assetsBorrowed(account);
         if (accountBorrowed == 0) return true;
 
@@ -1068,7 +1075,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             CheddaPool_InsufficientAssetBalance(amountAvailable, amount));
     }
 
-    // TODO: Interest accrual
     function accrueInterest() public {
         _accrue();
     }
@@ -1125,7 +1131,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// @notice Returns the asset that can be borrowed from this pool
     /// @return asset The pool asset
-    function poolAsset() public view returns (ERC20) {
+    function poolAsset() external view returns (ERC20) {
         return asset;
     }
 
@@ -1247,14 +1253,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ///                        deposit/withdraw hooks
     ///////////////////////////////////////////////////////////////////////////
     // solhint-disable-next-line private-vars-leading-underscore
-    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
-        shares;
+    function beforeWithdraw(uint256 assets, uint256) internal override {
         supplied -= assets;
     }
 
     // solhint-disable-next-line private-vars-leading-underscore
-    function afterDeposit(uint256 assets, uint256 shares) internal override {
-        shares;
+    function afterDeposit(uint256 assets, uint256) internal override {
         supplied += assets;
         _checkSupplyCap();
     }
@@ -1284,9 +1288,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         );
     }
 
-    /// @notice Returns the version of the vault
+    /// @notice Returns the version of the pool
     /// @return The version
     function version() external pure returns (uint16) {
-        return 3;
+        return 1;
     }
 }

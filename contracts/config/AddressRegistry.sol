@@ -14,16 +14,16 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     event AccountActorSet(address indexed actor, address indexed caller);
     event PoolRegistered(address indexed pool, address indexed caller);
     event PoolUnregistered(address indexed pool, address indexed caller);
+    event PoolActive(address indexed pool, address indexed caller, bool isActive);
 
     error AlreadyRegistered(address pool);
     error NotRegistered(address pool);
+    error ZeroAddress();
 
     address private _rewardsDistributor;
     address private _cheddaToken;
     address private _cheddaPriceOracle;
-    address private _lendingPoolLens;
     address private _accountActor;
-    address private _rewardLens;
     address[] private _pools;
     mapping (address => bool) private _activePools;
 
@@ -52,6 +52,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     /// emits RewardsDistributorSet(address caller, address distributor) event
     /// @param distributor The new rewards distributor
     function setRewardsDistributor(address distributor) external onlyOwner() {
+        require(distributor != address(0), ZeroAddress());
         _rewardsDistributor = distributor;
 
         emit RewardsDistributorSet(distributor, msg.sender);
@@ -62,12 +63,14 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     /// emits `CheddaSet(address caller, address cheddaToken)` event
     /// @param chedda New chedda token address 
     function setCheddaToken(address chedda) external onlyOwner() {
+        require(chedda != address(0), ZeroAddress());
         _cheddaToken = chedda;
 
         emit CheddaSet(chedda, msg.sender);
     }
 
     function setCheddaPriceOracle(address _oracle) external onlyOwner() {
+        require(_oracle != address(0), ZeroAddress());
         _cheddaPriceOracle = _oracle;
 
         emit CheddaPriceOracleSet(_oracle, msg.sender);
@@ -78,6 +81,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     /// emits `AccountActorSet(address caller, address actor)` event.
     /// @param actor The new account Actor.
     function setAccountActor(address actor) external onlyOwner() {
+        require(actor != address(0), ZeroAddress());
         _accountActor = actor;
 
         emit AccountActorSet(actor, msg.sender);
@@ -113,7 +117,8 @@ contract AddressRegistry is Ownable, IAddressRegistry {
             revert NotRegistered(pool);
         }
         uint256 foundIndex = type(uint256).max;
-        for (uint256 i = 0; i < _pools.length; i++) {
+        uint256 len = _pools.length;
+        for (uint256 i = 0; i < len; i++) {
             if (_pools[i] == pool) {
                 foundIndex = i;
             }
@@ -136,13 +141,15 @@ contract AddressRegistry is Ownable, IAddressRegistry {
             revert NotRegistered(pool);
         }
         _activePools[pool] = isActive;
+        emit PoolActive(pool, msg.sender, isActive);
     }
 
     /// @notice checks if a pool is already registered
     /// @param pool The address to check for
     /// @return Returns true if the pool address is registered
     function isRegisteredPool(address pool) public view returns (bool) {
-        for (uint256 i = 0; i < _pools.length; i++) {
+        uint256 len = _pools.length;
+        for (uint256 i = 0; i < len; i++) {
             if (_pools[i] == pool) {
                 return true;
             }
@@ -153,7 +160,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     /// @notice checks if a pool is active
     /// @param pool The address to check for
     /// @return Returns true if the pool address is registered
-    function isActivePool(address pool) public view returns (bool) {
+    function isActivePool(address pool) external view returns (bool) {
         return _activePools[pool];
     }
 
@@ -167,7 +174,8 @@ contract AddressRegistry is Ownable, IAddressRegistry {
     /// @return pools The addresses of all active pools
     function activePools() external view returns (address[] memory) {
         uint256 numberActive = 0;
-        for (uint256 i = 0; i < _pools.length; i++) {
+        uint256 len = _pools.length;
+        for (uint256 i = 0; i < len; i++) {
             if (_activePools[_pools[i]]) {
                 numberActive += 1;
             }
@@ -177,7 +185,7 @@ contract AddressRegistry is Ownable, IAddressRegistry {
         }
         address[] memory pools = new address[](numberActive);
         uint256 j = 0;
-        for (uint256 i = 0; i < _pools.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             if (_activePools[_pools[i]]) {
                 pools[j++] = _pools[i];
             }

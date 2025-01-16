@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity 0.8.27;
 
 import { IInterestRateModel, InterestRates } from "./IInterestRateModel.sol";
 
 contract DefaultInterestRateModel is IInterestRateModel {
-    uint256 public baseBorrowRate;  // Initial interest rate
-    uint256 public rateSlope1; // rate of increase when utilization <= targetUtilization
-    uint256 public rateSlope2; // rate of increase when utilization > targetUtilization
-    uint256 public targetUtilization; // Target utilization rate
-    uint256 public reserveFactor;  // Protocol fee
+    uint256 public immutable baseBorrowRate;  // Initial interest rate
+    uint256 public immutable rateSlope1; // rate of increase when utilization <= targetUtilization
+    uint256 public immutable rateSlope2; // rate of increase when utilization > targetUtilization
+    uint256 public immutable targetUtilization; // Target utilization rate
+    uint256 public immutable reserveFactor;  // Protocol fee
 
     constructor(
         uint256 _baseBorrowRate,
@@ -25,7 +25,7 @@ contract DefaultInterestRateModel is IInterestRateModel {
     }
 
     // Calculate the interest rate based on utilization
-    function calculateInterestRates(uint256 utilization) public view returns (InterestRates memory) {
+    function calculateInterestRates(uint256 utilization) external view returns (InterestRates memory) {
         uint256 borrowRate;
         uint256 supplyRate;
         uint256 effectiveSupplyRate;

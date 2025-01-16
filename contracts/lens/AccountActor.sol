@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.27;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
 import {ILendingPool, AccountValue} from "../pool/ILendingPool.sol";
 import {ICheddaPool} from "../rewards/ICheddaPool.sol";
 import {ILockingGauge} from "../rewards/ILockingGauge.sol";
 import {IStakingPool} from "../rewards/IStakingPool.sol";
-import {StakingPool} from "../rewards/StakingPool.sol";
+// import {StakingPool} from "../rewards/StakingPool.sol";
 import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {UD60x18, ud} from "prb-math/UD60x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -19,7 +18,10 @@ contract AccountActor {
 
     /// @dev Emitted when the caller is not permitted to make a call.
     /// @param account The account making the call
-    error NotAuthorized(address account);
+    // error NotAuthorized(address account);
+
+    /// @dev Reverts if zero addrss provided
+    error ZeroAddress();
 
     struct AccountSummary {
         uint256 netValue;
@@ -51,11 +53,12 @@ contract AccountActor {
     using SafeCast for int256;
 
     /// @notice Chedda address registry
-    IAddressRegistry public registry;
+    IAddressRegistry public immutable registry;
 
     /// @dev Constructor
     /// @param _registry The address registry address.
     constructor(address _registry) {
+        require(_registry != address(0), ZeroAddress());
         registry = IAddressRegistry(_registry);
     }
 

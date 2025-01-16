@@ -28,13 +28,13 @@ contract DebtTokenTest is Test {
         uint256 amount = 1000e18;
 
         // checks reverts if not call
-        vm.expectRevert(DebtToken.NotVault.selector);
+        vm.expectRevert(DebtToken.NotPool.selector);
         _debtToken.createDebt(amount, bob);
 
-        vm.expectRevert(DebtToken.NotVault.selector);
+        vm.expectRevert(DebtToken.NotPool.selector);
         _debtToken.repayAmount(amount, bob);
 
-        vm.expectRevert(DebtToken.NotVault.selector);
+        vm.expectRevert(DebtToken.NotPool.selector);
         _debtToken.repayShare(amount, bob);
     }
 

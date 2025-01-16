@@ -109,7 +109,7 @@ contract LendingPoolTest is Test {
 
     function testPoolConfiguration() external view {
         assertEq(POOL_NAME, pool.characterization());
-        assertEq(3, pool.version());
+        assertEq(1, pool.version());
         assertEq(address(asset), address(pool.asset()));
         assertEq(address(asset), address(pool.poolAsset()));
         assertEq(address(priceFeed), address(pool.priceFeed()));

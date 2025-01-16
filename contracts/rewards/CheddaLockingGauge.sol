@@ -2,7 +2,6 @@
 pragma solidity 0.8.27;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ILockingGauge, Lock, LockTime} from "./ILockingGauge.sol";
@@ -49,10 +48,8 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     error LockNotFound(address);
     error LockNotExpired(uint256);
     error ZeroAmount();
+    error ZeroAddress();
     error InvalidAmount(uint256);
-
-    /// @dev Thrown when account other than rewardsDistributor calls the `addRewards()` function.
-    error NotAuthorized(address caller);
 
     IAddressRegistry public registry;
     ICheddaToken public token;
@@ -67,6 +64,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     mapping (address => Lock) private locks;
 
     constructor(address _registry) {
+        require(_registry != address(0), ZeroAddress());
         registry = IAddressRegistry(_registry);
         token = ICheddaToken(registry.cheddaToken());
     }

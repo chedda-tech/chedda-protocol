@@ -18,22 +18,25 @@ contract LockingGaugeRewardsDistributor is Ownable, IRewardsDistributor {
 
     error AlreadyRegistered(address);
     error NotFound(address);
+    error ZeroAddress();
 
     event PoolRegistered(address indexed pool);
     event PoolUnregistered(address indexed pool);
     event RewardsDistributed(uint256 amount);
 
-    IERC20 public token;
+
+    IERC20 public immutable token;
 
     address[] public pools;
-    uint256 public stakingPortion = 0.4e18;
-    uint256 public lockingPortion = 0.6e18;
+    uint256 public constant stakingPortion = 0.4e18;
+    uint256 public constant lockingPortion = 0.6e18;
     uint256 public constant Konstant = 1.0e18;
 
     /// @notice Constructor
     /// @param _token The address of token to be distributed
     /// @param _admin The contract admin. This account can register and unregister pools.
     constructor(address _token, address _admin) Ownable(_admin) {
+        require(_token != address(0) && _admin != address(0), ZeroAddress());
         token = IERC20(_token);
     }
 

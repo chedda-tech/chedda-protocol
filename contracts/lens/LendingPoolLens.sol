@@ -11,7 +11,7 @@ import { IAddressRegistry } from "../config/IAddressRegistry.sol";
 import {CheddaToken} from "../rewards/CheddaToken.sol";
 import {ICheddaPool} from "../rewards/ICheddaPool.sol";
 import {ILockingGauge} from "../rewards/ILockingGauge.sol";
-import {IStakingPool} from "../rewards/IStakingPool.sol";
+// import {IStakingPool} from "../rewards/IStakingPool.sol";
 import {IRewardsDistributor} from "../rewards/IRewardsDistributor.sol";
 
 /// @title LendingPoolLens
@@ -96,17 +96,21 @@ contract LendingPoolLens {
     event PoolRegistered(address indexed pool, address indexed caller);
     event PoolUnregistered(address indexed pool, address indexed caller);
 
-    error AlreadyRegistered(address pool);
+    /// @dev Revert is unregistering pool that is not registered.
     error NotRegistered(address pool);
+
+    /// @dev Reverts if zero addrss provided
+    error ZeroAddress();
 
     using SafeCast for int256;
     using MathLib for uint256;
 
-    IAddressRegistry public registry;
+    IAddressRegistry public immutable registry;
 
 
     // solhint-disable-next-line no-empty-blocks
     constructor(address _registry) {
+        require(_registry != address(0), ZeroAddress());
         registry = IAddressRegistry(_registry);
     }
 
@@ -273,7 +277,7 @@ contract LendingPoolLens {
         address poolAddress,
         address account,
         address token
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         ILendingPool pool = ILendingPool(poolAddress);
         IPriceFeed priceFeed = pool.priceFeed();
         uint256 debtValue = pool.tokenMarketValue(

@@ -19,37 +19,37 @@ contract DebtToken is ERC4626 {
     event DebtAccrued(uint256 totalDebt, uint256 interest);
 
     error NonTransferrable();
+    error ZeroAddress();
     error ZeroAssets();
     error ZeroShares();
     error ZeroDebt(); 
-    error NotVault();
+    error NotPool();
 
     uint256 private immutable _oneAsset;
 
-    /// @notice The vault address
-    address public vault;
+    /// @notice The pool address
+    address public immutable pool;
 
     /// @dev total borrowed + accrued interest
     uint256 private _totalDebt;
 
-    modifier onlyVault() {
-        if (msg.sender != vault) {
-            revert NotVault();
-        }
+    modifier onlyPool() {
+        require(msg.sender == pool, NotPool());
         _;
     }
 
     /// @notice Creates a debt token. 
     /// @param _asset the asset being borrowed.
-    /// @param _vault the Chedda vault this asset is being borrowed from.
-    constructor(ERC20 _asset, address _vault) 
+    /// @param _pool the Chedda pool this asset is being borrowed from.
+    constructor(ERC20 _asset, address _pool) 
     ERC4626(
         _asset,
         string.concat("CHEDDA Debt-", _asset.name()),
         string.concat("cd-", _asset.symbol())
     ) 
     {
-        vault = _vault;
+        require(_pool != address(0), ZeroAddress());
+        pool = _pool;
         _oneAsset = 10**_asset.decimals(); // >77 decimals is unlikely.
     }
 
@@ -61,7 +61,7 @@ contract DebtToken is ERC4626 {
     /// @param amount The amount borrowed
     /// @param account The account doing the borrowing
     /// @return shares The number of tokens minted to track this debt + future interest payments.
-    function createDebt(uint256 amount, address account) external onlyVault returns (uint256 shares) {
+    function createDebt(uint256 amount, address account) external onlyPool returns (uint256 shares) {
         // accrue must be called before anything else.
         // Check for rounding error since we round down in previewDeposit.
         shares = previewDeposit(amount); // No need to check for rounding error, previewWithdraw rounds up.
@@ -78,7 +78,7 @@ contract DebtToken is ERC4626 {
     /// @param shares The portion of debt to repay
     /// @param account The account repaying
     /// @return amount The amount of debt repaid
-    function repayShare(uint256 shares, address account) external onlyVault returns (uint256 amount) {
+    function repayShare(uint256 shares, address account) external onlyPool returns (uint256 amount) {
         // _accrue();
         // Check for rounding error since we round down in previewRedeem.
         amount = previewRedeem(shares);
@@ -96,7 +96,7 @@ contract DebtToken is ERC4626 {
     /// @param amount The amount to repay
     /// @param account The account repaying
     /// @return shares The shares burned by repaying this debt.
-    function repayAmount(uint256 amount, address account) external onlyVault returns (uint256 shares) {
+    function repayAmount(uint256 amount, address account) external onlyPool returns (uint256 shares) {
         // _accrue();
         shares = previewWithdraw(amount); // No need to check for rounding error, previewWithdraw rounds up.
         if (shares == 0) {
@@ -128,7 +128,6 @@ contract DebtToken is ERC4626 {
         return _totalDebt;
     }
 
-    /// TODO: Change asset references besides underlying `asset` to debt.
     /// e.g totalAssets(), assetsPerShare(), 
     /// @notice Returns the total principal amount of debt tracked.
     /// @dev This does not include any future interest payments.
@@ -155,7 +154,7 @@ contract DebtToken is ERC4626 {
         revert NonTransferrable();
     }
 
-    function addInterest(uint256 interest) external onlyVault() {
+    function addInterest(uint256 interest) external onlyPool() {
         if (_totalDebt == 0) {
             revert ZeroDebt();
         }
