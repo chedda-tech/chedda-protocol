@@ -319,8 +319,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         Ownable(initParams.owner)
         ERC4626(
             ERC20(initParams.asset),
-            string(abi.encodePacked("CHEDDA Pool ", ERC20(initParams.asset).name())),
-            string(abi.encodePacked("ch", ERC20(initParams.asset).symbol()))
+            string.concat("CHEDDA Pool ", ERC20(initParams.asset).name()),
+            string.concat("ch", ERC20(initParams.asset).symbol())
         )
     {
         interestRatesModel = IInterestRateModel(initParams.interestRatesModel);

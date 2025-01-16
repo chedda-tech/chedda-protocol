@@ -45,8 +45,8 @@ contract DebtToken is ERC4626 {
     constructor(ERC20 _asset, address _vault) 
     ERC4626(
         _asset,
-        string(abi.encodePacked("CHEDDA Debt-", _asset.name())),
-        string(abi.encodePacked("cd-", _asset.symbol()))
+        string.concat("CHEDDA Debt-", _asset.name()),
+        string.concat("cd-", _asset.symbol())
     ) 
     {
         vault = _vault;
