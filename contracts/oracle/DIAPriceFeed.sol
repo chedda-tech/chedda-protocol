@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.3
-pragma solidity ^0.8.20;
+pragma solidity 0.8.27;
 
 import { IPriceFeed } from "./IPriceFeed.sol";
 import {IDIAOracleV2} from "./IDIAOracleV2.sol";

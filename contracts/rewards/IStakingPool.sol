@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.20;
+pragma solidity 0.8.27;
 
 interface IStakingPool {
     /// @notice Stakes tokens to earn rewards.
