@@ -105,47 +105,6 @@ struct AccountPoolSummary {
 }
 ```
 
-### allClaimableRewards
-
-```solidity
-function allClaimableRewards(address account) external view returns (uint256, uint256)
-```
-
-Checks amount of rewards that can be claimed by a given account.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| account | address | The account to check |
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | uint256 | tuple (stakeRewardsPending, lockRewardsPending). A tuple containing total amount of staking and lock rewards. |
-| [1] | uint256 |  |
-
-### claimAllRewards
-
-```solidity
-function claimAllRewards(address account) external returns (uint256)
-```
-
-Claims all rewards an account has pending.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| account | address | The account to claim rewards for. |
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | uint256 | The total amount of rewards claimed. |
-
 ### allPositions
 
 ```solidity

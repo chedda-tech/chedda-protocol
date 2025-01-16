@@ -520,10 +520,10 @@ function accountHealth(address account) external view returns (uint256)
 function assetBalance(address account) external view returns (uint256)
 ```
 
-### totalAccountCollateralValue
+### tokenLiquidationValue
 
 ```solidity
-function totalAccountCollateralValue(address account) external view returns (uint256)
+function tokenLiquidationValue(address account) external view returns (uint256)
 ```
 
 ### accountCollateralAmount
@@ -532,10 +532,10 @@ function totalAccountCollateralValue(address account) external view returns (uin
 function accountCollateralAmount(address account, address collateral) external view returns (uint256)
 ```
 
-### tokenMaxLoanValue
+### tokenLoanValue
 
 ```solidity
-function tokenMaxLoanValue(address token, uint256 amount) external view returns (uint256)
+function tokenLoanValue(address token, uint256 amount) external view returns (uint256)
 ```
 
 ## LendingPool
@@ -555,7 +555,7 @@ enum TokenType {
 }
 ```
 
-### CollateralInfo
+### CollateralParams
 
 Holds information about the type of collateral held in vault.
 
@@ -565,7 +565,7 @@ Holds information about the type of collateral held in vault.
 | ---- | ---- | ----------- |
 
 ```solidity
-struct CollateralInfo {
+struct CollateralParams {
   address token;
   uint256 collateralFactor;
   enum LendingPool.TokenType tokenType;
@@ -881,7 +881,7 @@ mapping(address => uint256) tokenCollateralDeposited
 ### constructor
 
 ```solidity
-constructor(string _name, contract ERC20 _asset, address _priceFeed, struct LendingPool.CollateralInfo[] _collateralTokens) public
+constructor(string _name, contract ERC20 _asset, address _priceFeed, struct LendingPool.CollateralParams[] _collateralTokens) public
 ```
 
 initialization
@@ -1097,10 +1097,10 @@ _`collateral` parameter should be an ERC-721 token._
 | ---- | ---- | ----------- |
 | [0] | uint256[] | tokenIds the token ids from the `collateral` NFT deposited by `account`. |
 
-### totalAccountCollateralValue
+### tokenLiquidationValue
 
 ```solidity
-function totalAccountCollateralValue(address account) public view returns (uint256)
+function tokenLiquidationValue(address account) public view returns (uint256)
 ```
 
 Returns the total value of collateral deposited by an account.
@@ -1138,10 +1138,10 @@ Returns the amount of a given token an account has deposited as collateral
 | ---- | ---- | ----------- |
 | [0] | uint256 | amount The amount of `collateral` token `account` has deposited. |
 
-### accountAssetsBorrowed
+### assetsBorrowed
 
 ```solidity
-function accountAssetsBorrowed(address account) public view returns (uint256)
+function assetsBorrowed(address account) public view returns (uint256)
 ```
 
 Returns the amount of asset an account has borrowed, including any accrued interest.
@@ -1187,10 +1187,10 @@ health == 0 means account has no debt and is also solvent.
 function collaterals() external view returns (address[])
 ```
 
-### getTokenMarketValue
+### tokenMarketValue
 
 ```solidity
-function getTokenMarketValue(address token, uint256 amount) public view returns (uint256)
+function tokenMarketValue(address token, uint256 amount) public view returns (uint256)
 ```
 
 Returns the market value of a given number of token.
@@ -1208,10 +1208,10 @@ Returns the market value of a given number of token.
 | ---- | ---- | ----------- |
 | [0] | uint256 | value The market value of `amount` of `token`. |
 
-### tokenMaxLoanValue
+### tokenLoanValue
 
 ```solidity
-function tokenMaxLoanValue(address token, uint256 amount) public view returns (uint256)
+function tokenLoanValue(address token, uint256 amount) public view returns (uint256)
 ```
 
 Returns the value as collateral for a given amount of token

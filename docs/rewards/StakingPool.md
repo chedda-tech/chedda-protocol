@@ -180,12 +180,6 @@ Constructor
 | _registry | address | The Chedda AddressRegistry |
 | _stakingToken | address | The token being staked. |
 
-### onlyAccountActor
-
-```solidity
-modifier onlyAccountActor()
-```
-
 ### stake
 
 ```solidity
@@ -249,19 +243,8 @@ _Emits `RewardsClaimed(address, uint)` event._
 ### claimFor
 
 ```solidity
-function claimFor(address account) external returns (uint256)
+function claimFor(address account) public returns (uint256 claimed)
 ```
-
-Claim pending rewards for another account.
-
-_Emits `RewardsClaimed(address, uint)` event.
-Can only be called by `AccountActor` contract._
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | uint256 | The amount claimed |
 
 ### claimable
 

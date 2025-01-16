@@ -228,16 +228,6 @@ function transferFrom(address, address, uint256) public pure returns (bool)
 
 _Reverts with `NonTransferrable()` error. Debt tokens are non-transferrable_
 
-### accrue
-
-```solidity
-function accrue() external
-```
-
-Accrues interest
-
-_External wrapper to internal `_accrue()` function._
-
 ### addInterest
 
 ```solidity

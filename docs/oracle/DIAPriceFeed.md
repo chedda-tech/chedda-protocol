@@ -63,18 +63,16 @@ Constructor
 ### readPrice
 
 ```solidity
-function readPrice(address token, uint256) external view returns (int256 price, uint256 lastUpdated)
+function readPrice(address token) external view returns (int256 price, uint256 lastUpdated)
 ```
 
-Get latest price of asset. For ERC-20 tokens, `tokenID` parameter is unused.
-tokenID parameter is for forwards compatibility.
+Get latest price of asset.
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | token | address | address of the asset's token. |
-|  | uint256 |  |
 
 #### Return Values
 

@@ -51,7 +51,7 @@ struct PoolCollateralInfo {
   uint256 amountDeposited;
   uint256 value;
   uint256 ltv;
-  uint256 liqThreshold;
+  uint256 lltv;
   uint256 liqPenalty;
 }
 ```

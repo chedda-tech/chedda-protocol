@@ -199,12 +199,6 @@ uint256 numberOfLocks
 constructor(address _registry) public
 ```
 
-### onlyAccountActor
-
-```solidity
-modifier onlyAccountActor()
-```
-
 ### createLock
 
 ```solidity
@@ -331,19 +325,8 @@ to this locking pool._
 ### claimFor
 
 ```solidity
-function claimFor(address account) external returns (uint256)
+function claimFor(address account) public returns (uint256)
 ```
-
-Claim pending rewards for another account.
-
-_Emits `RewardsClaimed(address, uint)` event.
-Can only be called by `AccountActor` contract._
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | uint256 | The amount claimed |
 
 ### _claimFor
 

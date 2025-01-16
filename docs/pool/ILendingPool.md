@@ -14,9 +14,20 @@ enum TokenType {
 }
 ```
 
-## CollateralInfo
+## AccountValue
+
+```solidity
+enum AccountValue {
+  Market,
+  Loan,
+  Liquidation
+}
+```
+
+## CollateralParams
 
 Holds information about the type of collateral held in vault.
+ltv + liqPenalty + liqBonus must be < lltv
 
 ### Parameters
 
@@ -24,10 +35,11 @@ Holds information about the type of collateral held in vault.
 | ---- | ---- | ----------- |
 
 ```solidity
-struct CollateralInfo {
+struct CollateralParams {
   uint256 ltv;
-  uint256 liqThreshold;
+  uint256 lltv;
   uint256 liqPenalty;
+  uint256 liqBonus;
 }
 ```
 
@@ -36,7 +48,7 @@ struct CollateralInfo {
 ```solidity
 struct CollateralInfoInit {
   address token;
-  struct CollateralInfo info;
+  struct CollateralParams info;
 }
 ```
 
@@ -130,7 +142,7 @@ function utilization() external view returns (uint256)
 ### tvl
 
 ```solidity
-function tvl() external view returns (uint256)
+function tvl(bool) external view returns (uint256)
 ```
 
 ### totalReserveShares
@@ -160,7 +172,7 @@ function collaterals() external view returns (address[])
 ### collateralInfo
 
 ```solidity
-function collateralInfo(address) external view returns (struct CollateralInfo)
+function collateralInfo(address) external view returns (struct CollateralParams)
 ```
 
 ### tokenCollateralDeposited
@@ -181,16 +193,10 @@ function accountHealth(address account) external view returns (uint256)
 function assetBalance(address account) external view returns (uint256)
 ```
 
-### accountAssetsBorrowed
+### assetsBorrowed
 
 ```solidity
-function accountAssetsBorrowed(address account) external view returns (uint256)
-```
-
-### totalAccountCollateralValue
-
-```solidity
-function totalAccountCollateralValue(address account) external view returns (uint256)
+function assetsBorrowed(address account) external view returns (uint256)
 ```
 
 ### accountCollateralAmount
@@ -199,16 +205,28 @@ function totalAccountCollateralValue(address account) external view returns (uin
 function accountCollateralAmount(address account, address collateral) external view returns (uint256)
 ```
 
-### tokenMaxLoanValue
+### tokenMarketValue
 
 ```solidity
-function tokenMaxLoanValue(address token, uint256 amount) external view returns (uint256)
+function tokenMarketValue(address token, uint256 amount) external view returns (uint256)
 ```
 
-### getTokenMarketValue
+### tokenLoanValue
 
 ```solidity
-function getTokenMarketValue(address token, uint256 amount) external view returns (uint256)
+function tokenLoanValue(address token, uint256 amount) external view returns (uint256)
+```
+
+### tokenLiquidationValue
+
+```solidity
+function tokenLiquidationValue(address token, uint256 amount) external view returns (uint256)
+```
+
+### totalAccountCollateralValue
+
+```solidity
+function totalAccountCollateralValue(address account, enum AccountValue valueType) external view returns (uint256)
 ```
 
 ### recapitalize
