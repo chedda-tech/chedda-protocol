@@ -3,10 +3,11 @@ pragma solidity 0.8.27;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
-import {ILendingPool} from "../pool/ILendingPool.sol";
+import {ILendingPool, AccountValue} from "../pool/ILendingPool.sol";
 import {ICheddaPool} from "../rewards/ICheddaPool.sol";
 import {ILockingGauge} from "../rewards/ILockingGauge.sol";
 import {IStakingPool} from "../rewards/IStakingPool.sol";
+import {StakingPool} from "../rewards/StakingPool.sol";
 import {IPriceFeed} from "../oracle/IPriceFeed.sol";
 import {UD60x18, ud} from "prb-math/UD60x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -15,6 +16,7 @@ import {MathLib} from "../library/MathLib.sol";
 /// @title AccountActor
 /// @notice Provides views into accounts and positions.
 contract AccountActor {
+
     /// @dev Emitted when the caller is not permitted to make a call.
     /// @param account The account making the call
     error NotAuthorized(address account);
@@ -70,7 +72,7 @@ contract AccountActor {
         AccountPoolSummary memory summary;
 
         for (uint256 i = 0; i < pools.length; i++) {
-             summary = _accountPoolSummary(account, pools[i]);
+            summary = _accountPoolSummary(account, pools[i]);
             totalSuppliedValue += summary.supplied;
             totalBorrowedValue += summary.borrowed;
             totalLockedValue += summary.locked;
@@ -125,59 +127,6 @@ contract AccountActor {
         return ud(amount).mul(ud(normalizedCheddaPrice)).unwrap();
     }
 
-    /// @notice Checks amount of rewards that can be claimed by a given account.
-    /// @param account The account to check
-    /// @return tuple (stakeRewardsPending, lockRewardsPending). A tuple containing
-    /// total amount of staking and lock rewards.
-    function allClaimableRewards(
-        address account
-    ) external view returns (uint256, uint256) {
-        address[] memory pools = registry.registeredPools();
-        uint256 poolsLength = pools.length;
-        uint256 stakeRewardsPending = 0;
-        uint256 lockRewardsPending = 0;
-        for (uint256 i = 0; i < poolsLength; i++) {
-            ICheddaPool pool = ICheddaPool(pools[i]);
-            IStakingPool stakingPool = IStakingPool(pool.stakingPool());
-            ILockingGauge gauge = ILockingGauge(pool.gauge());
-            stakeRewardsPending += stakingPool.claimable(account);
-            lockRewardsPending += gauge.claimable(account);
-        }
-
-        return (stakeRewardsPending, lockRewardsPending);
-    }
-
-    /// @notice Claims all rewards an account has pending.
-    /// @param account The account to claim rewards for.
-    /// @return The total amount of rewards claimed.
-    function claimAllRewards(address account) external returns (uint256) {
-        if (msg.sender != account) {
-            revert NotAuthorized(msg.sender);
-        }
-        address[] memory pools = registry.registeredPools();
-        uint256 poolsLength = pools.length;
-        uint256 totalClaimed = 0;
-        for (uint256 i = 0; i < poolsLength; i++) {
-            ICheddaPool pool = ICheddaPool(pools[i]);
-            IStakingPool stakingPool = IStakingPool(pool.stakingPool());
-            ILockingGauge gauge = ILockingGauge(pool.gauge());
-
-            // claim pool staking rewards
-            uint256 amountToClaim = stakingPool.claimable(account);
-            if (amountToClaim > 0) {
-                // TODO: This should be a delegate call. 
-                // Removes the need for the `claimFor()` function.
-                totalClaimed += stakingPool.claimFor(account);
-            }
-
-            // claim pool locking rewards
-            amountToClaim = gauge.claimable(account);
-            if (amountToClaim > 0) {
-                totalClaimed += gauge.claimFor(account);
-            }
-        }
-        return totalClaimed;
-    }
 
     /// @notice Returns an array containing tha accounts positions.
     /// @param account The account to check
@@ -239,7 +188,7 @@ contract AccountActor {
             borrowedValue: ud(borrowed.normalized(assetDecimals, 18))
                 .mul(ud(normalizedAssetPrice))
                 .unwrap(),
-            collateralValue: pool.totalAccountCollateralValue(account),
+            collateralValue: pool.totalAccountCollateralValue(account, AccountValue.Market),
             healthFactor: pool.accountHealth(account),
             staked: ICheddaPool(poolAddress).stakingPool().stakingBalance(account),
             locked: ICheddaPool(poolAddress).gauge().getLock(account).amount,
@@ -274,4 +223,78 @@ contract AccountActor {
             stakeRewards +
             lockRewards;
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                     Rewards
+    ///////////////////////////////////////////////////////////////////////////
+
+    // /// @notice Checks amount of rewards that can be claimed by a given account.
+    // /// @param account The account to check
+    // /// @return tuple (stakeRewardsPending, lockRewardsPending). A tuple containing
+    // /// total amount of staking and lock rewards.
+    // function allClaimableRewards(
+    //     address account
+    // ) external view returns (uint256, uint256) {
+    //     address[] memory pools = registry.registeredPools();
+    //     uint256 poolsLength = pools.length;
+    //     uint256 stakeRewardsPending = 0;
+    //     uint256 lockRewardsPending = 0;
+    //     for (uint256 i = 0; i < poolsLength; i++) {
+    //         ICheddaPool pool = ICheddaPool(pools[i]);
+    //         StakingPool stakingPool = StakingPool(address(pool.stakingPool()));
+    //         ILockingGauge gauge = ILockingGauge(pool.gauge());
+    //         stakeRewardsPending += stakingPool.claimable(account);
+    //         lockRewardsPending += gauge.claimable(account);
+    //     }
+
+    //     return (stakeRewardsPending, lockRewardsPending);
+    // }
+
+    // /// @notice Claims all rewards an account has pending.
+    // /// @param account The account to claim rewards for.
+    // /// @return The total amount of rewards claimed.
+    // function claimAllRewards(address account) external returns (uint256) {
+    //     if (msg.sender != account) {
+    //         revert NotAuthorized(msg.sender);
+    //     }
+    //     address[] memory pools = registry.registeredPools();
+    //     uint256 poolsLength = pools.length;
+    //     uint256 totalClaimed = 0;
+    //     for (uint256 i = 0; i < poolsLength; i++) {
+    //         ICheddaPool pool = ICheddaPool(pools[i]);
+    //         IStakingPool stakingPool = IStakingPool(pool.stakingPool());
+    //         ILockingGauge gauge = ILockingGauge(pool.gauge());
+
+    //         // claim pool staking rewards
+    //         uint256 amountToClaim = stakingPool.claimable(account);
+    //         uint256 claimed;
+    //         if (amountToClaim > 0) {
+
+    //             (bool success, bytes memory result) = address(stakingPool).delegatecall(abi.encodeWithSignature("claim()"));
+    //             if (success) {
+    //                 (claimed) = abi.decode(result, (uint256));
+    //                 totalClaimed += claimed;
+    //             }
+
+    //             // ------
+    //             // claimed = stakingPool.claimFor(account);
+    //             // totalClaimed += claimed;
+    //         }
+
+    //         // claim pool locking rewards
+    //         amountToClaim = gauge.claimable(account);
+    //         if (amountToClaim > 0) {
+    //             (bool success, bytes memory returnedData) = address(gauge).delegatecall(abi.encodeWithSignature("claim()"));
+    //             if (success) {
+    //                 (claimed) = abi.decode(returnedData, (uint256));
+    //                 totalClaimed += claimed;
+    //             }
+
+    //             //------
+    //             // claimed = gauge.claimFor(account);
+    //             // totalClaimed += claimed;
+    //         }
+    //     }
+    //     return totalClaimed;
+    // }
 }

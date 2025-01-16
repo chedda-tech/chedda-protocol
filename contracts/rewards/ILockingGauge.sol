@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
-import {ICheddaToken} from "../tokens/ICheddaToken.sol";
+import {ICheddaToken} from "./CheddaToken.sol";
 
 /// @notice Enum representing the possible lock times
 enum LockTime {
@@ -64,12 +64,6 @@ interface ILockingGauge {
     /// @return The lock info.
     function getLock(address account) external view returns (Lock memory);
 
-    /// @notice Claim pending rewards for another account.
-    /// @dev Emits `RewardsClaimed(address, uint)` event.
-    /// Can only be called by `AccountActor` contract.
-    /// @return The amount claimed
-    function claimFor(address account) external returns (uint256);
-
     /// @notice Claims any pending rewards
     /// @dev Rewards are available if a lock exists and rewards have been distributed
     /// to this locking pool. 
@@ -84,4 +78,6 @@ interface ILockingGauge {
     /// @notice Adds token rewards to this pool
     /// @param amount The amount to add.
     function addRewards(uint256 amount) external;
+
+    function claimFor(address account) external returns (uint256);
 }

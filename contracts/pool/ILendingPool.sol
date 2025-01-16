@@ -3,7 +3,6 @@ pragma solidity 0.8.27;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { IInterestRateModel } from "../interestrates/IInterestRateModel.sol";
-import { ILiquidityGauge } from "../gauge/ILiquidityGauge.sol";
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { DebtToken } from "../tokens/DebtToken.sol";
 

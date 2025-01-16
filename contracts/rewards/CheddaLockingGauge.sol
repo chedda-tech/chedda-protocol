@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ILockingGauge, Lock, LockTime} from "./ILockingGauge.sol";
-import {ICheddaToken} from "../tokens/ICheddaToken.sol";
+import {ICheddaToken} from "./ICheddaToken.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
 
 /// @title CheddaLockingGauge
@@ -69,13 +69,6 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
     constructor(address _registry) {
         registry = IAddressRegistry(_registry);
         token = ICheddaToken(registry.cheddaToken());
-    }
-
-    modifier onlyAccountActor() {
-        if (msg.sender != registry.accountActor()) {
-            revert NotAuthorized(msg.sender);
-        }
-        _;
     }
 
     /// @inheritdoc ILockingGauge
@@ -169,11 +162,7 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         uint256 endTime = 0;
         uint256 ts = block.timestamp;
 
-        if (time == LockTime.zero) {
-            // TODO: revert this
-            // revert InvalidLockTime(time);
-            endTime = ts + 1 hours;
-        } else if (time == LockTime.thirtyDays) {
+        if (time == LockTime.thirtyDays) {
             endTime = ts + 30 days;
         } else if (time == LockTime.ninetyDays) {
             endTime = ts + 90 days;
@@ -229,13 +218,14 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
         return _claimFor(msg.sender);
     }
 
-    /// @inheritdoc ILockingGauge
-    function claimFor(address account) external onlyAccountActor() returns (uint256) {
+    function claimFor(address account) public returns (uint256) {
+        token.rebase();
         return _claimFor(account);
     }
 
     /// @dev Internal claim function.
     function _claimFor(address account) internal returns (uint256) {
+
         uint256 amount = claimable(account);
         if (amount != 0) {
             Lock storage lock = locks[account];
@@ -278,8 +268,6 @@ contract CheddaLockingGauge is ILockingGauge, ReentrancyGuard {
             return 200;
         } else if (time == LockTime.threeSixtyDays) {
             return 400;
-        } else if (time == LockTime.zero) {
-            return 10; // TODO: revert to invalid after testing
         }
         revert InvalidLockTime(time);
     }

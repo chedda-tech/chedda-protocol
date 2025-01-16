@@ -8,7 +8,7 @@ import { ILendingPool, CollateralParams, AccountValue } from "../pool/ILendingPo
 import { IPriceFeed } from "../oracle/IPriceFeed.sol";
 import { MathLib } from "../library/MathLib.sol";
 import { IAddressRegistry } from "../config/IAddressRegistry.sol";
-import {CheddaToken} from "../tokens/CheddaToken.sol";
+import {CheddaToken} from "../rewards/CheddaToken.sol";
 import {ICheddaPool} from "../rewards/ICheddaPool.sol";
 import {ILockingGauge} from "../rewards/ILockingGauge.sol";
 import {IStakingPool} from "../rewards/IStakingPool.sol";

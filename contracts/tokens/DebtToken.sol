@@ -30,7 +30,7 @@ contract DebtToken is ERC4626 {
     address public vault;
 
     /// @dev total borrowed + accrued interest
-    uint256 private _variableTotalDebt;
+    uint256 private _totalDebt;
 
     modifier onlyVault() {
         if (msg.sender != vault) {
@@ -68,9 +68,8 @@ contract DebtToken is ERC4626 {
         if (shares == 0) {
             revert ZeroShares();
         }
-        _variableTotalDebt += amount;
+        _totalDebt += amount;
         _mint(account, shares);
-        // _accrue();
 
         emit DebtCreated(account, amount, shares);
     }
@@ -87,7 +86,7 @@ contract DebtToken is ERC4626 {
             revert ZeroAssets();
         }
 
-        _variableTotalDebt -= amount;
+        _totalDebt -= amount;
         _burn(account, shares);
 
         emit DebtRepaid(account, amount, shares);
@@ -104,7 +103,7 @@ contract DebtToken is ERC4626 {
             revert ZeroShares();
         }
 
-        _variableTotalDebt -= amount;
+        _totalDebt -= amount;
         _burn(account, shares);
 
         emit DebtRepaid(account, amount, shares);
@@ -126,7 +125,7 @@ contract DebtToken is ERC4626 {
     /// @return totalDebt Total outstanding debt
     /// todo: change to totalDebt
     function totalAssets() public view override returns (uint256) {
-        return _variableTotalDebt;
+        return _totalDebt;
     }
 
     /// TODO: Change asset references besides underlying `asset` to debt.
@@ -156,45 +155,11 @@ contract DebtToken is ERC4626 {
         revert NonTransferrable();
     }
 
-    /// @notice Accrues interest
-    /// @dev External wrapper to internal `_accrue()` function.
-    function accrue() external {
-        // _accrue();
-    }
-
-    // function _accrue() private {
-    //     uint256 timestamp =  block.timestamp;
-    //     // no accrual if no debt exists
-    //     if (_variableTotalDebt == 0) {
-    //         return;
-    //     }
-
-    //     // initialize `_lastAccrual` if not yet initialized
-    //     if (_lastAccrual == 0) {
-    //         _lastAccrual = timestamp;
-    //     }
-    //     uint256 elapsedTime = timestamp - _lastAccrual;
-    //     if (elapsedTime == 0) {
-    //         return;
-    //     }
-    //     if (_interestPerSecond == 0) {
-    //         _interestPerSecond = STARTING_INTEREST_RATE_PER_SECOND;
-    //     } else {
-    //         _interestPerSecond = _calculateNewBorrowRate();
-    //     }
-
-    //     _lastAccrual = timestamp;
-    //     uint256 interest = ud(_variableTotalDebt).mul(ud(_interestPerSecond * elapsedTime)).unwrap();
-    //     _variableTotalDebt += interest;
-
-    //     emit DebtAccrued(_variableTotalDebt, interest);
-    // }
-
     function addInterest(uint256 interest) external onlyVault() {
-        if (_variableTotalDebt == 0) {
+        if (_totalDebt == 0) {
             revert ZeroDebt();
         }
-        _variableTotalDebt += interest;
-        emit DebtAccrued(_variableTotalDebt, interest);
+        _totalDebt += interest;
+        emit DebtAccrued(_totalDebt, interest);
     }
 }

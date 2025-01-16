@@ -19,7 +19,6 @@ import {
     CollateralDeposit, 
     AccountCollateralValue, 
     AccountValue} from "./ILendingPool.sol";
-import {ILiquidityGauge} from "../gauge/ILiquidityGauge.sol";
 import {MathLib} from "../library/MathLib.sol";
 import {IAddressRegistry} from "../config/IAddressRegistry.sol";
 import {ICheddaPool} from "../rewards/ICheddaPool.sol";
@@ -620,8 +619,15 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// Liquidations
 
+    /// @notice Struct passed in to liquidation functions.
+    /// @dev Contains parameters forliquidation.
+    /// @param borrower The account being liquidated.
+    /// @param receiver The receiver of seized collateral.
+    /// @param collateral The collateral token to be received.
+    /// @param repayAmount The amount of of loan asset to be repaid.
     struct LiquidateParams {
         address borrower;
+        address receiver;
         address collateral;
         uint256 repayAmount;
     }
@@ -635,9 +641,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @return collateralAmounts The amounts of collateral removed.
     function batchLiquidate(LiquidateParams[] calldata params) external nonReentrant() returns (uint256[] memory) {
         uint256 len = params.length;
-        // if (len != collateralTokens.length || len != repayAmounts.length) {
-        //     revert CheddaPool_InvalidLiquidation();
-        // }
         uint256[] memory collateralAmounts = new uint256[](len);
         for (uint256 i = 0; i < len; i++) {
             collateralAmounts[i] = _liquidate(params[i]);
@@ -685,10 +688,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         // require(accountHealth(borrower) > initialHealth, CheddaPool_InvalidLiquidation());
 
         // Transfer collateral to the liquidator
-        ERC20(params.collateral).safeTransfer(msg.sender, liquidatorAmount);
+        ERC20(params.collateral).safeTransfer(params.receiver, liquidatorAmount);
         ERC20(params.collateral).safeTransfer(reserve, reserveAmount);
-        emit AssetRepaid(params.borrower, msg.sender, params.repayAmount, debtBurned);
-        emit PositionLiquidated(params.borrower, msg.sender, params.collateral, totalAmount);
+        emit AssetRepaid(params.borrower, params.receiver, params.repayAmount, debtBurned);
+        emit PositionLiquidated(params.borrower, params.receiver, params.collateral, totalAmount);
 
         return totalAmount;
     }
@@ -714,6 +717,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (params.repayAmount > assetsBorrowed(params.borrower)) {
             revert CheddaPool_Overpayment();
         }
+        if (callback == address(0)) {
+            revert CheddaPool_InvalidLiquidation();
+        }
 
          // Update the borrower's debt
         uint256 debtBurned = debtToken.repayAmount(params.repayAmount, params.borrower);
@@ -733,7 +739,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         }
 
         // transfer out tokens
-        ERC20(params.collateral).safeTransfer(msg.sender, liquidatorAmount);
+        ERC20(params.collateral).safeTransfer(params.receiver, liquidatorAmount);
         ERC20(params.collateral).safeTransfer(reserve, reserveAmount);
         // Call external logic (callback)
         if (callback != address(0)) {
@@ -745,10 +751,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 expectedAssetBalance = initialAssetBalance + params.repayAmount;
         require(finalAssetBalance >= expectedAssetBalance,
             CheddaPool_InsufficientAssetBalance(finalAssetBalance, expectedAssetBalance));
-        require(accountHealth(params.borrower) > initialHealth, CheddaPool_InvalidLiquidation());
 
-        emit AssetRepaid(params.borrower, msg.sender, params.repayAmount, debtBurned);
-        emit PositionLiquidated(params.borrower, msg.sender, params.collateral, totalCollateralAmount);
+        emit AssetRepaid(params.borrower, params.receiver, params.repayAmount, debtBurned);
+        emit PositionLiquidated(params.borrower, params.receiver, params.collateral, totalCollateralAmount);
     }
 
     function _liquidateAsset(
