@@ -8,7 +8,6 @@ interface IPriceFeed {
     /// @notice Get latest price of asset. For ERC-20 tokens, `tokenID` parameter is unused.
     /// tokenID parameter is for forwards compatibility.
     /// @param token address of the asset's token.
-    /// @param tokenID The number of tokens
     /// @return price the price of the asset
-    function readPrice(address token, uint256 tokenID) external view returns (int256 price, uint256 lastUpdated);
+    function readPrice(address token) external view returns (int256 price, uint256 lastUpdated);
 }

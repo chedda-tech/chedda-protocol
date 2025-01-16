@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {console2} from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -14,6 +13,7 @@ import {ILendingPool, CollateralParams, CollateralInfoInit, TokenType, AccountVa
 import {MockAddressRegistry} from "./mocks/MockAddressRegistry.sol";
 import {MockSteadyInterestRatesModel} from "./mocks/MockSteadyInterestRatesModel.sol";
 import {MathLib} from "../contracts/library/MathLib.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract LendingPoolTest is Test {
     // Test can...
@@ -104,9 +104,6 @@ contract LendingPoolTest is Test {
             collaterals: collateralTypes
         });
         pool = new LendingPool(params);
-
-        vm.prank(admin);
-        pool.setSupplyCap(supplyCap);
         poolAddress = address(pool);
     }
 
@@ -650,7 +647,7 @@ contract LendingPoolTest is Test {
     }
 
     function _calculateAssetValue(address assetAddress, uint256 amount) internal view returns (uint256) {
-        (int256 assetPrice, ) = priceFeed.readPrice(assetAddress, 0);
+        (int256 assetPrice, ) = priceFeed.readPrice(assetAddress);
         return ud(
             amount.normalized(MockERC20(assetAddress).decimals(), 18))
             .mul(ud(assetPrice.toUint256().normalized(priceFeed.decimals(), 18))).unwrap();
@@ -779,14 +776,16 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
     address borrower1 = address(0x123);
     address borrower2 = address(0x234);
     address liquidator = address(0x456);
+    address receiver = address(0x567);
 
     function setUp() public override {
         super.setUp();
         supplier = makeAddr("supplier");
         borrower1 = makeAddr("borrower1");
         borrower2 = makeAddr("borrower2");
-        liquidator = makeAddr("liquidator"); 
-        // vm.prank(admin);
+        liquidator = makeAddr("liquidator");
+        receiver = makeAddr("receiver");
+
         priceFeed.setPrice(c1Address, 1e8);
     }
 
@@ -817,6 +816,7 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
         LendingPool.LiquidateParams[] memory liquidateParams = new LendingPool.LiquidateParams[](1);
         liquidateParams[0] = LendingPool.LiquidateParams({
             borrower: borrower1,
+            receiver: receiver,
             collateral: address(collateral1),
             repayAmount: repayAmount
         });
@@ -835,25 +835,25 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
 
         // Perform liquidation with single-entry arrays
         vm.expectEmit(true, true, true, true);
-        emit LendingPool.PositionLiquidated(borrower1, liquidator, address(collateral1), totalAmount);
+        emit LendingPool.PositionLiquidated(borrower1, receiver, address(collateral1), totalAmount);
         uint256[] memory collateralLiquidated = pool.batchLiquidate(
             liquidateParams
         );
         vm.stopPrank();
 
-        uint256 liquidatorCollateralBalanceAfter = collateral1.balanceOf(liquidator);
+        uint256 receiverCollateralBalanceAfter = collateral1.balanceOf(receiver);
 
         // total liquidated = repayment * 2 + liqPenalty + liqBonus
         assertEq(collateralLiquidated[0], totalAmount);
 
         // // Check liquidator's collateral balance for discounted collateral
-        assertEq(liquidatorCollateralBalanceAfter, repayCollateralAmount 
+        assertEq(receiverCollateralBalanceAfter, repayCollateralAmount 
             + (repayCollateralAmount * pool.collateralInfo(c1Address).liqBonus / 1e18));
 
         // // Check protocol's reserve balance for 10% revenue
         uint256 reserveBalanceAfter = collateral1.balanceOf(reserve);
         assertEq(reserveBalanceAfter, (repayCollateralAmount * pool.collateralInfo(c1Address).liqPenalty / 1e18));
-        assertEq(collateralLiquidated[0], liquidatorCollateralBalanceAfter + reserveBalanceAfter);
+        assertEq(collateralLiquidated[0], receiverCollateralBalanceAfter + reserveBalanceAfter);
         uint newHealth = pool.accountHealth(borrower1);
         console2.log("oldHealth = %d, newHealth = %d", oldHealth, newHealth);
         assertGt(newHealth, oldHealth);
@@ -883,6 +883,7 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
         LendingPool.LiquidateParams[] memory liquidateParams = new LendingPool.LiquidateParams[](1);
         liquidateParams[0] = LendingPool.LiquidateParams({
             borrower: borrower1,
+            receiver: receiver,
             collateral: address(collateral1),
             repayAmount: repayAmount
         });
@@ -919,6 +920,7 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
         LendingPool.LiquidateParams[] memory liquidateParams = new LendingPool.LiquidateParams[](1);
         liquidateParams[0] = LendingPool.LiquidateParams({
             borrower: borrower1,
+            receiver: receiver,
             collateral: address(collateral1),
             repayAmount: repayAmount
         });
@@ -966,12 +968,14 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
         LendingPool.LiquidateParams[] memory liquidateParams = new LendingPool.LiquidateParams[](2);
         liquidateParams[0] = LendingPool.LiquidateParams({
             borrower: borrower1,
+            receiver: receiver,
             collateral: address(collateral1),
             repayAmount: repayAmount1
         });
 
         liquidateParams[1] = LendingPool.LiquidateParams({
             borrower: borrower2,
+            receiver: receiver,
             collateral: address(collateral2),
             repayAmount: repayAmount2
         });

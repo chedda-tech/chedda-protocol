@@ -799,7 +799,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @param checkAge Check if the price has been updated recently. Revert if `checkAge` is true and price is stale.
     /// @return The price of the asset.
     function getPrice(address asset, bool checkAge) public view returns (uint256) {
-        (int256 price, uint256 lastUpdated) = priceFeed.readPrice(asset, 0);
+        (int256 price, uint256 lastUpdated) = priceFeed.readPrice(asset);
         if (price < 0) {
             revert CheddaPool_BadPrice(asset, price.toUint256());
         }

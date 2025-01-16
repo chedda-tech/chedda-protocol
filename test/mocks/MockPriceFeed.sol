@@ -29,8 +29,7 @@ contract MockPriceFeed is IPriceFeed, Ownable {
     /// @param _token The token to get price for.
     /// @return price the latest price
     function readPrice(
-        address _token,
-        uint256 
+        address _token
     ) public view override returns (int price, uint256 lastUpdated) {
         if (_token == address(0)) {
             revert ZeroAddress();

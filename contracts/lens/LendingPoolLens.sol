@@ -363,7 +363,7 @@ contract LendingPoolLens {
         ILendingPool lPool = ILendingPool(poolAddress);
         CheddaToken chedda = CheddaToken(registry.cheddaToken());
         IPriceFeed cheddaOracle = IPriceFeed(registry.cheddaPriceOracle());
-        (int256 cheddaPrice, ) = cheddaOracle.readPrice(registry.cheddaToken(), 0);
+        (int256 cheddaPrice, ) = cheddaOracle.readPrice(registry.cheddaToken());
         uint256 annualRewards = chedda.emissionPerSecond() * 365.25 days;
         uint256 suppliedN = lPool.supplied().normalized(lPool.poolAsset().decimals(), 18);
         uint256 assetPriceN = getPrice(poolAddress, address(lPool.poolAsset()))
@@ -385,7 +385,7 @@ contract LendingPoolLens {
 
     function getPrice(address pool, address asset) public view returns (int256) {
         IPriceFeed priceFeed = ILendingPool(pool).priceFeed();
-        (int256 assetPrice, ) = priceFeed.readPrice(asset, 0);
+        (int256 assetPrice, ) = priceFeed.readPrice(asset);
         return assetPrice;
     }
 

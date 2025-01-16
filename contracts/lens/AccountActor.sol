@@ -98,7 +98,7 @@ contract AccountActor {
         AccountPoolSummary memory result;
         ILendingPool pool = ILendingPool(poolAddress);
             uint8 assetDecimals = pool.poolAsset().decimals();
-            (int256 assetPrice, ) = pool.priceFeed().readPrice(address(pool.poolAsset()), 0);
+            (int256 assetPrice, ) = pool.priceFeed().readPrice(address(pool.poolAsset()));
             uint256 normalizedAssetPrice = assetPrice
                 .toUint256()
                 .normalized(pool.priceFeed().decimals(), 18);
@@ -119,7 +119,7 @@ contract AccountActor {
         uint256 amount
     ) private view returns (uint256) {
         IPriceFeed cheddaPriceFeed = IPriceFeed(registry.cheddaPriceOracle());
-        (int256 cheddaPrice, ) = cheddaPriceFeed.readPrice(registry.cheddaToken(), 0);
+        (int256 cheddaPrice, ) = cheddaPriceFeed.readPrice(registry.cheddaToken());
         uint256 normalizedCheddaPrice = cheddaPrice
             .toUint256()
             .normalized(cheddaPriceFeed.decimals(), 18);
@@ -168,7 +168,7 @@ contract AccountActor {
             pool.debtToken().balanceOf(account)
         );
         (int256 assetPrice, ) = priceFeed
-            .readPrice(address(pool.poolAsset()), 0);
+            .readPrice(address(pool.poolAsset()));
         uint256 normalizedAssetPrice = assetPrice
             .toUint256()
             .normalized(priceFeed.decimals(), 18);

@@ -154,7 +154,7 @@ contract LendingPoolLensTest is Test {
 
     function testPoolMarketInfo() external view {
         LendingPoolLens.MarketInfo memory marketInfo = lens.getMarketInfo(address(pool1));
-        (int256 assetPrice, ) = pool1.priceFeed().readPrice(address(pool1.poolAsset()), 0);
+        (int256 assetPrice, ) = pool1.priceFeed().readPrice(address(pool1.poolAsset()));
         assertEq(marketInfo.oraclePrice, assetPrice);
         assertEq(marketInfo.oraclePriceDecimals, pool1.priceFeed().decimals());
         assertEq(marketInfo.supplyCap, pool1.supplyCap());

@@ -42,11 +42,10 @@ contract DIAPriceFeed is IPriceFeed {
         }
     }
 
-    /// @notice Get latest price of asset. For ERC-20 tokens, `tokenID` parameter is unused.
-    /// tokenID parameter is for forwards compatibility.
+    /// @notice Get latest price of asset.
     /// @param token address of the asset's token.
     /// @return price the price of the asset
-    function readPrice(address token, uint256) external view returns (int256 price, uint256 lastUpdated) {
+    function readPrice(address token) external view returns (int256 price, uint256 lastUpdated) {
         string memory key = feedKeyMap[token];
         (uint128 price128, uint128 updated) = IDIAOracleV2(oracle).getValue(key);
         return (price128.toInt256(), uint256(updated));

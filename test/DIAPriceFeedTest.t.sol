@@ -35,11 +35,11 @@ contract DIAPriceFeedTest is Test {
         oracle.setValue(ethKey, ethPrice);
         oracle.setValue(btcKey, btcPrice);
         
-        (int256 p1, ) = priceFeed.readPrice(ethAddress, 0);
+        (int256 p1, ) = priceFeed.readPrice(ethAddress);
         assertEq(p1, int256(uint256(ethPrice)));
-        (int256 p2, ) = priceFeed.readPrice(btcAddress, 0);
+        (int256 p2, ) = priceFeed.readPrice(btcAddress);
         assertEq(p2, int256(uint256(btcPrice)));
-        (int256 p3, ) = priceFeed.readPrice(address(0), 0);
+        (int256 p3, ) = priceFeed.readPrice(address(0));
         assertEq(p3, 0);
     }
 }
