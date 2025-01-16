@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import { Test } from "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
 import { UD60x18, ud } from "prb-math/UD60x18.sol";
-import { CheddaToken, Ownable } from "../contracts/tokens/CheddaToken.sol";
+import { CheddaToken, Ownable } from "../contracts/rewards/CheddaToken.sol";
 import { IRewardsDistributor } from "../contracts/rewards/IRewardsDistributor.sol";
 import {LZEndpointMock} from "@layerzerolabs/examples/lzApp/mocks/LZEndpointMock.sol";
 
