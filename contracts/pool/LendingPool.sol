@@ -169,6 +169,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev Thrown when a caller tries to deposit a token for collateral that is not allowed
     error CheddaPool_CollateralNotAllowed(address token);
 
+    /// @dev Thrown when adding collateral that has already been added during initialization.
+    error CheddaPool_CollateralAlreadyAdded(address token);
+
     /// @dev Thrown when a caller tries to supply/deposit 0 amount of asset/collateral.
     error CheddaPool_ZeroAmount();
 
@@ -257,7 +260,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     // Determines Loan to Value ratio for token
     // mapping(address => uint256) public collateralFactor;
-    mapping(address => CollateralParams) public _collateralParams;
+    mapping(address => CollateralParams) public collateralParams;
 
     // account => token => amount
     mapping(address => mapping(address => CollateralDeposit))
@@ -347,9 +350,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         for (uint256 i = 0; i < len; i++) {
             _checkCollateralParams(cInit[i].info);
             collateral = cInit[i].token;
-            collateralTokenList.push(collateral);
+            if (collateralAllowed[collateral]) {
+                revert CheddaPool_CollateralAlreadyAdded(collateral);
+            }
             collateralAllowed[collateral] = true;
-            _collateralParams[cInit[i].token] = cInit[i].info;
+            collateralParams[cInit[i].token] = cInit[i].info;
+            collateralTokenList.push(collateral);
         }
     }
 
@@ -379,7 +385,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     function setCollateralParams(address token, CollateralParams memory params) external onlyOwner {
         _checkCollateralParams(params);
-        _collateralParams[token] = params;
+        collateralParams[token] = params;
 
         emit CollateralParamsSet(token, params.ltv, params.lltv, params.liqPenalty, params.liqBonus);
     }
@@ -684,9 +690,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         // Calculate the collateral value the liquidator will receive
         uint256 repaymentCollateralAmount = calculateCollateralAmount(params.repayAmount, params.collateral, false);
         uint256 liquidatorAmount = ud(repaymentCollateralAmount)
-            .mul(ud(1e18 + _collateralParams[params.collateral].liqBonus)).unwrap();
+            .mul(ud(1e18 + collateralParams[params.collateral].liqBonus)).unwrap();
 
-        uint256 reserveAmount = ud(repaymentCollateralAmount).mul(ud(_collateralParams[params.collateral].liqPenalty)).unwrap();
+        uint256 reserveAmount = ud(repaymentCollateralAmount).mul(ud(collateralParams[params.collateral].liqPenalty)).unwrap();
         uint256 totalAmount = liquidatorAmount + reserveAmount;
         if (params.collateral == address(asset)) {
             _liquidateAsset(params.borrower, totalAmount);
@@ -735,10 +741,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         // Calculate the collateral value the liquidator will receive
         uint256 repaymentCollateralAmount = calculateCollateralAmount(params.repayAmount, params.collateral, false);
         uint256 liquidatorAmount = ud(repaymentCollateralAmount)
-            .mul(ud(1e18 + _collateralParams[params.collateral].liqBonus)).unwrap();
+            .mul(ud(1e18 + collateralParams[params.collateral].liqBonus)).unwrap();
 
         uint256 reserveAmount = ud(repaymentCollateralAmount)
-            .mul(ud(_collateralParams[params.collateral].liqPenalty)).unwrap();
+            .mul(ud(collateralParams[params.collateral].liqPenalty)).unwrap();
         totalCollateralAmount = liquidatorAmount + reserveAmount;
         if (params.collateral == address(asset)) {
             _liquidateAsset(params.borrower, totalCollateralAmount);
@@ -944,7 +950,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ) public view returns (uint256 collateralAmount) {
         uint256 assetPrice = getPrice(address(asset), true); // Price of the asset token
         uint256 collateralPrice = getPrice(collateralToken, true); // Price of the collateral token
-        uint256 ltvCoeff = useLTV ? _collateralParams[collateralToken].ltv : 1e18;
+        uint256 ltvCoeff = useLTV ? collateralParams[collateralToken].ltv : 1e18;
         require(ltvCoeff > 0, CheddaPool_UnsupportedCollateral(collateralToken));
         require(collateralPrice != 0, CheddaPool_BadPrice(collateralToken, collateralPrice));
 
@@ -984,7 +990,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
                 ud(price.normalized(priceFeed.decimals(), 18)).mul(
                     ud(amount.normalized(ERC20(token).decimals(), 18))
                 )
-            ).mul(ud(_collateralParams[token].ltv)).unwrap();
+            ).mul(ud(collateralParams[token].ltv)).unwrap();
 
     }
 
@@ -1003,14 +1009,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
                 ud(price.normalized(priceFeed.decimals(), 18)).mul(
                     ud(amount.normalized(ERC20(token).decimals(), 18))
                 )
-            ).mul(ud(_collateralParams[token].lltv)).unwrap();
+            ).mul(ud(collateralParams[token].lltv)).unwrap();
     }
 
     /// @notice Returns the collateral configuration for a given token;
     /// @param token The token to return collateral info for.
     /// @return The `CollateralParams` for requested token.
     function collateralInfo(address token) external view returns (CollateralParams memory) {
-        return _collateralParams[token];
+        return collateralParams[token];
     }
 
     /// @dev take a snapshot of the current pool state.
