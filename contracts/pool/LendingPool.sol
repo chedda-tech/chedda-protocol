@@ -164,6 +164,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     event CollaterallizeAsset(address indexed account, bool useAsCollateral);
 
+    /// @dev Emitted when `flashLiquidateWhitelist` is updated
+    /// @param callback The address to whitelist or not
+    /// @param isApproved true of false
+    event CallbackApproved(address indexed callback, bool isApproved);
+
     /// Custom errors
 
     /// @dev Thrown when a caller tries to deposit a token for collateral that is not allowed
@@ -225,6 +230,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev Thrown when setting invalid collateral params
     error CheddaPool_InvalidCollateralParams();
 
+    /// @dev Thrown when a non approved callback is used in `flashLiquidate()`
+    error CheddaPool_CallbackNotApproved(address callback);
+
     using MathLib for uint256;
     using SafeCast for int256;
     using SafeTransferLib for ERC20;
@@ -269,6 +277,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     // token address => Collateral amount
     // use to be tokenCollateral
     mapping(address => uint256) public tokenCollateralDeposited;
+
+    /// @dev addresses approved to be used as callbacks
+    mapping (address => bool) public approvedCallbacks;
 
     /// @dev The max value for account health. This is returned if user has no debt.
     uint256 public constant maxAccountHealth = 100e18;
@@ -381,6 +392,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     function setSupplyCap(uint256 _supplyCap) external onlyOwner {
         supplyCap = _supplyCap;
         emit SupplyCapSet(_supplyCap, msg.sender);
+    }
+
+    /// @notice approves or disapproves a callback address
+    function setCllbackApproved(address callback, bool isApproved) external onlyOwner {
+        approvedCallbacks[callback] = isApproved;
+        emit CallbackApproved(callback, isApproved);
     }
 
     function setCollateralParams(address token, CollateralParams memory params) external onlyOwner {
@@ -654,6 +671,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @param params Array of `LiquidateParams` objects specifying parameters for liquidations.
     /// @return collateralAmounts The amounts of collateral removed.
     function batchLiquidate(LiquidateParams[] calldata params) external nonReentrant() returns (uint256[] memory) {
+        _updatePoolState();
         uint256 len = params.length;
         uint256[] memory collateralAmounts = new uint256[](len);
         for (uint256 i = 0; i < len; i++) {
@@ -675,35 +693,33 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (params.repayAmount == 0) {
             revert CheddaPool_ZeroAmount();
         }
-
         uint256 debtOwed = assetsBorrowed(params.borrower);
         if (params.repayAmount > debtOwed) {
             revert CheddaPool_Overpayment();
         }
 
-        // Transfer the repayment amount from liquidator to the pool
         asset.safeTransferFrom(msg.sender, address(this), params.repayAmount);
-
-        // Update the borrower's debt
         uint256 debtBurned = debtToken.repayAmount(params.repayAmount, params.borrower);
 
-        // Calculate the collateral value the liquidator will receive
         uint256 repaymentCollateralAmount = calculateCollateralAmount(params.repayAmount, params.collateral, false);
-        uint256 liquidatorAmount = ud(repaymentCollateralAmount)
-            .mul(ud(1e18 + collateralParams[params.collateral].liqBonus)).unwrap();
+        uint256 totalAmount = ud(repaymentCollateralAmount)
+            .mul(ud(1e18 + collateralParams[params.collateral].liqBonus))
+            .unwrap();
+        uint256 reserveAmount = ud(totalAmount)
+            .mul(ud(collateralParams[params.collateral].liqPenalty))
+            .div(ud(1e18 + collateralParams[params.collateral].liqBonus))
+            .unwrap();
+        uint256 liquidatorAmount = totalAmount - reserveAmount;
 
-        uint256 reserveAmount = ud(repaymentCollateralAmount).mul(ud(collateralParams[params.collateral].liqPenalty)).unwrap();
-        uint256 totalAmount = liquidatorAmount + reserveAmount;
         if (params.collateral == address(asset)) {
             _liquidateAsset(params.borrower, totalAmount);
         } else {
             _liquidateCollateral(params.borrower, params.collateral, totalAmount);
         }
-        // require(accountHealth(borrower) > initialHealth, CheddaPool_InvalidLiquidation());
 
-        // Transfer collateral to the liquidator
         ERC20(params.collateral).safeTransfer(params.receiver, liquidatorAmount);
         ERC20(params.collateral).safeTransfer(reserve, reserveAmount);
+
         emit AssetRepaid(params.borrower, params.receiver, params.repayAmount, debtBurned);
         emit PositionLiquidated(params.borrower, params.receiver, params.collateral, totalAmount);
 
@@ -718,16 +734,18 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         LiquidateParams memory params,
         address callback,
         bytes calldata data
-    ) external nonReentrant() returns (uint256 totalCollateralAmount) {
-        uint256 initialHealth = accountHealth(params.borrower);
-        uint256 initialAssetBalance = asset.balanceOf(address(this));
-        if (initialHealth >= 1.0e18) {
-            revert CheddaPool_AccountSolvent(params.borrower, initialHealth);
+    ) external nonReentrant() returns (uint256) {
+        require(approvedCallbacks[callback], CheddaPool_CallbackNotApproved(callback));
+        _updatePoolState();
+        {
+            uint256 health = accountHealth(params.borrower);
+            if (health >= 1.0e18) {
+                revert CheddaPool_AccountSolvent(params.borrower, health);
+            }
         }
         if (params.repayAmount == 0) {
             revert CheddaPool_ZeroAmount();
         }
-
         if (params.repayAmount > assetsBorrowed(params.borrower)) {
             revert CheddaPool_Overpayment();
         }
@@ -735,47 +753,68 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             revert CheddaPool_InvalidLiquidation();
         }
 
-         // Update the borrower's debt
+        // Extract collateral calculation to reduce stack
+        (uint256 totalCollateralAmount, uint256 liquidatorAmount, uint256 reserveAmount) = _calculateLiquidationAmounts(params);
+
         uint256 debtBurned = debtToken.repayAmount(params.repayAmount, params.borrower);
-
-        // Calculate the collateral value the liquidator will receive
-        uint256 repaymentCollateralAmount = calculateCollateralAmount(params.repayAmount, params.collateral, false);
-        uint256 liquidatorAmount = ud(repaymentCollateralAmount)
-            .mul(ud(1e18 + collateralParams[params.collateral].liqBonus)).unwrap();
-
-        uint256 reserveAmount = ud(repaymentCollateralAmount)
-            .mul(ud(collateralParams[params.collateral].liqPenalty)).unwrap();
-        totalCollateralAmount = liquidatorAmount + reserveAmount;
         if (params.collateral == address(asset)) {
             _liquidateAsset(params.borrower, totalCollateralAmount);
         } else {
             _liquidateCollateral(params.borrower, params.collateral, totalCollateralAmount);
         }
 
-        // transfer out tokens
         ERC20(params.collateral).safeTransfer(params.receiver, liquidatorAmount);
         ERC20(params.collateral).safeTransfer(reserve, reserveAmount);
-        // Call external logic (callback)
-        if (callback != address(0)) {
-            IFlashLiquidationCallback(callback).execute(data);
-        }
 
-        // Check that the liquidator has repaid the required asset amount
-        uint256 finalAssetBalance = asset.balanceOf(address(this));
-        uint256 expectedAssetBalance = initialAssetBalance + params.repayAmount;
-        require(finalAssetBalance >= expectedAssetBalance,
-            CheddaPool_InsufficientAssetBalance(finalAssetBalance, expectedAssetBalance));
+        uint256 balanceBefore = asset.balanceOf(address(this));
+        IFlashLiquidationCallback(callback).execute(data);
+
+        uint256 balanceAfter = asset.balanceOf(address(this));
+        require(balanceAfter >= balanceBefore + params.repayAmount,
+            CheddaPool_InsufficientAssetBalance(balanceAfter, balanceBefore + params.repayAmount));
 
         emit AssetRepaid(params.borrower, params.receiver, params.repayAmount, debtBurned);
         emit PositionLiquidated(params.borrower, params.receiver, params.collateral, totalCollateralAmount);
+        return totalCollateralAmount;
+    }
+
+// Helper function to calculate liquidation amounts
+    function _calculateLiquidationAmounts(
+        LiquidateParams memory params
+    ) private view returns (uint256 totalAmount, uint256 liquidatorAmount, uint256 reserveAmount) {
+        uint256 availableCollateral = accountCollateralAmount(params.borrower, params.collateral);
+        uint256 baseAmount = calculateCollateralAmount(params.repayAmount, params.collateral, false);
+        totalAmount = ud(baseAmount)
+            .mul(ud(1e18 + collateralParams[params.collateral].liqBonus))
+            .unwrap();
+        require(totalAmount <= availableCollateral, 
+            CheddaPool_InsufficientCollateral(params.borrower, params.collateral, totalAmount, availableCollateral));
+        reserveAmount = ud(totalAmount)
+            .mul(ud(collateralParams[params.collateral].liqPenalty))
+            .div(ud(1e18 + collateralParams[params.collateral].liqBonus))
+            .unwrap();
+        liquidatorAmount = totalAmount - reserveAmount;
     }
 
     function _liquidateAsset(
         address borrower,
         uint256 amount
     ) private {
+        require(assetCollateralized[borrower], CheddaPool_InvalidLiquidation());
+        uint256 availableBalance = assetBalance(borrower);
+        if (amount > availableBalance) {
+            revert CheddaPool_InsufficientCollateral(borrower, address(asset), amount, availableBalance);
+        }
+
         uint256 shares = previewWithdraw(amount);
+        if (convertToAssets(shares) < amount) {
+            shares += 1; // Round up to ensure at least `amount` is removed
+        }
         _burn(borrower, shares);
+        supplied -= amount; // Sync with asset removal, like beforeWithdraw()
+
+        // Optional: Emit event for transparency
+        emit CollateralRemoved(address(asset), borrower, TokenType.ERC20, amount);
     }
 
     function _liquidateCollateral(
@@ -803,6 +842,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         } else {
             accountCollateralDeposited[borrower][token].amount -= amount;
         }
+        emit CollateralRemoved(token, borrower, TokenType.ERC20, amount);
     }
 
     /// View functions
@@ -939,25 +979,34 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         return collateralTokenList;
     }
 
-    /// @notice Calculates the amount of collateral token required for a given asset amount.
-    /// @param assetAmount The amount of asset token.
-    /// @param collateralToken The address of the collateral token.
-    /// @return collateralAmount The amount of collateral token required.
     function calculateCollateralAmount(
         uint256 assetAmount,
         address collateralToken,
         bool useLTV
     ) public view returns (uint256 collateralAmount) {
-        uint256 assetPrice = getPrice(address(asset), true); // Price of the asset token
-        uint256 collateralPrice = getPrice(collateralToken, true); // Price of the collateral token
+        uint256 assetPrice = getPrice(address(asset), true); // Price of asset token
+        uint256 collateralPrice = getPrice(collateralToken, true); // Price of collateral token
         uint256 ltvCoeff = useLTV ? collateralParams[collateralToken].ltv : 1e18;
         require(ltvCoeff > 0, CheddaPool_UnsupportedCollateral(collateralToken));
         require(collateralPrice != 0, CheddaPool_BadPrice(collateralToken, collateralPrice));
 
-        collateralAmount = ud(assetAmount)
-            .mul(ud(assetPrice))
-            .div(ud(collateralPrice).mul(ud(ltvCoeff)))
-            .unwrap();
+        // Calculate: (assetAmount * assetPrice) / (collateralPrice * ltvCoeff)
+        // Adjust for decimals: prices are in priceFeed.decimals(), amounts in token decimals
+        uint8 assetDecimals = ERC20(address(asset)).decimals();
+        uint8 collateralDecimals = ERC20(collateralToken).decimals();
+        uint8 priceDecimals = priceFeed.decimals();
+
+        // Normalize to 18 decimals for intermediate calculations
+        UD60x18 value = ud(assetAmount.normalized(assetDecimals, 18))
+            .mul(ud(assetPrice.normalized(priceDecimals, 18)));
+        UD60x18 denominator = ud(collateralPrice.normalized(priceDecimals, 18))
+            .mul(ud(ltvCoeff));
+        collateralAmount = value.div(denominator).unwrap();
+        
+        // Convert result back to collateral token's native decimals
+        collateralAmount = collateralAmount.normalized(18, collateralDecimals);
+
+        require(collateralAmount != 0, CheddaPool_ZeroAmount());
     }
 
     /// @notice Returns the market value of a given number of token.

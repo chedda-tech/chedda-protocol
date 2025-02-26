@@ -13,6 +13,7 @@ import {ICheddaPool} from "../rewards/ICheddaPool.sol";
 import {ILockingGauge} from "../rewards/ILockingGauge.sol";
 // import {IStakingPool} from "../rewards/IStakingPool.sol";
 import {IRewardsDistributor} from "../rewards/IRewardsDistributor.sol";
+import {LendingPool} from "../pool/LendingPool.sol";
 
 /// @title LendingPoolLens
 /// @notice Provides utility functions to view the state of LendingPools
@@ -139,13 +140,13 @@ contract LendingPoolLens {
         uint256 totalFeesPaid = 0;
         uint256 tvl = 0;
         uint8 assetDecimals;
-        ILendingPool pool;
+        LendingPool pool;
         IPriceFeed priceFeed;
         address[] memory pools = onlyActive ? registry.activePools() : registry.registeredPools();
         uint256 poolsLength = pools.length;
 
         for (uint256 i = 0; i < poolsLength; i++) {
-            pool = ILendingPool(pools[i]);
+            pool = LendingPool(pools[i]);
             priceFeed = pool.priceFeed();
             int256 price = getPrice(address(pool), address(pool.poolAsset()));
             assetDecimals = pool.poolAsset().decimals();
@@ -153,7 +154,7 @@ contract LendingPoolLens {
             totalSuppliedValue += ud(pool.supplied().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
             totalBorrowedValue += ud(pool.borrowed().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
             totalAvailableValue += ud(pool.available().normalized(assetDecimals, 18)).mul(assetPrice).unwrap();
-            totalFeesPaid += pool.totalReserveShares();
+            totalFeesPaid += pool.convertToAssets(pool.totalReserveShares());
             tvl += pool.tvl(true);
         }
         AggregateStats memory stats = AggregateStats({
@@ -199,7 +200,7 @@ contract LendingPoolLens {
         if (!registry.isRegisteredPool(poolAddress)) {
             revert NotRegistered(poolAddress);
         }
-        ILendingPool pool = ILendingPool(poolAddress);
+        LendingPool pool = LendingPool(poolAddress);
         uint256 supplied = pool.supplied();
         uint256 borrowed = pool.borrowed();
         uint8 assetDecimals = pool.poolAsset().decimals();
@@ -223,7 +224,7 @@ contract LendingPoolLens {
             dailyRewards: poolDailyRewards(poolAddress),
             rewardsAPY:poolRewardRate(poolAddress),
             utilization: pool.utilization(),
-            totalReserveShares: pool.totalReserveShares(),
+            totalReserveShares: pool.convertToAssets(pool.totalReserveShares()),
             tvl: pool.tvl(true),
             collaterals: pool.collaterals()
         });
