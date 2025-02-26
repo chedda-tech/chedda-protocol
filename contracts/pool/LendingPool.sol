@@ -287,10 +287,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev Pool asset supply cap
     uint256 public supplyCap;
 
-    /// @dev Borrow cap per collateral token. This represents the max amount of asset
-    /// that can be borrowed with a given collateral token.
-    mapping(address => uint256) public borrowCap;
-
     /// @dev timestamp of when interest last accrued
     uint256 private _lastAccrual;
 
@@ -304,9 +300,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// @dev address to receive reserve funds
     address public reserve;
-
-    /// @notice Flag indicating if pool is operating in isolated collateral mode (ICM).
-    bool public icm;
 
     mapping (address => address) public icmAccountCollateral;
 
@@ -325,7 +318,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 reserveFactor;
         uint256 initialSupplyCap;
         uint256 stalePriceThreshold;
-        bool icm;
         CollateralInfoInit[] collaterals;
     }
 
@@ -347,7 +339,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         debtToken = new DebtToken(ERC20(initParams.asset), address(this));
         stakingPool = new StakingPool(initParams.registry, address(this));
         gauge = new CheddaLockingGauge(initParams.registry);
-        icm = initParams.icm;
         reserve = initParams.reserve;
         stalePriceThreshold = initParams.stalePriceThreshold;
         supplyCap = initParams.initialSupplyCap;
@@ -1109,18 +1100,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         require (isCollateralized(account), CheddaPool_AccountNotCollateralized(account));
     }
 
-    //// @notice Checks that the amount being borrowed is less than the borrow cap.
-    //// @dev reverts if amount > borrowCap
-    //// @param account The account to check for.
-    //// @param amount The amount being borrowed by this user.
-    // function _checkBorrowCaps(address account, uint256 amount) private view {
-    //     if (icm) {
-            
-    //     } else {
-
-    //     }
-    // }
-
     function _checkSupplyCap() private view {
         if (supplied > supplyCap) {
             revert CheddaPool_SupplyCapExceeded(supplyCap, supplied);
@@ -1302,11 +1281,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             ud(borrowed())
                 .div(ud(supplied))
                 .unwrap();
-    }
-
-    /// @dev recapitalizes the pool
-    function recapitalize() external pure returns (uint256) {
-        return 0;
     }
 
     ///////////////////////////////////////////////////////////////////////////
