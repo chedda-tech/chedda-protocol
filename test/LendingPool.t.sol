@@ -100,7 +100,6 @@ contract LendingPoolTest is Test {
             reserveFactor: baseFeeBps,
             initialSupplyCap: 1_000_000e18, // decimals must match asset decimals
             stalePriceThreshold: 3600,
-            icm: false,
             collaterals: collateralTypes
         });
         pool = new LendingPool(params);
@@ -488,32 +487,32 @@ contract LendingPoolTest is Test {
         vm.stopPrank();
     }
 
-    function testFreeAccountCollateral() external {
-        uint256 assetAmount = 10000e8;
-        uint256 borrowAmount = 4000e8;
+    // function testFreeAccountCollateral() external {
+    //     uint256 assetAmount = 10000e8;
+    //     uint256 borrowAmount = 4000e8;
 
-        asset.transfer(bob, assetAmount);
+    //     asset.transfer(bob, assetAmount);
 
-        vm.startPrank(bob);
-        asset.approve(poolAddress, assetAmount);
-        pool.supply(assetAmount, bob, true);
+    //     vm.startPrank(bob);
+    //     asset.approve(poolAddress, assetAmount);
+    //     pool.supply(assetAmount, bob, true);
 
-        uint256 cAmount = pool.accountCollateralAmount(bob, address(asset));
-        assertEq(assetAmount, cAmount);
+    //     uint256 cAmount = pool.accountCollateralAmount(bob, address(asset));
+    //     assertEq(assetAmount, cAmount);
 
-        // before borrow
-        // total borrow is free
-        uint256 freeAssetCollateral = pool.freeAccountCollateralAmount(bob, address(asset));
-        assertEq(freeAssetCollateral, assetAmount);
+    //     // before borrow
+    //     // total borrow is free
+    //     uint256 freeAssetCollateral = pool.freeAccountCollateralAmount(bob, address(asset));
+    //     assertEq(freeAssetCollateral, assetAmount);
 
-        pool.take(borrowAmount);
+    //     pool.take(borrowAmount);
 
-        freeAssetCollateral = pool.freeAccountCollateralAmount(bob, address(asset));
-        assertGt(freeAssetCollateral, 0);
-        assertGt(assetAmount, freeAssetCollateral);
+    //     freeAssetCollateral = pool.freeAccountCollateralAmount(bob, address(asset));
+    //     assertGt(freeAssetCollateral, 0);
+    //     assertGt(assetAmount, freeAssetCollateral);
 
-        vm.stopPrank();
-    }
+    //     vm.stopPrank();
+    // }
 
     function testUtilization() external {
        uint256 assetAmount = 1000e8;

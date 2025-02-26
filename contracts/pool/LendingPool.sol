@@ -902,33 +902,33 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         }
     }
 
-    /// @notice Returns the free collateral the account has for a given collateral token.
-    /// @param account The account to check for.
-    /// @param token The collateral.
-    /// @return The free collateral amount.
-    function freeAccountCollateralAmount(
-        address account,
-        address token
-    ) external view returns (uint256) {
-        uint256 debtValue = tokenMarketValue(
-            address(asset),
-            assetsBorrowed(account)
-        );
-        uint256 maxCollateralAmount = accountCollateralAmount(account, token);
-        if (debtValue == 0) {
-            return maxCollateralAmount;
-        }
-        uint256 collateralValue = totalAccountCollateralValue(account, AccountValue.Loan);
-        if (collateralValue == 0 || debtValue >= collateralValue) {
-            return 0;
-        }
-        uint256 freeCollateralValue = collateralValue - debtValue;
-        uint256 collateralUnitValue = getPrice(token, false);
-        uint256 freeCollateralAmountE18 = ud(freeCollateralValue)
-            .div(ud(collateralUnitValue.normalized(priceFeed.decimals(), 18))).unwrap();
-        uint256 collateralAmount = freeCollateralAmountE18.normalized(18, ERC20(token).decimals());
-        return maxCollateralAmount > collateralAmount ? collateralAmount : maxCollateralAmount;
-    }
+    // /// @notice Returns the free collateral the account has for a given collateral token.
+    // /// @param account The account to check for.
+    // /// @param token The collateral.
+    // /// @return The free collateral amount.
+    // function freeAccountCollateralAmount(
+    //     address account,
+    //     address token
+    // ) external view returns (uint256) {
+    //     uint256 debtValue = tokenMarketValue(
+    //         address(asset),
+    //         assetsBorrowed(account)
+    //     );
+    //     uint256 maxCollateralAmount = accountCollateralAmount(account, token);
+    //     if (debtValue == 0) {
+    //         return maxCollateralAmount;
+    //     }
+    //     uint256 collateralValue = totalAccountCollateralValue(account, AccountValue.Loan);
+    //     if (collateralValue == 0 || debtValue >= collateralValue) {
+    //         return 0;
+    //     }
+    //     uint256 freeCollateralValue = collateralValue - debtValue;
+    //     uint256 collateralUnitValue = getPrice(token, false);
+    //     uint256 freeCollateralAmountE18 = ud(freeCollateralValue)
+    //         .div(ud(collateralUnitValue.normalized(priceFeed.decimals(), 18))).unwrap();
+    //     uint256 collateralAmount = freeCollateralAmountE18.normalized(18, ERC20(token).decimals());
+    //     return maxCollateralAmount > collateralAmount ? collateralAmount : maxCollateralAmount;
+    // }
 
     /// @notice Returns the amount of asset an account has borrowed, including any accrued interest.
     /// @param account The account to check for.
