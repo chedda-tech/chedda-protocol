@@ -349,43 +349,46 @@ contract LendingPoolLens {
     /// @param poolAddress The pool to check for.
     /// @return rewards pool receives in a day.
     function poolDailyRewards(address poolAddress) public view returns (uint256) {
-        IRewardsDistributor distributor = IRewardsDistributor(registry.rewardsDistributor());
-        CheddaToken chedda = CheddaToken(registry.cheddaToken());
-        uint256 totalWeight = distributor.totalWeightSum();
-        if (totalWeight == 0) {
-            return 0;
-        }
-        uint256 dailyRewards = chedda.emissionPerSecond() * 
-            1 days * 
-            ICheddaPool(poolAddress).gauge().totalWeight() / totalWeight;
-        return dailyRewards;
+        return 0;
+        // IRewardsDistributor distributor = IRewardsDistributor(registry.rewardsDistributor());
+        // CheddaToken chedda = CheddaToken(registry.cheddaToken());
+        // uint256 totalWeight = distributor.totalWeightSum();
+        // if (totalWeight == 0) {
+        //     return 0;
+        // }
+        // uint256 dailyRewards = chedda.emissionPerSecond() * 
+        //     1 days * 
+        //     ICheddaPool(poolAddress).gauge().totalWeight() / totalWeight;
+        // return dailyRewards;
     }
 
     /// @notice Returns the reward rate (APY) a pool receives.
     /// @param poolAddress The pool to check for.
     /// @return The reward rate a pool receives.
     function poolRewardRate(address poolAddress) public view returns (uint256) {
-        ILendingPool lPool = ILendingPool(poolAddress);
-        CheddaToken chedda = CheddaToken(registry.cheddaToken());
-        IPriceFeed cheddaOracle = IPriceFeed(registry.cheddaPriceOracle());
-        (int256 cheddaPrice, ) = cheddaOracle.readPrice(registry.cheddaToken());
-        uint256 annualRewards = chedda.emissionPerSecond() * 365.25 days;
-        uint256 suppliedN = lPool.supplied().normalized(lPool.poolAsset().decimals(), 18);
-        uint256 assetPriceN = getPrice(poolAddress, address(lPool.poolAsset()))
-                    .toUint256()
-                    .normalized(lPool.priceFeed().decimals(), 18);
+        return 0;
 
-        if (suppliedN == 0 || assetPriceN == 0) {
-            return 0;
-        }
-        return 
-            ud(annualRewards)
-            .mul(
-                ud(cheddaPrice.toUint256().normalized(cheddaOracle.decimals(), 18))
-            ).div(
-                ud(suppliedN)
-                .mul(ud(assetPriceN))
-            ).unwrap();
+        // ILendingPool lPool = ILendingPool(poolAddress);
+        // CheddaToken chedda = CheddaToken(registry.cheddaToken());
+        // IPriceFeed cheddaOracle = IPriceFeed(registry.cheddaPriceOracle());
+        // (int256 cheddaPrice, ) = cheddaOracle.readPrice(registry.cheddaToken());
+        // uint256 annualRewards = chedda.emissionPerSecond() * 365.25 days;
+        // uint256 suppliedN = lPool.supplied().normalized(lPool.poolAsset().decimals(), 18);
+        // uint256 assetPriceN = getPrice(poolAddress, address(lPool.poolAsset()))
+        //             .toUint256()
+        //             .normalized(lPool.priceFeed().decimals(), 18);
+
+        // if (suppliedN == 0 || assetPriceN == 0) {
+        //     return 0;
+        // }
+        // return 
+        //     ud(annualRewards)
+        //     .mul(
+        //         ud(cheddaPrice.toUint256().normalized(cheddaOracle.decimals(), 18))
+        //     ).div(
+        //         ud(suppliedN)
+        //         .mul(ud(assetPriceN))
+        //     ).unwrap();
     }
 
     function getPrice(address pool, address asset) public view returns (int256) {
