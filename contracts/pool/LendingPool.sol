@@ -507,6 +507,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (amount > assetsBorrowed(account)) {
             revert CheddaPool_Overpayment();
         }
+        accrueInterest();
         asset.safeTransferFrom(account, address(this), amount);
         debtBurned = debtToken.repayAmount(amount, account);
         _updatePoolState();
@@ -521,6 +522,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @return amountRepaid the amount repaid.
     function putShares(uint256 shares) external nonReentrant returns (uint256 amountRepaid) {
         address account = msg.sender;
+        accrueInterest();
 
         if (shares == 0) {
             revert CheddaPool_ZeroAmount();
@@ -701,15 +703,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         asset.safeTransferFrom(msg.sender, address(this), params.repayAmount);
         uint256 debtBurned = debtToken.repayAmount(params.repayAmount, params.borrower);
 
-        uint256 repaymentCollateralAmount = calculateCollateralAmount(params.repayAmount, params.collateral, false);
-        uint256 totalAmount = ud(repaymentCollateralAmount)
-            .mul(ud(1e18 + collateralParams[params.collateral].liqBonus))
-            .unwrap();
-        uint256 reserveAmount = ud(totalAmount)
-            .mul(ud(collateralParams[params.collateral].liqPenalty))
-            .div(ud(1e18 + collateralParams[params.collateral].liqBonus))
-            .unwrap();
-        uint256 liquidatorAmount = totalAmount - reserveAmount;
+        (uint256 totalAmount, uint256 liquidatorAmount, uint256 reserveAmount) = _calculateLiquidationAmounts(params);
 
         if (params.collateral == address(asset)) {
             _liquidateAsset(params.borrower, totalAmount);
@@ -778,22 +772,33 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         return totalCollateralAmount;
     }
 
-// Helper function to calculate liquidation amounts
+    /// @dev calculate liquidation amount allocations
     function _calculateLiquidationAmounts(
         LiquidateParams memory params
     ) private view returns (uint256 totalAmount, uint256 liquidatorAmount, uint256 reserveAmount) {
         uint256 availableCollateral = accountCollateralAmount(params.borrower, params.collateral);
         uint256 baseAmount = calculateCollateralAmount(params.repayAmount, params.collateral, false);
+
+        // Total collateral seized is baseAmount scaled by (1 + liqPenalty)
         totalAmount = ud(baseAmount)
-            .mul(ud(1e18 + collateralParams[params.collateral].liqBonus))
+            .mul(ud(1e18 + collateralParams[params.collateral].liqPenalty))
             .unwrap();
+
+        // Liquidator amount is baseAmount plus bonus (baseAmount * liqBonus)
+        liquidatorAmount = ud(baseAmount)
+            .add(ud(baseAmount).mul(ud(collateralParams[params.collateral].liqBonus)))
+            .unwrap();
+
+        // Reserve amount is the difference
+        reserveAmount = totalAmount - liquidatorAmount;
+
+        // Ensure totalAmount doesn't exceed available collateral
         require(totalAmount <= availableCollateral, 
             CheddaPool_InsufficientCollateral(params.borrower, params.collateral, totalAmount, availableCollateral));
-        reserveAmount = ud(totalAmount)
-            .mul(ud(collateralParams[params.collateral].liqPenalty))
-            .div(ud(1e18 + collateralParams[params.collateral].liqBonus))
-            .unwrap();
-        liquidatorAmount = totalAmount - reserveAmount;
+
+        // Sanity check for decimal correctness
+        uint256 tokenDecimals = ERC20(params.collateral).decimals();
+        require(totalAmount < 10**(tokenDecimals + 18), "Liquidation amount exceeds reasonable bounds");
     }
 
     function _liquidateAsset(
