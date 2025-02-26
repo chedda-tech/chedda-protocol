@@ -80,5 +80,4 @@ interface ILendingPool {
     function tokenLoanValue(address token, uint256 amount) external view returns (uint256);
     function tokenLiquidationValue(address token, uint256 amount) external view returns (uint256);
     function totalAccountCollateralValue( address account, AccountValue valueType) external view returns (uint256);
-    function recapitalize() external returns (uint256);
 }
