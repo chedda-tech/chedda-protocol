@@ -85,7 +85,7 @@ contract DebtToken is ERC4626 {
         if (amount == 0) {
             revert ZeroAssets();
         }
-
+        amount = (amount > _totalDebt) ? _totalDebt : amount;
         _totalDebt -= amount;
         _burn(account, shares);
 
@@ -102,7 +102,7 @@ contract DebtToken is ERC4626 {
         if (shares == 0) {
             revert ZeroShares();
         }
-
+        amount = (amount > _totalDebt) ? _totalDebt : amount;
         _totalDebt -= amount;
         _burn(account, shares);
 
