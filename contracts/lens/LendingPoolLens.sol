@@ -346,9 +346,9 @@ contract LendingPoolLens {
     }
 
     /// @notice Returns the amount of token emissions a given pool receives daily.
-    /// @param poolAddress The pool to check for.
+    /// // 
     /// @return rewards pool receives in a day.
-    function poolDailyRewards(address poolAddress) public view returns (uint256) {
+    function poolDailyRewards(address) public pure returns (uint256) {
         return 0;
         // IRewardsDistributor distributor = IRewardsDistributor(registry.rewardsDistributor());
         // CheddaToken chedda = CheddaToken(registry.cheddaToken());
@@ -363,9 +363,9 @@ contract LendingPoolLens {
     }
 
     /// @notice Returns the reward rate (APY) a pool receives.
-    /// @param poolAddress The pool to check for.
+    /// // 
     /// @return The reward rate a pool receives.
-    function poolRewardRate(address poolAddress) public view returns (uint256) {
+    function poolRewardRate(address) public pure returns (uint256) {
         return 0;
 
         // ILendingPool lPool = ILendingPool(poolAddress);
