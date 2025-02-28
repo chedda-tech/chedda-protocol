@@ -33,142 +33,6 @@ import {IFlashLiquidationCallback} from "./IFlashLiquidationCallback.sol";
 /// @dev Implements ERC4626 interface.
 contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, ICheddaPool {
 
-    /// Events
-
-    /// @notice Emitted when collateral is added
-    /// @param token The token added
-    /// @param account The account that added the collateral.
-    /// @param ofType The type of collateral
-    /// @param amount The amount of token added as collateral
-    event CollateralAdded(
-        address indexed token,
-        address indexed account,
-        TokenType ofType,
-        uint256 amount
-    );
-
-    /// @notice Emitted when collateral is removed
-    /// @param token The token removed.
-    /// @param account The account that removed the collateral.
-    /// @param ofType The type of collateral
-    /// @param amount The amount of token removed as collateral
-    event CollateralRemoved(
-        address indexed token,
-        address indexed account,
-        TokenType ofType,
-        uint256 amount
-    );
-
-    /// @notice Emitted when assets are borrowed.
-    /// @param account The account that borrowed assets.
-    /// @param amount The amount of assets borrowed.
-    /// @param debtMinted The amount of debt token created.
-    event AssetBorrowed(
-        address indexed account,
-        uint256 amount,
-        uint256 debtMinted
-    );
-
-    /// @notice Emitted when borrowed assets are repaid.
-    /// @param account The account that repaid assets.
-    /// @param repaidBy The account doing the repayment. This is the same as
-    /// `account` in normal repayment with `putAmount` or `putShares`.
-    /// In case of liquidation, this is the address of the liquidator.
-    /// @param amount The amount of assets repaid.
-    /// @param debtBurned The amount of debt token burned.
-    event AssetRepaid(
-        address indexed account,
-        address indexed repaidBy,
-        uint256 amount,
-        uint256 debtBurned
-    );
-
-    /// @notice Emitted when interest is accrued
-    /// @dev called on all state changing functions.
-    /// @param caller indexed param of the caller of the action that triggered interest accrual.
-    /// @param interest The amount of interest accrued.
-    /// @param totalDebt The total amount debt pending.
-    /// @param totalAssets The total amount of assets including interest.
-    event InterestAccrued(
-        address indexed caller,
-        uint256 interest,
-        uint256 totalDebt,
-        uint256 totalAssets
-    );
-
-    /// @notice Emitted when pool share tokens are minted to reserve to cover fees.
-    /// @param caller Caller of function that triggered event.
-    /// @param shares The amount of shares to mint.
-    /// @param amount The corresponding amount of asset for shares minted.
-    event MintToReserve(address indexed caller, uint256 shares, uint256 amount);
-
-    /// @notice Emitted when the rewards gauge is set
-    /// @param gauge The gauge address.
-    /// @param caller The account that set the gauge.
-    event GaugeSet(address indexed gauge, address indexed caller);
-
-    /// @notice Emitted when the staking pool for this lending pool is set
-    /// @param pool The pool address.
-    /// @param caller The account that set the gauge.
-    event StakingPoolSet(address indexed pool, address indexed caller);
-
-    /// @notice Emitted when the supply cap is set.
-    /// @param cap The new supply cap.
-    /// @param caller The account that set the gauge.
-    event SupplyCapSet(uint256 cap, address indexed caller);
-
-    /// @notice Explain to an end user what this does
-    /// @dev Explain to a developer any extra details
-    /// @param ltv Max loan to value.
-    /// @param lltv Max liquidation loan to value.
-    /// @param liqPenalty Liquidation penalty (goes to reserve).
-    /// @param liqBonus Liquidation bonus (goes to liquidator).
-    event CollateralParamsSet(
-        address indexed token, 
-        uint256 ltv,
-        uint256 lltv,
-        uint256 liqPenalty,
-        uint256 liqBonus
-    );
-
-    /// @notice Emitted when a position is successfully liquidated.
-    /// @param account The account being liquidated.
-    /// @param liquidator The caller of the function.
-    /// @param collateral The collateral token to liquidate.
-    /// @param repayAmount The amount of debt being repaid by the liquidator.
-    event PositionLiquidated(
-        address indexed account, 
-        address indexed liquidator, 
-        address indexed collateral, 
-        uint256 repayAmount
-    );
-
-    /// @notice Emitted any time the pool state changes
-    /// @dev Pool state changes on supply, withdraw, take or put. 
-    /// Also called from the `updatePoolState()` function.
-    /// @param pool The pool address emitting this event. This is indexed.
-    /// @param timestamp The timestamp of the event. This is indexed.
-    /// @param supplied The total amount supplied to the pool.
-    /// @param borrowed The total amount borrowed from the pool.
-    /// @param supplyRate The base supply APY.
-    /// @param borrowRate The base borrow APR.
-    event PoolState(
-        address indexed pool,
-        address indexed caller,
-        uint256 indexed timestamp,
-        uint256 supplied,
-        uint256 borrowed,
-        uint256 supplyRate,
-        uint256 borrowRate
-    );
-
-    event CollaterallizeAsset(address indexed account, bool useAsCollateral);
-
-    /// @dev Emitted when `flashLiquidateWhitelist` is updated
-    /// @param callback The address to whitelist or not
-    /// @param isApproved true of false
-    event CallbackApproved(address indexed callback, bool isApproved);
-
     /// Custom errors
 
     /// @dev Thrown when a caller tries to deposit a token for collateral that is not allowed
@@ -1025,7 +889,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
                     ud(amount.normalized(ERC20(token).decimals(), 18))
                 )
             ).mul(ud(collateralParams[token].ltv)).unwrap();
-
     }
 
     /// @notice Returns the value as collateral for a given amount of token
@@ -1175,7 +1038,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev This includes assets that have been borrowed.
     /// @return amount The total assets supplied to pool.
     function totalAssets() public view override returns (uint256) {
-        return supplied; // TODO: add accrued interest
+        return supplied;
     }
 
     ///////////////////////////////////////////////////////////////////////////

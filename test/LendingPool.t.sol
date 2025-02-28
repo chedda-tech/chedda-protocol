@@ -834,7 +834,7 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
 
         // Perform liquidation with single-entry arrays
         vm.expectEmit(true, true, true, false);
-        emit LendingPool.PositionLiquidated(borrower1, receiver, address(collateral1), totalAmount);
+        emit ILendingPool.PositionLiquidated(borrower1, receiver, address(collateral1), totalAmount);
         uint256[] memory collateralLiquidated = pool.batchLiquidate(
             liquidateParams
         );
