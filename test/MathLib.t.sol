@@ -16,4 +16,11 @@ contract MathLibTest is Test {
         assertEq(value8, value18.normalized(18, 8));
         assertEq(value18, value8.normalized(8, 18));
     }
+
+    function testDecimalNormalize() external pure {
+        uint256 inValue = 0.2e18;
+        uint256 expected = 0.2e6;
+
+        assertEq(expected, inValue.normalized(18, 6));
+    }
 }

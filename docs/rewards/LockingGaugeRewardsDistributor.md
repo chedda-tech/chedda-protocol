@@ -17,6 +17,12 @@ error AlreadyRegistered(address)
 error NotFound(address)
 ```
 
+### ZeroAddress
+
+```solidity
+error ZeroAddress()
+```
+
 ### PoolRegistered
 
 ```solidity

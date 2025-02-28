@@ -40,6 +40,12 @@ event PoolRegistered(address pool, address caller)
 event PoolUnregistered(address pool, address caller)
 ```
 
+### PoolActive
+
+```solidity
+event PoolActive(address pool, address caller, bool isActive)
+```
+
 ### AlreadyRegistered
 
 ```solidity
@@ -50,6 +56,12 @@ error AlreadyRegistered(address pool)
 
 ```solidity
 error NotRegistered(address pool)
+```
+
+### ZeroAddress
+
+```solidity
+error ZeroAddress()
 ```
 
 ### constructor
@@ -219,7 +231,7 @@ checks if a pool is already registered
 ### isActivePool
 
 ```solidity
-function isActivePool(address pool) public view returns (bool)
+function isActivePool(address pool) external view returns (bool)
 ```
 
 checks if a pool is active

@@ -4,19 +4,13 @@
 
 Provides views into accounts and positions.
 
-### NotAuthorized
+### ZeroAddress
 
 ```solidity
-error NotAuthorized(address account)
+error ZeroAddress()
 ```
 
-_Emitted when the caller is not permitted to make a call._
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| account | address | The account making the call |
+_Reverts if zero addrss provided_
 
 ### AccountSummary
 

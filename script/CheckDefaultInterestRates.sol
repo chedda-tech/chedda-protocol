@@ -15,11 +15,19 @@ contract CheckDefaultInterestRateModel is Script {
         // uint256 targetUtilization = 0.92e18;
         // uint256 reserveFactor = 0.1e18;
 
+        // 5% -> 24.48% @ 80U, 67.06% @ 100U
         uint256 baseBorrowRate = 0.05e18;
-        uint256 rateSlope1 = 0.1e18;
-        uint256 rateSlope2 = 8e18;
-        uint256 targetUtilization = 0.92e18;
-        uint256 reserveFactor = 0.1e18;
+        uint256 rateSlope1 = 0.28e18;
+        uint256 rateSlope2 = 2.8e18;
+        uint256 targetUtilization = 0.8e18;
+        uint256 reserveFactor = 0.15e18;
+
+        // 4% -> 15% @88U, 47% @100U
+        // uint256 baseBorrowRate = 0.04e18;
+        // uint256 rateSlope1 = 0.15e18;
+        // uint256 rateSlope2 = 2.5e18;
+        // uint256 targetUtilization = 0.88e18;
+        // uint256 reserveFactor = 0.1e18;
         strategy = new DefaultInterestRateModel(
             baseBorrowRate,
             rateSlope1,
@@ -42,7 +50,8 @@ contract CheckDefaultInterestRateModel is Script {
         console2.log("Interest rate at 60%%  = (%d, %d)", strategy.calculateInterestRates(0.6e18).supplyRate, strategy.calculateInterestRates(0.6e18).borrowRate);
         console2.log("Interest rate at 70%%  = (%d, %d)", strategy.calculateInterestRates(0.7e18).supplyRate, strategy.calculateInterestRates(0.7e18).borrowRate);
         console2.log("Interest rate at 80%%  = (%d, %d)", strategy.calculateInterestRates(0.8e18).supplyRate, strategy.calculateInterestRates(0.8e18).borrowRate);
-        console2.log("Interest rate at 89%%  = (%d, %d)", strategy.calculateInterestRates(0.89e18).supplyRate, strategy.calculateInterestRates(0.89e18).borrowRate);
+        console2.log("Interest rate at 85%%  = (%d, %d)", strategy.calculateInterestRates(0.85e18).supplyRate, strategy.calculateInterestRates(0.85e18).borrowRate);
+        console2.log("Interest rate at 88%%  = (%d, %d)", strategy.calculateInterestRates(0.88e18).supplyRate, strategy.calculateInterestRates(0.88e18).borrowRate);
         console2.log("Interest rate at 90%%  = (%d, %d)", strategy.calculateInterestRates(0.9e18).supplyRate, strategy.calculateInterestRates(0.9e18).borrowRate);
         console2.log("Interest rate at 91%%  = (%d, %d)", strategy.calculateInterestRates(0.91e18).supplyRate, strategy.calculateInterestRates(0.91e18).borrowRate);
         console2.log("Interest rate at 92%%  = (%d, %d)", strategy.calculateInterestRates(0.92e18).supplyRate, strategy.calculateInterestRates(0.92e18).borrowRate);

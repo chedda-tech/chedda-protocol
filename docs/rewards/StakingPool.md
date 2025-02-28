@@ -72,22 +72,6 @@ error InsufficientStake()
 
 _Thrown when user tries to unstake more than their staking balance._
 
-### NotAuthorized
-
-```solidity
-error NotAuthorized(address caller)
-```
-
-_Thrown when account other than rewardsDistributor calls the `addRewards()` function._
-
-### NoStakeFound
-
-```solidity
-error NoStakeFound(address caller)
-```
-
-_Thrown when user tries to unstake when they don't have tokens staked._
-
 ### ZeroAmount
 
 ```solidity
@@ -95,6 +79,14 @@ error ZeroAmount()
 ```
 
 _Thrown when user tries to stake or unstake the zero amount._
+
+### ZeroAddress
+
+```solidity
+error ZeroAddress()
+```
+
+_Thrown when a zero address is specified._
 
 ### InvalidAmount
 

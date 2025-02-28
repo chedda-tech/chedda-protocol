@@ -4,6 +4,14 @@
 
 Represents an instance of a feed that reads values from a DIA oracle.
 
+### ZeroAddress
+
+```solidity
+error ZeroAddress()
+```
+
+_Reverts if zero addrss provided_
+
 ### oracle
 
 ```solidity

@@ -213,6 +213,27 @@ Also called from the `updatePoolState()` function._
 | supplyRate | uint256 | The base supply APY. |
 | borrowRate | uint256 | The base borrow APR. |
 
+### CollaterallizeAsset
+
+```solidity
+event CollaterallizeAsset(address account, bool useAsCollateral)
+```
+
+### CallbackApproved
+
+```solidity
+event CallbackApproved(address callback, bool isApproved)
+```
+
+_Emitted when `flashLiquidateWhitelist` is updated_
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| callback | address | The address to whitelist or not |
+| isApproved | bool | true of false |
+
 ### CheddaPool_CollateralNotAllowed
 
 ```solidity
@@ -220,6 +241,14 @@ error CheddaPool_CollateralNotAllowed(address token)
 ```
 
 _Thrown when a caller tries to deposit a token for collateral that is not allowed_
+
+### CheddaPool_CollateralAlreadyAdded
+
+```solidity
+error CheddaPool_CollateralAlreadyAdded(address token)
+```
+
+_Thrown when adding collateral that has already been added during initialization._
 
 ### CheddaPool_ZeroAmount
 
@@ -341,6 +370,14 @@ error CheddaPool_InvalidCollateralParams()
 
 _Thrown when setting invalid collateral params_
 
+### CheddaPool_CallbackNotApproved
+
+```solidity
+error CheddaPool_CallbackNotApproved(address callback)
+```
+
+_Thrown when a non approved callback is used in `flashLiquidate()`_
+
 ### supplied
 
 ```solidity
@@ -385,16 +422,16 @@ contract IAddressRegistry registry
 contract IPriceFeed priceFeed
 ```
 
-### interestRates
-
-```solidity
-struct InterestRates interestRates
-```
-
 ### interestRatesModel
 
 ```solidity
 contract IInterestRateModel interestRatesModel
+```
+
+### interestRates
+
+```solidity
+struct InterestRates interestRates
 ```
 
 ### gauge
@@ -429,10 +466,10 @@ mapping(address => bool) collateralAllowed
 mapping(address => bool) assetCollateralized
 ```
 
-### _collateralParams
+### collateralParams
 
 ```solidity
-mapping(address => struct CollateralParams) _collateralParams
+mapping(address => struct CollateralParams) collateralParams
 ```
 
 ### accountCollateralDeposited
@@ -446,6 +483,14 @@ mapping(address => mapping(address => struct CollateralDeposit)) accountCollater
 ```solidity
 mapping(address => uint256) tokenCollateralDeposited
 ```
+
+### approvedCallbacks
+
+```solidity
+mapping(address => bool) approvedCallbacks
+```
+
+_addresses approved to be used as callbacks_
 
 ### maxAccountHealth
 
@@ -462,15 +507,6 @@ uint256 supplyCap
 ```
 
 _Pool asset supply cap_
-
-### borrowCap
-
-```solidity
-mapping(address => uint256) borrowCap
-```
-
-_Borrow cap per collateral token. This represents the max amount of asset
-that can be borrowed with a given collateral token._
 
 ### reserveFactor
 
@@ -494,14 +530,6 @@ address reserve
 
 _address to receive reserve funds_
 
-### icm
-
-```solidity
-bool icm
-```
-
-Flag indicating if pool is operating in isolated collateral mode (ICM).
-
 ### icmAccountCollateral
 
 ```solidity
@@ -524,7 +552,6 @@ struct InitParams {
   uint256 reserveFactor;
   uint256 initialSupplyCap;
   uint256 stalePriceThreshold;
-  bool icm;
   struct CollateralInfoInit[] collaterals;
 }
 ```
@@ -572,6 +599,14 @@ _This is the maximum amount that can be supplied in this pool._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | _supplyCap | uint256 | The new supply cap |
+
+### setCallbackApproved
+
+```solidity
+function setCallbackApproved(address callback, bool isApproved) external
+```
+
+approves or disapproves a callback address
 
 ### setCollateralParams
 
@@ -812,7 +847,7 @@ greater than the health before liquidation._
 ### flashLiquidate
 
 ```solidity
-function flashLiquidate(struct LendingPool.LiquidateParams params, address callback, bytes data) external returns (uint256 totalCollateralAmount)
+function flashLiquidate(struct LendingPool.LiquidateParams params, address callback, bytes data) external returns (uint256)
 ```
 
 Explain to an end user what this does
@@ -831,7 +866,7 @@ _Explain to a developer any extra details_
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| totalCollateralAmount | uint256 | The amount of collateral the liquidator received. |
+| [0] | uint256 | totalCollateralAmount The amount of collateral the liquidator received. |
 
 ### getPrice
 
@@ -899,27 +934,6 @@ Returns the amount of a given token an account has deposited as collateral
 | ---- | ---- | ----------- |
 | collateralAmount | uint256 | The amount of `collateral` token `account` has deposited. |
 
-### freeAccountCollateralAmount
-
-```solidity
-function freeAccountCollateralAmount(address account, address token) external view returns (uint256)
-```
-
-Returns the free collateral the account has for a given collateral token.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| account | address | The account to check for. |
-| token | address | The collateral. |
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | uint256 | The free collateral amount. |
-
 ### assetsBorrowed
 
 ```solidity
@@ -974,22 +988,6 @@ function collaterals() external view returns (address[])
 ```solidity
 function calculateCollateralAmount(uint256 assetAmount, address collateralToken, bool useLTV) public view returns (uint256 collateralAmount)
 ```
-
-Calculates the amount of collateral token required for a given asset amount.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| assetAmount | uint256 | The amount of asset token. |
-| collateralToken | address | The address of the collateral token. |
-| useLTV | bool |  |
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| collateralAmount | uint256 | The amount of collateral token required. |
 
 ### tokenMarketValue
 
@@ -1089,7 +1087,7 @@ _take a snapshot of the current pool state._
 ### isSolvent
 
 ```solidity
-function isSolvent(address account) public view returns (bool)
+function isSolvent(address account) external view returns (bool)
 ```
 
 Checks if account is solvent.
@@ -1138,7 +1136,7 @@ function accrueInterest() public
 ### poolAsset
 
 ```solidity
-function poolAsset() public view returns (contract ERC20)
+function poolAsset() external view returns (contract ERC20)
 ```
 
 Returns the asset that can be borrowed from this pool
@@ -1333,18 +1331,10 @@ _This is the amount of asset borrowed divided by assets supplied._
 | ---- | ---- | ----------- |
 | u | uint256 | The pool asset utilization. |
 
-### recapitalize
-
-```solidity
-function recapitalize() external pure returns (uint256)
-```
-
-_recapitalizes the pool_
-
 ### beforeWithdraw
 
 ```solidity
-function beforeWithdraw(uint256 assets, uint256 shares) internal
+function beforeWithdraw(uint256 assets, uint256) internal
 ```
 
 deposit/withdraw hooks
@@ -1352,7 +1342,7 @@ deposit/withdraw hooks
 ### afterDeposit
 
 ```solidity
-function afterDeposit(uint256 assets, uint256 shares) internal
+function afterDeposit(uint256 assets, uint256) internal
 ```
 
 ### version
@@ -1361,7 +1351,7 @@ function afterDeposit(uint256 assets, uint256 shares) internal
 function version() external pure returns (uint16)
 ```
 
-Returns the version of the vault
+Returns the version of the pool
 
 #### Return Values
 

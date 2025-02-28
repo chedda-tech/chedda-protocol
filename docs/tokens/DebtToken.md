@@ -36,6 +36,12 @@ Emitted when debt accrual takes place.
 error NonTransferrable()
 ```
 
+### ZeroAddress
+
+```solidity
+error ZeroAddress()
+```
+
 ### ZeroAssets
 
 ```solidity
@@ -54,30 +60,30 @@ error ZeroShares()
 error ZeroDebt()
 ```
 
-### NotVault
+### NotPool
 
 ```solidity
-error NotVault()
+error NotPool()
 ```
 
-### vault
+### pool
 
 ```solidity
-address vault
+address pool
 ```
 
-The vault address
+The pool address
 
-### onlyVault
+### onlyPool
 
 ```solidity
-modifier onlyVault()
+modifier onlyPool()
 ```
 
 ### constructor
 
 ```solidity
-constructor(contract ERC20 _asset, address _vault) public
+constructor(contract ERC20 _asset, address _pool) public
 ```
 
 Creates a debt token.
@@ -87,7 +93,7 @@ Creates a debt token.
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | _asset | contract ERC20 | the asset being borrowed. |
-| _vault | address | the Chedda vault this asset is being borrowed from. |
+| _pool | address | the Chedda pool this asset is being borrowed from. |
 
 ### createDebt
 
@@ -200,7 +206,6 @@ Returns total owed (amount borrowed + outstanding interest payments).
 function totalDebt() external view returns (uint256 borrowed)
 ```
 
-TODO: Change asset references besides underlying `asset` to debt.
 e.g totalAssets(), assetsPerShare(), 
 Returns the total principal amount of debt tracked.
 

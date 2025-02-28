@@ -229,9 +229,3 @@ function tokenLiquidationValue(address token, uint256 amount) external view retu
 function totalAccountCollateralValue(address account, enum AccountValue valueType) external view returns (uint256)
 ```
 
-### recapitalize
-
-```solidity
-function recapitalize() external returns (uint256)
-```
-

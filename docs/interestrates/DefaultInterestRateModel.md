@@ -41,6 +41,6 @@ constructor(uint256 _baseBorrowRate, uint256 _rateSlope1, uint256 _rateSlope2, u
 ### calculateInterestRates
 
 ```solidity
-function calculateInterestRates(uint256 utilization) public view returns (struct InterestRates)
+function calculateInterestRates(uint256 utilization) external view returns (struct InterestRates)
 ```
 

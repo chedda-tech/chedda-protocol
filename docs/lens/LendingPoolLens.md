@@ -53,6 +53,7 @@ struct PoolCollateralInfo {
   uint256 ltv;
   uint256 lltv;
   uint256 liqPenalty;
+  uint256 liqBonus;
 }
 ```
 
@@ -119,17 +120,21 @@ event PoolRegistered(address pool, address caller)
 event PoolUnregistered(address pool, address caller)
 ```
 
-### AlreadyRegistered
-
-```solidity
-error AlreadyRegistered(address pool)
-```
-
 ### NotRegistered
 
 ```solidity
 error NotRegistered(address pool)
 ```
+
+_Revert is unregistering pool that is not registered._
+
+### ZeroAddress
+
+```solidity
+error ZeroAddress()
+```
+
+_Reverts if zero addrss provided_
 
 ### registry
 
@@ -254,7 +259,7 @@ Returns information about a given account in a specified pool.
 ### getAccountFreeCollateralInPool
 
 ```solidity
-function getAccountFreeCollateralInPool(address poolAddress, address account, address token) public view returns (uint256)
+function getAccountFreeCollateralInPool(address poolAddress, address account, address token) external view returns (uint256)
 ```
 
 Returns the free collateral in pool
@@ -316,16 +321,11 @@ Returns market information about the pool
 ### poolDailyRewards
 
 ```solidity
-function poolDailyRewards(address poolAddress) public view returns (uint256)
+function poolDailyRewards(address) public pure returns (uint256)
 ```
 
 Returns the amount of token emissions a given pool receives daily.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| poolAddress | address | The pool to check for. |
+//
 
 #### Return Values
 
@@ -336,16 +336,11 @@ Returns the amount of token emissions a given pool receives daily.
 ### poolRewardRate
 
 ```solidity
-function poolRewardRate(address poolAddress) public view returns (uint256)
+function poolRewardRate(address) public pure returns (uint256)
 ```
 
 Returns the reward rate (APY) a pool receives.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| poolAddress | address | The pool to check for. |
+//
 
 #### Return Values
 

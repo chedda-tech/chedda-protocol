@@ -117,19 +117,17 @@ error LockNotExpired(uint256)
 error ZeroAmount()
 ```
 
+### ZeroAddress
+
+```solidity
+error ZeroAddress()
+```
+
 ### InvalidAmount
 
 ```solidity
 error InvalidAmount(uint256)
 ```
-
-### NotAuthorized
-
-```solidity
-error NotAuthorized(address caller)
-```
-
-_Thrown when account other than rewardsDistributor calls the `addRewards()` function._
 
 ### registry
 
