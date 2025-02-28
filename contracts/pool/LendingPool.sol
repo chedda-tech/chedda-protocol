@@ -36,19 +36,19 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// Custom errors
 
     /// @dev Thrown when a caller tries to deposit a token for collateral that is not allowed
-    error CheddaPool_CollateralNotAllowed(address token);
+    error CollateralNotAllowed(address token);
 
     /// @dev Thrown when adding collateral that has already been added during initialization.
-    error CheddaPool_CollateralAlreadyAdded(address token);
+    error CollateralAlreadyAdded(address token);
 
     /// @dev Thrown when a caller tries to supply/deposit 0 amount of asset/collateral.
-    error CheddaPool_ZeroAmount();
+    error ZeroAmount();
 
     /// @dev Thrown when the supply cap is exceeded.
-    error CheddaPool_SupplyCapExceeded(uint256 cap, uint256 supplied);
+    error SupplyCapExceeded(uint256 cap, uint256 supplied);
 
     /// @dev Thrown when a caller tries to withdraw more collateral than they have deposited.
-    error CheddaPool_InsufficientCollateral(
+    error InsufficientCollateral(
         address account,
         address token,
         uint256 amountRequested,
@@ -56,46 +56,46 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     );
 
     /// @dev Thrown when the account does not have sufficient collateral.
-    error CheddaPool_AccountNotCollateralized(address account);
+    error AccountNotCollateralized(address account);
 
     /// @dev Thrown when attempting to liquidate a solvent account.
-    error CheddaPool_AccountSolvent(address account, uint256 health);
+    error AccountSolvent(address account, uint256 health);
 
     /// @dev Thrown when a caller tries withdraw more asset than supplied.
-    error CheddaPool_InsufficientAssetBalance(
+    error InsufficientAssetBalance(
         uint256 available,
         uint256 requested
     );
 
     /// @dev Thrown when a caller tries to repay more debt than they owe.
-    error CheddaPool_Overpayment();
+    error Overpayment();
 
     /// @dev Thrown when a caller tries to deposit the asset token as collateral.
-    error CheddaPool_AssetMustBeSupplied();
+    error AssetMustBeSupplied();
 
     /// @dev Thrown when a caller tries to remove asset token from collateral. `withdraw` must be used instead.
-    error CheddaPool_AsssetMustBeWithdrawn();
+    error AsssetMustBeWithdrawn();
 
     /// @dev Thrown when withdrawing or depositing zero shares
-    error CheddaPool_ZeroShares();
+    error ZeroShares();
 
     /// @dev Thrown if the asset price is invalid.
-    error CheddaPool_BadPrice(address asset, uint256 price);
+    error BadPrice(address asset, uint256 price);
 
     /// @dev Thrown if the asset price is stale.
-    error CheddaPool_StalePrice(address asset, uint256 lastUpdated);
+    error StalePrice(address asset, uint256 lastUpdated);
     
     /// @notice Thrown in an invalid liquidation call.
-    error CheddaPool_InvalidLiquidation();
+    error InvalidLiquidation();
 
     /// @notice Thrown when trying to calculate the value of unsupported collateral token
-    error CheddaPool_UnsupportedCollateral(address collateralToken);
+    error UnsupportedCollateral(address collateralToken);
 
     /// @dev Thrown when setting invalid collateral params
-    error CheddaPool_InvalidCollateralParams();
+    error InvalidCollateralParams();
 
     /// @dev Thrown when a non approved callback is used in `flashLiquidate()`
-    error CheddaPool_CallbackNotApproved(address callback);
+    error CallbackNotApproved(address callback);
 
     using MathLib for uint256;
     using SafeCast for int256;
@@ -217,7 +217,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             _checkCollateralParams(cInit[i].info);
             collateral = cInit[i].token;
             if (collateralAllowed[collateral]) {
-                revert CheddaPool_CollateralAlreadyAdded(collateral);
+                revert CollateralAlreadyAdded(collateral);
             }
             collateralAllowed[collateral] = true;
             collateralParams[cInit[i].token] = cInit[i].info;
@@ -264,8 +264,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// @dev checks collateral params
     function _checkCollateralParams(CollateralParams memory params) private pure {
-        require(params.lltv < 1.0e18 && params.ltv <= params.lltv, CheddaPool_InvalidCollateralParams());
-        require(params.lltv + params.liqPenalty < 1.0e18 && params.liqBonus < params.liqPenalty, CheddaPool_InvalidCollateralParams());
+        require(params.lltv < 1.0e18 && params.ltv <= params.lltv, InvalidCollateralParams());
+        require(params.lltv + params.liqPenalty < 1.0e18 && params.liqBonus < params.liqPenalty, InvalidCollateralParams());
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -307,7 +307,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address owner
     ) public override nonReentrant returns (uint256 shares) {
         shares = super.withdraw(assetAmount, receiver, owner);
-        require(shares != 0, CheddaPool_ZeroShares());
+        require(shares != 0, ZeroShares());
         if (assetCollateralized[owner]) {
             uint256 collateralAmount = accountCollateralAmount(owner, address(asset));
             collateralAmount = (assetAmount > collateralAmount) ? collateralAmount: assetAmount;
@@ -367,10 +367,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     function putAmount(uint256 amount) external nonReentrant returns (uint256 debtBurned) {
         address account = msg.sender;
         if (amount == 0) {
-            revert CheddaPool_ZeroAmount();
+            revert ZeroAmount();
         }
         if (amount > assetsBorrowed(account)) {
-            revert CheddaPool_Overpayment();
+            revert Overpayment();
         }
         accrueInterest();
         asset.safeTransferFrom(account, address(this), amount);
@@ -390,10 +390,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         accrueInterest();
 
         if (shares == 0) {
-            revert CheddaPool_ZeroAmount();
+            revert ZeroAmount();
         }
         if (shares > debtToken.accountShare(account)) {
-            revert CheddaPool_Overpayment();
+            revert Overpayment();
         }
         uint256 amountToTransfer = debtToken.convertToAssets(shares);
         asset.safeTransferFrom(account, address(this), amountToTransfer);
@@ -427,7 +427,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 amount
     ) external nonReentrant {
         if (token == address(asset)) {
-            revert CheddaPool_AssetMustBeSupplied();
+            revert AssetMustBeSupplied();
         }
         _addCollateral(msg.sender, token, amount, true);
     }
@@ -440,12 +440,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ) private {
         // check collateral is allowed
         if (!collateralAllowed[token]) {
-            revert CheddaPool_CollateralNotAllowed(token);
+            revert CollateralNotAllowed(token);
         }
 
         // check amount
         if (amount == 0) {
-            revert CheddaPool_ZeroAmount();
+            revert ZeroAmount();
         }
 
         // account is always msg.sender
@@ -479,7 +479,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 amount
     ) external nonReentrant {
         if (token == address(asset)) {
-            revert CheddaPool_AsssetMustBeWithdrawn();
+            revert AsssetMustBeWithdrawn();
         }
         _removeCollateral(msg.sender, token, amount, true);
         _checkIsCollateralized(msg.sender);
@@ -492,11 +492,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         bool doTransfer
     ) private {
         if (amount == 0) {
-            revert CheddaPool_ZeroAmount();
+            revert ZeroAmount();
         }
         uint256 accountCollateral = accountCollateralAmount(account, token);
         if (amount > accountCollateral) {
-            revert CheddaPool_InsufficientCollateral(
+            revert InsufficientCollateral(
                 account,
                 token,
                 amount,
@@ -537,9 +537,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     }
 
     /// @notice Allows an account to liquidate a borrower's position if their health factor falls below 1.0e18.
-    /// @dev Throws the `CheddaPool_InvalidLiquidation` error if there is a mismatch in length of any of
+    /// @dev Throws the `InvalidLiquidation` error if there is a mismatch in length of any of
     /// `borrowers`, `collateralTokens`, `repayAmounts`.
-    /// Throws `CheddaPool_InvalidLiquidation` error if health of a borrower after liquidation is not
+    /// Throws `InvalidLiquidation` error if health of a borrower after liquidation is not
     /// greater than the health before liquidation.
     /// @param params Array of `LiquidateParams` objects specifying parameters for liquidations.
     /// @return collateralAmounts The amounts of collateral removed.
@@ -561,14 +561,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ) private returns (uint256) {
         uint256 initialHealth = accountHealth(params.borrower);
         if (initialHealth >= 1.0e18) {
-            revert CheddaPool_AccountSolvent(params.borrower, initialHealth);
+            revert AccountSolvent(params.borrower, initialHealth);
         }
         if (params.repayAmount == 0) {
-            revert CheddaPool_ZeroAmount();
+            revert ZeroAmount();
         }
         uint256 debtOwed = assetsBorrowed(params.borrower);
         if (params.repayAmount > debtOwed) {
-            revert CheddaPool_Overpayment();
+            revert Overpayment();
         }
 
         asset.safeTransferFrom(msg.sender, address(this), params.repayAmount);
@@ -600,22 +600,22 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address callback,
         bytes calldata data
     ) external nonReentrant() returns (uint256) {
-        require(approvedCallbacks[callback], CheddaPool_CallbackNotApproved(callback));
+        require(approvedCallbacks[callback], CallbackNotApproved(callback));
         _updatePoolState();
         {
             uint256 health = accountHealth(params.borrower);
             if (health >= 1.0e18) {
-                revert CheddaPool_AccountSolvent(params.borrower, health);
+                revert AccountSolvent(params.borrower, health);
             }
         }
         if (params.repayAmount == 0) {
-            revert CheddaPool_ZeroAmount();
+            revert ZeroAmount();
         }
         if (params.repayAmount > assetsBorrowed(params.borrower)) {
-            revert CheddaPool_Overpayment();
+            revert Overpayment();
         }
         if (callback == address(0)) {
-            revert CheddaPool_InvalidLiquidation();
+            revert InvalidLiquidation();
         }
 
         // Extract collateral calculation to reduce stack
@@ -636,7 +636,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
         uint256 balanceAfter = asset.balanceOf(address(this));
         require(balanceAfter >= balanceBefore + params.repayAmount,
-            CheddaPool_InsufficientAssetBalance(balanceAfter, balanceBefore + params.repayAmount));
+            InsufficientAssetBalance(balanceAfter, balanceBefore + params.repayAmount));
 
         emit AssetRepaid(params.borrower, params.receiver, params.repayAmount, debtBurned);
         emit PositionLiquidated(params.borrower, params.receiver, params.collateral, totalCollateralAmount);
@@ -665,7 +665,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
         // Ensure totalAmount doesn't exceed available collateral
         require(totalAmount <= availableCollateral, 
-            CheddaPool_InsufficientCollateral(params.borrower, params.collateral, totalAmount, availableCollateral));
+            InsufficientCollateral(params.borrower, params.collateral, totalAmount, availableCollateral));
 
         // Sanity check for decimal correctness
         uint256 tokenDecimals = ERC20(params.collateral).decimals();
@@ -676,10 +676,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address borrower,
         uint256 amount
     ) private {
-        require(assetCollateralized[borrower], CheddaPool_InvalidLiquidation());
+        require(assetCollateralized[borrower], InvalidLiquidation());
         uint256 availableBalance = assetBalance(borrower);
         if (amount > availableBalance) {
-            revert CheddaPool_InsufficientCollateral(borrower, address(asset), amount, availableBalance);
+            revert InsufficientCollateral(borrower, address(asset), amount, availableBalance);
         }
 
         uint256 shares = previewWithdraw(amount);
@@ -700,7 +700,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ) private {
         uint256 accountCollateral = accountCollateralAmount(borrower, token);
         if (amount > accountCollateral) {
-            revert CheddaPool_InsufficientCollateral(
+            revert InsufficientCollateral(
                 borrower,
                 token,
                 amount,
@@ -730,10 +730,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     function getPrice(address asset, bool checkAge) public view returns (uint256) {
         (int256 price, uint256 lastUpdated) = priceFeed.readPrice(asset);
         if (price < 0) {
-            revert CheddaPool_BadPrice(asset, price.toUint256());
+            revert BadPrice(asset, price.toUint256());
         }
         if (checkAge && block.timestamp - lastUpdated > stalePriceThreshold) {
-            revert CheddaPool_StalePrice(asset, lastUpdated);
+            revert StalePrice(asset, lastUpdated);
         }
         return price.toUint256();
     }
@@ -836,8 +836,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         uint256 assetPrice = getPrice(address(asset), true); // Price of asset token
         uint256 collateralPrice = getPrice(collateralToken, true); // Price of collateral token
         uint256 ltvCoeff = useLTV ? collateralParams[collateralToken].ltv : 1e18;
-        require(ltvCoeff > 0, CheddaPool_UnsupportedCollateral(collateralToken));
-        require(collateralPrice != 0, CheddaPool_BadPrice(collateralToken, collateralPrice));
+        require(ltvCoeff > 0, UnsupportedCollateral(collateralToken));
+        require(collateralPrice != 0, BadPrice(collateralToken, collateralPrice));
 
         // Calculate: (assetAmount * assetPrice) / (collateralPrice * ltvCoeff)
         // Adjust for decimals: prices are in priceFeed.decimals(), amounts in token decimals
@@ -855,7 +855,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         // Convert result back to collateral token's native decimals
         collateralAmount = collateralAmount.normalized(18, collateralDecimals);
 
-        require(collateralAmount != 0, CheddaPool_ZeroAmount());
+        require(collateralAmount != 0, ZeroAmount());
     }
 
     /// @notice Returns the market value of a given number of token.
@@ -949,12 +949,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     }
 
     function _checkIsCollateralized(address account) private view {
-        require (isCollateralized(account), CheddaPool_AccountNotCollateralized(account));
+        require (isCollateralized(account), AccountNotCollateralized(account));
     }
 
     function _checkSupplyCap() private view {
         if (supplied > supplyCap) {
-            revert CheddaPool_SupplyCapExceeded(supplyCap, supplied);
+            revert SupplyCapExceeded(supplyCap, supplied);
         }
     }
 
@@ -963,7 +963,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     function _validateBorrow(address, uint256 amount) private view {
         uint256 amountAvailable = available();
         require(amountAvailable >= amount,
-            CheddaPool_InsufficientAssetBalance(amountAvailable, amount));
+            InsufficientAssetBalance(amountAvailable, amount));
     }
 
     function accrueInterest() public {

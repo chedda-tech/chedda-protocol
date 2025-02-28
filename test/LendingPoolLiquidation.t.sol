@@ -189,7 +189,7 @@ contract LendingPoolLiquidationTests is Test {
         uint256 health = pool.accountHealth(borrower);
         vm.startPrank(liquidator);
         vm.expectRevert(abi.encodeWithSelector(
-            LendingPool.CheddaPool_AccountSolvent.selector, 
+            LendingPool.AccountSolvent.selector, 
             borrower, 
             health)
         );
@@ -235,7 +235,7 @@ contract LendingPoolLiquidationTests is Test {
 
         vm.startPrank(liquidator);
         vm.expectRevert(abi.encodeWithSelector(
-            LendingPool.CheddaPool_ZeroAmount.selector));
+            LendingPool.ZeroAmount.selector));
         pool.flashLiquidate(params0Repayment, address(callback), data);
 
         // check overpayment
@@ -246,7 +246,7 @@ contract LendingPoolLiquidationTests is Test {
             repayAmount: repayAmount1
         });
         vm.expectRevert(abi.encodeWithSelector(
-            LendingPool.CheddaPool_Overpayment.selector));
+            LendingPool.Overpayment.selector));
         pool.flashLiquidate(paramsOverpayment, address(callback), data);
     }
 
@@ -291,7 +291,7 @@ contract LendingPoolLiquidationTests is Test {
 
         vm.startPrank(liquidator);
         vm.expectRevert(abi.encodeWithSelector(
-            LendingPool.CheddaPool_InsufficientAssetBalance.selector, 
+            LendingPool.InsufficientAssetBalance.selector, 
             assetBalanceBefore, 
             assetBalanceBefore + repayAmount)
         );

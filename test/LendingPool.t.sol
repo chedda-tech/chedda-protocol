@@ -148,12 +148,12 @@ contract LendingPoolTest is Test {
         // adding unapproved collateral fails
         address notCollateral = makeAddr("not collateral");
         vm.expectRevert(
-            abi.encodeWithSelector(LendingPool.CheddaPool_CollateralNotAllowed.selector, notCollateral)
+            abi.encodeWithSelector(LendingPool.CollateralNotAllowed.selector, notCollateral)
         );
         pool.addCollateral(notCollateral, collateralAmount);
 
         // adding asset as collateral fails, must be supplied with collateral option
-        vm.expectRevert(LendingPool.CheddaPool_AssetMustBeSupplied.selector);
+        vm.expectRevert(LendingPool.AssetMustBeSupplied.selector);
         pool.addCollateral(address(asset), collateralAmount);
 
         vm.startPrank(bob);
@@ -164,7 +164,7 @@ contract LendingPoolTest is Test {
         collateral1.approve(poolAddress, collateralAmount);
 
         // zero amount fails
-        vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
+        vm.expectRevert(LendingPool.ZeroAmount.selector);
         pool.addCollateral(c1Address, 0);
 
         pool.addCollateral(c1Address, collateralAmount);
@@ -218,16 +218,16 @@ contract LendingPoolTest is Test {
         pool.addCollateral(c1Address, collateralAmount); 
 
         // remove asset collateral fails
-        vm.expectRevert(LendingPool.CheddaPool_AsssetMustBeWithdrawn.selector);
+        vm.expectRevert(LendingPool.AsssetMustBeWithdrawn.selector);
         pool.removeCollateral(address(asset), collateralAmount);
 
         // remove 0 collateral fails
-        vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
+        vm.expectRevert(LendingPool.ZeroAmount.selector);
         pool.removeCollateral(c1Address, 0);
 
         // // remove more collateral than deposited fails
         vm.expectRevert(
-            abi.encodeWithSelector(LendingPool.CheddaPool_InsufficientCollateral.selector,
+            abi.encodeWithSelector(LendingPool.InsufficientCollateral.selector,
             bob, c1Address, collateralAmount * 2, collateralAmount)
         );
         pool.removeCollateral(c1Address, collateralAmount * 2);
@@ -259,7 +259,7 @@ contract LendingPoolTest is Test {
 
         // take without depositing collateral
         vm.expectRevert(
-            abi.encodeWithSelector(LendingPool.CheddaPool_AccountNotCollateralized.selector, bob)
+            abi.encodeWithSelector(LendingPool.AccountNotCollateralized.selector, bob)
         );
         pool.take(amountToTake);
 
@@ -329,11 +329,11 @@ contract LendingPoolTest is Test {
         pool.addCollateral(c1Address, collateralAmount);
         uint256 shares = pool.take(amountToTake);
         
-        vm.expectRevert(LendingPool.CheddaPool_ZeroAmount.selector);
+        vm.expectRevert(LendingPool.ZeroAmount.selector);
         pool.putAmount(0);
 
         uint256 bobAssetsBorrowed = pool.assetsBorrowed(bob);
-        vm.expectRevert(LendingPool.CheddaPool_Overpayment.selector);
+        vm.expectRevert(LendingPool.Overpayment.selector);
         pool.putAmount(bobAssetsBorrowed + 100e8);
 
         uint256 assetAmountToRepay = amountToTake;
@@ -386,7 +386,7 @@ contract LendingPoolTest is Test {
         asset.approve(poolAddress, allowance);
 
         vm.expectRevert(
-            abi.encodeWithSelector(LendingPool.CheddaPool_SupplyCapExceeded.selector, newCap, assetAmount)
+            abi.encodeWithSelector(LendingPool.SupplyCapExceeded.selector, newCap, assetAmount)
         );
         pool.supply(assetAmount, bob, true);
         vm.stopPrank();
@@ -475,7 +475,7 @@ contract LendingPoolTest is Test {
         asset.transfer(bob, assetAmount);
 
         vm.startPrank(bob);
-        vm.expectRevert(LendingPool.CheddaPool_ZeroShares.selector);
+        vm.expectRevert(LendingPool.ZeroShares.selector);
         pool.withdraw(0, bob, bob);
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, bob, true);
@@ -890,7 +890,7 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
         vm.prank(liquidator);
         uint256 health = pool.accountHealth(borrower1);
         assertGt(health, 1.0e18);
-        vm.expectRevert(abi.encodeWithSelector(LendingPool.CheddaPool_AccountSolvent.selector, borrower1, health)); // Example health factor
+        vm.expectRevert(abi.encodeWithSelector(LendingPool.AccountSolvent.selector, borrower1, health)); // Example health factor
         pool.batchLiquidate(
             liquidateParams
         );
@@ -927,7 +927,7 @@ contract LendingPoolLiquidationTests is LendingPoolTest {
         priceFeed.setPrice(c1Address, 0.5e8);
         // Attempt liquidation should fail
         vm.prank(liquidator);
-        vm.expectRevert(abi.encodeWithSelector(LendingPool.CheddaPool_Overpayment.selector)); // Example health factor
+        vm.expectRevert(abi.encodeWithSelector(LendingPool.Overpayment.selector)); // Example health factor
         pool.batchLiquidate(
             liquidateParams
         );
