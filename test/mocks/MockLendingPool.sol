@@ -112,7 +112,7 @@ contract MockLendingPool is ILendingPool, ICheddaPool {
         return _tvl;
     }
 
-    function convertToAssets(uint256 shares) external pure returns (uint256) {
+    function convertToAssets(uint256) external pure returns (uint256) {
         return 0;
     }
 

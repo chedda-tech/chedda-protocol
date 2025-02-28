@@ -417,9 +417,9 @@ contract LendingPoolTest is Test {
         uint256 shares = pool.supply(assetAmount, bob, true);
         assertEq(pool.totalAssets(), assetAmount);
         uint256 redeemed = pool.redeem(shares, bob, bob);
-        // assertEq(redeemed, assetAmount);
-        // assertEq(asset.balanceOf(bob), assetAmount);
-        // assertEq(pool.totalAssets(), 0);
+        assertEq(redeemed, assetAmount);
+        assertEq(asset.balanceOf(bob), assetAmount);
+        assertEq(pool.totalAssets(), 0);
         vm.stopPrank();
     }
 

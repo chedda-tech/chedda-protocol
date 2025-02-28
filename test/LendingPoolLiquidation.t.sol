@@ -34,7 +34,6 @@ contract LendingPoolLiquidationTests is Test {
     uint256 public supplyCap = 1_000_000e18;
     address public admin;
     address public reserve;
-    address public callback;
 
     function setUp() external {
          asset = new MockERC20("Asset", "AST", 6, 1_000_000e18);
@@ -99,7 +98,6 @@ contract LendingPoolLiquidationTests is Test {
             collaterals: collateralTypes
         });
         pool = new LendingPool(params);
-        pool.setCallbackApproved(callback, true);
     }
 
     function testFlashLiquidationSuccess() external {
@@ -133,6 +131,8 @@ contract LendingPoolLiquidationTests is Test {
         });
         bytes memory data = abi.encode(address(pool), address(asset), repayAmount);
         FlashLiquidationCallbackImpl callback = new FlashLiquidationCallbackImpl();
+        vm.prank(admin);
+        pool.setCallbackApproved(address(callback), true);
         // asset.transfer(address(callback), repayAmount);
         deal(address(asset), address(callback), repayAmount);
 
@@ -154,10 +154,10 @@ contract LendingPoolLiquidationTests is Test {
 
     // test fails if account healthy
      function testFlashLiquidationFailAccountHealthy() external {
-        uint256 amountToSupply = 1000e18;
-        uint256 amountToBorrow = 500e18;
-        uint256 collateral1Amount = 1000e18;
-        uint256 repayAmount = 300e18;
+        uint256 amountToSupply = 1000e6;
+        uint256 amountToBorrow = 500e6;
+        uint256 collateral1Amount = 1000e8;
+        uint256 repayAmount = 300e8;
 
         // supply an asset
         deal(address(asset), address(pool), amountToSupply);
@@ -182,6 +182,8 @@ contract LendingPoolLiquidationTests is Test {
         });
         bytes memory data = abi.encode(address(pool), address(asset), repayAmount);
         address callback = makeAddr("callback");
+        vm.prank(admin);
+        pool.setCallbackApproved(address(callback), true);
 
         deal(address(asset), liquidator, repayAmount);
         uint256 health = pool.accountHealth(borrower);
@@ -196,11 +198,11 @@ contract LendingPoolLiquidationTests is Test {
 
     // fail if repay amount invalid
     function testFlashLiquidationFailInvalidRepayment() external {
-        uint256 amountToSupply = 1000e18;
-        uint256 amountToBorrow = 500e18;
-        uint256 collateral1Amount = 1000e18;
+        uint256 amountToSupply = 1000e6;
+        uint256 amountToBorrow = 500e6;
+        uint256 collateral1Amount = 1000e8;
         uint256 repayAmount0 = 0;
-        uint256 repayAmount1 = 600e18;
+        uint256 repayAmount1 = 600e6;
 
         // supply an asset
         deal(address(asset), address(pool), amountToSupply);
@@ -228,6 +230,8 @@ contract LendingPoolLiquidationTests is Test {
         });
         bytes memory data = abi.encode(address(pool), address(asset), repayAmount0);
         address callback = makeAddr("callback");
+        vm.prank(admin);
+        pool.setCallbackApproved(address(callback), true);
 
         vm.startPrank(liquidator);
         vm.expectRevert(abi.encodeWithSelector(
@@ -248,10 +252,10 @@ contract LendingPoolLiquidationTests is Test {
 
     // test fails if repayAmount not transferred to pool
     function testFlashLiquidationFailPaymentNotReceived() external {
-        uint256 amountToSupply = 1000e18;
-        uint256 amountToBorrow = 500e18;
-        uint256 collateral1Amount = 1000e18;
-        uint256 repayAmount = 300e18;
+        uint256 amountToSupply = 1000e6;
+        uint256 amountToBorrow = 500e6;
+        uint256 collateral1Amount = 1000e8;
+        uint256 repayAmount = 300e6;
 
         // supply an asset
         deal(address(asset), address(pool), amountToSupply);
@@ -279,6 +283,8 @@ contract LendingPoolLiquidationTests is Test {
         });
         bytes memory data = abi.encode(address(pool), address(asset), repayAmount);
         FlashLiquidationCallbackNoTransferImpl callback = new FlashLiquidationCallbackNoTransferImpl();
+        vm.prank(admin);
+        pool.setCallbackApproved(address(callback), true);
 
         uint256 assetBalanceBefore = asset.balanceOf(address(pool));
         deal(address(asset), liquidator, repayAmount);
@@ -325,6 +331,9 @@ contract LendingPoolLiquidationTests is Test {
         });
         bytes memory data = abi.encode(address(pool), address(asset), repayAmount);
         FlashLiquidationCallbackImpl callback = new FlashLiquidationCallbackImpl();
+        vm.prank(admin);
+        pool.setCallbackApproved(address(callback), true);
+
         // asset.transfer(address(callback), repayAmount);
         deal(address(asset), address(callback), repayAmount);
 
