@@ -28,16 +28,17 @@ contract LendingPoolLiquidationTests is Test {
     address public receiver;
     MockPriceFeed public priceFeed;
     uint256 public assetLtv = 0.7e18;
-    uint256 public c1Ltv = 0.65e18;
+    uint256 public c1Ltv = 0.75e18;
     uint256 public c2Ltv = 0.4e18;
     uint256 public baseFeeBps = 0.1e18;
     uint256 public supplyCap = 1_000_000e18;
     address public admin;
     address public reserve;
+    address public callback;
 
     function setUp() external {
-         asset = new MockERC20("Asset", "AST", 18, 1_000_000e18);
-        collateral1 = new MockERC20("Collateral 1", "COL1", 18, 1_000_000e18);
+         asset = new MockERC20("Asset", "AST", 6, 1_000_000e18);
+        collateral1 = new MockERC20("Collateral 1", "COL1", 8, 1_000_000e18);
         collateral2 = new MockERC20("Collateral 2", "COL2", 18, 1_000_000e18);
         c1Address = address(collateral1);
         c2Address = address(collateral2);
@@ -58,7 +59,7 @@ contract LendingPoolLiquidationTests is Test {
             info: CollateralParams({
                 ltv: assetLtv,
                 lltv: 0.8e18,
-                liqPenalty: 0.05e18,
+                liqPenalty: 0.1e18,
                 liqBonus: 0.05e18
             })
         });
@@ -67,8 +68,8 @@ contract LendingPoolLiquidationTests is Test {
             info: CollateralParams({
                 ltv: c1Ltv,
                 lltv: 0.75e18,
-                liqPenalty: 0.01e18,
-                liqBonus: 0.01e18
+                liqPenalty: 0.1e18,
+                liqBonus: 0.08e18
             })
         });
         collateralTypes[2] = CollateralInfoInit({
@@ -77,7 +78,7 @@ contract LendingPoolLiquidationTests is Test {
                 ltv: c2Ltv,
                 lltv: 0.75e18,
                 liqPenalty: 0.1e18,
-                liqBonus: 0.1e18
+                liqBonus: 0.08e18
             })
         });
 
@@ -95,17 +96,17 @@ contract LendingPoolLiquidationTests is Test {
             reserveFactor: baseFeeBps,
             initialSupplyCap: supplyCap,
             stalePriceThreshold: 3600,
-            icm: false,
             collaterals: collateralTypes
         });
         pool = new LendingPool(params);
+        pool.setCallbackApproved(callback, true);
     }
 
     function testFlashLiquidationSuccess() external {
-        uint256 amountToSupply = 1000e18;
-        uint256 amountToBorrow = 500e18;
-        uint256 collateral1Amount = 1000e18;
-        uint256 repayAmount = 300e18;
+        uint256 amountToSupply = 1000e6;
+        uint256 amountToBorrow = 500e6;
+        uint256 collateral1Amount = 1000e8;
+        uint256 repayAmount = 300e6;
 
         // supply an asset
         deal(address(asset), address(pool), amountToSupply);
@@ -289,6 +290,59 @@ contract LendingPoolLiquidationTests is Test {
             assetBalanceBefore + repayAmount)
         );
         pool.flashLiquidate(params, address(callback), data);
+    }
+
+    function testSpecificLiquidation() external {
+        uint256 amountToSupply = 1_000_000;
+        uint256 amountToBorrow = 700_000;
+        uint256 collateral1Amount = 1000;
+        uint256 repayAmount = 700_000;
+
+        priceFeed.setPrice(address(collateral1), 100000e8);
+        // supply an asset
+        deal(address(asset), address(pool), amountToSupply);
+        
+        // deposit collateral
+        deal(address(collateral1), borrower, collateral1Amount);
+        vm.startPrank(borrower);
+        collateral1.approve(address(pool), collateral1Amount);
+        pool.addCollateral(address(collateral1), collateral1Amount);
+
+        // borrow
+        pool.take(amountToBorrow);
+        vm.stopPrank();
+
+        // collateral price drop
+        priceFeed.setPrice(address(collateral1), 80000e8);
+        console2.log("account health = %d", pool.accountHealth(borrower));
+
+        // liquidate
+        LendingPool.LiquidateParams memory params = LendingPool.LiquidateParams({
+            borrower: borrower,
+            receiver: receiver,
+            collateral: address(collateral1),
+            repayAmount: repayAmount
+        });
+        bytes memory data = abi.encode(address(pool), address(asset), repayAmount);
+        FlashLiquidationCallbackImpl callback = new FlashLiquidationCallbackImpl();
+        // asset.transfer(address(callback), repayAmount);
+        deal(address(asset), address(callback), repayAmount);
+
+        uint256 assetBalanceBefore = asset.balanceOf(address(pool));
+        uint256 accountCollateralBefore = pool.accountCollateralAmount(borrower, address(collateral1));
+
+        vm.startPrank(liquidator);
+        uint256 collateralTaken = pool.flashLiquidate(params, address(callback), data);
+        console2.log("**** collateralTaken = %d", collateralTaken);
+        vm.stopPrank();
+
+        uint256 assetBalanceAfter = asset.balanceOf(address(pool));
+        // (int256 price,) = pool.priceFeed().readPrice(address(asset));
+
+        // check balances
+        assertEq(assetBalanceBefore + repayAmount, assetBalanceAfter);
+        // check users collateral
+        assertEq(pool.accountCollateralAmount(borrower, address(collateral1)) + collateralTaken, accountCollateralBefore);
     }
 }
 

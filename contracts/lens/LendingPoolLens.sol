@@ -57,6 +57,7 @@ contract LendingPoolLens {
         uint256 ltv;
         uint256 lltv;
         uint256 liqPenalty;
+        uint256 liqBonus;
     }
 
     struct LendingPoolInfo {
@@ -320,7 +321,8 @@ contract LendingPoolLens {
                 value: pool.tokenMarketValue(collateral, collateralAmount),
                 ltv: cInfo.ltv,
                 lltv: cInfo.lltv,
-                liqPenalty: cInfo.liqPenalty
+                liqPenalty: cInfo.liqPenalty,
+                liqBonus: cInfo.liqBonus
             });
         }
         return infoList;

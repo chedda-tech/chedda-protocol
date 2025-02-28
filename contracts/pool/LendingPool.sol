@@ -401,7 +401,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev checks collateral params
     function _checkCollateralParams(CollateralParams memory params) private pure {
         require(params.lltv < 1.0e18 && params.ltv <= params.lltv, CheddaPool_InvalidCollateralParams());
-        require(params.lltv + params.liqBonus + params.liqPenalty < 1.0e18, CheddaPool_InvalidCollateralParams());
+        require(params.lltv + params.liqPenalty < 1.0e18 && params.liqBonus < params.liqPenalty, CheddaPool_InvalidCollateralParams());
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -425,8 +425,8 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             if (!assetCollateralized[receiver]) {
                 _collateralize(true, receiver);
             }
+            _addCollateral(receiver, address(asset), amount, false);
         }
-        // zero_shares handled in ERC-4626
         _updatePoolState();
     }
 
@@ -444,6 +444,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ) public override nonReentrant returns (uint256 shares) {
         shares = super.withdraw(assetAmount, receiver, owner);
         require(shares != 0, CheddaPool_ZeroShares());
+        if (assetCollateralized[owner]) {
+            uint256 collateralAmount = accountCollateralAmount(owner, address(asset));
+            collateralAmount = (assetAmount > collateralAmount) ? collateralAmount: assetAmount;
+            if (collateralAmount != 0) _removeCollateral(owner, address(asset), collateralAmount, false);
+        }
         _checkIsCollateralized(owner);
         _updatePoolState();
     }
@@ -461,6 +466,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address owner
     ) public override nonReentrant returns (uint256 assetAmount) {
         assetAmount = super.redeem(shares, receiver, owner);
+        if (assetCollateralized[owner]) {
+            uint256 collateralAmount = accountCollateralAmount(owner, address(asset));
+            collateralAmount = (assetAmount > collateralAmount) ? collateralAmount: assetAmount;
+            if (collateralAmount != 0) _removeCollateral(owner, address(asset), collateralAmount, false);
+        }
         _checkIsCollateralized(owner);
         // zero_assets handled in ERC-4626
         _updatePoolState();
@@ -555,13 +565,14 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (token == address(asset)) {
             revert CheddaPool_AssetMustBeSupplied();
         }
-        _addCollateral(msg.sender, token, amount);
+        _addCollateral(msg.sender, token, amount, true);
     }
 
     function _addCollateral(
         address account,
         address token,
-        uint256 amount
+        uint256 amount,
+        bool doTransfer
     ) private {
         // check collateral is allowed
         if (!collateralAllowed[token]) {
@@ -574,7 +585,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         }
 
         // account is always msg.sender
-        ERC20(token).safeTransferFrom(account, address(this), amount);
+        if (doTransfer) {
+            ERC20(token).safeTransferFrom(account, address(this), amount);
+        }
         tokenCollateralDeposited[token] += amount;
 
         // add collateral to account
@@ -604,14 +617,15 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         if (token == address(asset)) {
             revert CheddaPool_AsssetMustBeWithdrawn();
         }
-        _removeCollateral(msg.sender, token, amount);
+        _removeCollateral(msg.sender, token, amount, true);
         _checkIsCollateralized(msg.sender);
     }
 
     function _removeCollateral(
         address account,
         address token,
-        uint256 amount
+        uint256 amount,
+        bool doTransfer
     ) private {
         if (amount == 0) {
             revert CheddaPool_ZeroAmount();
@@ -637,7 +651,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
             accountCollateralDeposited[account][token].amount -= amount;
         }
 
-        ERC20(token).safeTransfer(account, amount);
+        if (doTransfer) {
+            ERC20(token).safeTransfer(account, amount);
+        }
         emit CollateralRemoved(token, account, TokenType.ERC20, amount);
     }
 
@@ -952,6 +968,7 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address collateralToken,
         bool useLTV
     ) public view returns (uint256 collateralAmount) {
+        if (assetAmount == 0) return 0;
         uint256 assetPrice = getPrice(address(asset), true); // Price of asset token
         uint256 collateralPrice = getPrice(collateralToken, true); // Price of collateral token
         uint256 ltvCoeff = useLTV ? collateralParams[collateralToken].ltv : 1e18;
@@ -1208,8 +1225,10 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     function tvl(bool countBorrows) external view returns (uint256 totalValue) {
         address collateral;
         uint256 len = collateralTokenList.length;
-        for (uint256 i = 0; i < len; i++) {
+        totalValue = tokenMarketValue(address(asset), available());
+        for (uint256 i = 1; i < len; i++) {
             collateral = collateralTokenList[i];
+            if (collateral == address(asset)) continue; // skip asset, already counted
             uint256 amount = ERC20(collateral).balanceOf(address(this));
             totalValue += tokenMarketValue(collateral, amount);
         }
