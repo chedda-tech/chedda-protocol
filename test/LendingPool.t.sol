@@ -106,6 +106,13 @@ contract LendingPoolTest is Test {
         poolAddress = address(pool);
     }
 
+}
+
+contract LendingPoolBaseTest is LendingPoolTest {
+
+    using SafeCast for int256;
+    using MathLib for uint256;
+
     function testPoolConfiguration() external view {
         assertEq(POOL_NAME, pool.characterization());
         assertEq(1, pool.version());
@@ -404,6 +411,7 @@ contract LendingPoolTest is Test {
         assertEq(pool.totalAssets(), assetAmount);
         assertEq(pool.available(), assetAmount);
         assertEq(pool.borrowed(), 0);
+        assertEq(pool.tokenCollateralDeposited(address(asset)), assetAmount);
         vm.stopPrank();
     }
 
@@ -470,7 +478,7 @@ contract LendingPoolTest is Test {
                 
     }
 
-    function testWithdraw() external {
+    function testWithdrawAssets() external {
         uint256 assetAmount = 1000e8;
         asset.transfer(bob, assetAmount);
 
@@ -480,10 +488,12 @@ contract LendingPoolTest is Test {
         asset.approve(poolAddress, assetAmount);
         pool.supply(assetAmount, bob, true);
         assertEq(pool.totalAssets(), assetAmount);
+        assertEq(pool.tokenCollateralDeposited(address(asset)), assetAmount);
         uint256 redeemed = pool.withdraw(assetAmount, bob, bob);
         assertEq(redeemed, assetAmount);
         assertEq(asset.balanceOf(bob), assetAmount);
         assertEq(pool.totalAssets(), 0);
+        assertEq(pool.tokenCollateralDeposited(address(asset)), 0);
         vm.stopPrank();
     }
 

@@ -94,6 +94,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @dev Thrown when setting invalid collateral params
     error InvalidCollateralParams();
 
+    /// @dev Thrown when an invalid action is performed.
+    error InvalidAction();
+
     /// @dev Thrown when a non approved callback is used in `flashLiquidate()`
     error CallbackNotApproved(address callback);
 
@@ -306,13 +309,13 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         address receiver,
         address owner
     ) public override nonReentrant returns (uint256 shares) {
-        shares = super.withdraw(assetAmount, receiver, owner);
-        require(shares != 0, ZeroShares());
         if (assetCollateralized[owner]) {
             uint256 collateralAmount = accountCollateralAmount(owner, address(asset));
             collateralAmount = (assetAmount > collateralAmount) ? collateralAmount: assetAmount;
             if (collateralAmount != 0) _removeCollateral(owner, address(asset), collateralAmount, false);
         }
+        shares = super.withdraw(assetAmount, receiver, owner);
+        require(shares != 0, ZeroShares());
         _checkIsCollateralized(owner);
         _updatePoolState();
     }
@@ -406,10 +409,15 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     ///////////////////////////////////////////////////////////////////////////
     ///                     Managing collateral logic
     ///////////////////////////////////////////////////////////////////////////
-
+    
+    /// @notice Collateralizes the account.
+    /// @dev Throws `InvalidAction` if the account has collateral and `useAsCollateral` is false.
+    /// @param useAsCollateral Whether to collateralize the account.
     function collateralize(bool useAsCollateral) external {
+        if (!useAsCollateral && accountCollateralDeposited[msg.sender][address(asset)].amount > 0) {
+            revert InvalidAction();
+        }
         _collateralize(useAsCollateral, msg.sender);
-
     }
 
     function _collateralize(bool useAsCollateral, address account) private {
