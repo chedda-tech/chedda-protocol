@@ -35,9 +35,6 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// Custom errors
 
-    /// @dev Thrown when a caller tries to deposit a token for collateral that is not allowed
-    error CollateralNotAllowed(address token);
-
     /// @dev Thrown when adding collateral that has already been added during initialization.
     error CollateralAlreadyAdded(address token);
 
@@ -99,6 +96,9 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
 
     /// @dev Thrown when a non approved callback is used in `flashLiquidate()`
     error CallbackNotApproved(address callback);
+
+    /// @dev Thrown when caller is not approved to act on behalf of owner
+    error NotApproved(address caller, address owner);
 
     using MathLib for uint256;
     using SafeCast for int256;
@@ -169,6 +169,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     address public reserve;
 
     mapping (address => address) public icmAccountCollateral;
+
+    /// @notice Mapping of operator approval for account management
+    mapping(address => mapping(address => bool)) public operatorApprovals;
+
+    /// @notice Emitted when operator approval is set
+    event OperatorApprovalSet(address indexed owner, address indexed operator, bool approved);
 
     ///////////////////////////////////////////////////////////////////////////
     ///                         initialization
@@ -271,6 +277,12 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         require(params.lltv + params.liqPenalty < 1.0e18 && params.liqBonus < params.liqPenalty, InvalidCollateralParams());
     }
 
+    /// @notice Approve or revoke an operator to manage caller's position
+    function setOperatorApproval(address operator, bool approved) external {
+        operatorApprovals[msg.sender][operator] = approved;
+        emit OperatorApprovalSet(msg.sender, operator, approved);
+    }
+
     /*///////////////////////////////////////////////////////////////
                         borrow/repay logic
     //////////////////////////////////////////////////////////////*/
@@ -343,67 +355,93 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
         _updatePoolState();
     }
 
+    
     /// @notice Borrows asset from the pool.
     /// @dev The max amount a user can borrow must be less than the value of their collateral weighted
     /// against the loan to value ratio of that colalteral.
     /// Emits AssetBorrowed(account, amount, debt) event.
     /// @param amount The amount to borrow
+    /// @param owner The account to borrow on behalf of
     /// @return debtCreated The amount of debt token minted.
-    function take(uint256 amount) external nonReentrant returns (uint256 debtCreated) {
-        address account = msg.sender;
-        _validateBorrow(account, amount);
+    function take(uint256 amount, address owner) public nonReentrant returns (uint256 debtCreated) {
+        address operator = msg.sender;
+        if (operator != owner && !operatorApprovals[owner][operator]) {
+            revert NotApproved(operator, owner);
+        }
 
-        debtCreated = debtToken.createDebt(amount, account);
-        _checkIsCollateralized(account);
+        _validateBorrow(owner, amount);
 
-        asset.safeTransfer(account, amount);
+        debtCreated = debtToken.createDebt(amount, owner);
+        _checkIsCollateralized(owner);
+
+        asset.safeTransfer(owner, amount);
         _updatePoolState();
 
-        emit AssetBorrowed(account, amount, debtCreated);
+        emit AssetBorrowed(owner, amount, debtCreated);
     }
 
-    // repays a loan
+    /// @notice Convenience method for take(amount, msg.sender)
+    function take(uint256 amount) external returns (uint256) {
+        return take(amount, msg.sender);
+    }
+
     /// @notice Repays a part or all of a loan.
-    /// @dev Emits AssetRepaid(account, amount, debtBurned).
-    /// @param amount amount to repay. Must be > 0 and <= amount borrowed by sender
+    /// @param amount amount to repay. Must be > 0 and <= amount borrowed by owner
+    /// @param owner The account whose debt is being repaid
     /// @return debtBurned The amount of debt shares burned by this repayment.
-    function putAmount(uint256 amount) external nonReentrant returns (uint256 debtBurned) {
-        address account = msg.sender;
+    function putAmount(uint256 amount, address owner) public nonReentrant returns (uint256 debtBurned) {
+        address operator = msg.sender;
+        if (operator != owner && !operatorApprovals[owner][operator]) {
+            revert NotApproved(operator, owner);
+        }
+
         if (amount == 0) {
             revert ZeroAmount();
         }
-        if (amount > assetsBorrowed(account)) {
+        if (amount > assetsBorrowed(owner)) {
             revert Overpayment();
         }
         accrueInterest();
-        asset.safeTransferFrom(account, address(this), amount);
-        debtBurned = debtToken.repayAmount(amount, account);
+        asset.safeTransferFrom(operator, address(this), amount);
+        debtBurned = debtToken.repayAmount(amount, owner);
         _updatePoolState();
 
-        emit AssetRepaid(account, account, amount, debtBurned);
+        emit AssetRepaid(owner, operator, amount, debtBurned);
     }
 
-    // repays a loan
-    /// @notice Repays a part or all of a loan by specifying the amount of debt token to repay.
-    /// @dev Emits AssetRepaid(account, amountRepaid, shares).
-    /// @param shares The share of debt token to repay.
-    /// @return amountRepaid the amount repaid.
-    function putShares(uint256 shares) external nonReentrant returns (uint256 amountRepaid) {
-        address account = msg.sender;
-        accrueInterest();
+    /// @notice Convenience method for putAmount(amount, msg.sender)
+    function putAmount(uint256 amount) external returns (uint256) {
+        return putAmount(amount, msg.sender);
+    }
 
+    /// @notice Repays a part or all of a loan by specifying the amount of debt token to repay.
+    /// @param shares The share of debt token to repay
+    /// @param owner The account whose debt is being repaid
+    /// @return amountRepaid the amount repaid.
+    function putShares(uint256 shares, address owner) public nonReentrant returns (uint256 amountRepaid) {
+        address operator = msg.sender;
+        if (operator != owner && !operatorApprovals[owner][operator]) {
+            revert NotApproved(operator, owner);
+        }
+
+        accrueInterest();
         if (shares == 0) {
             revert ZeroAmount();
         }
-        if (shares > debtToken.accountShare(account)) {
+        if (shares > debtToken.accountShare(owner)) {
             revert Overpayment();
         }
         uint256 amountToTransfer = debtToken.convertToAssets(shares);
-        asset.safeTransferFrom(account, address(this), amountToTransfer);
-        amountRepaid = debtToken.repayShare(shares, account);
+        asset.safeTransferFrom(operator, address(this), amountToTransfer);
+        amountRepaid = debtToken.repayShare(shares, owner);
         _updatePoolState();
 
-        emit AssetRepaid(account, account, amountRepaid, shares);
+        emit AssetRepaid(owner, operator, amountRepaid, shares);
+    }
+
+    /// @notice Convenience method for putShares(shares, msg.sender)
+    function putShares(uint256 shares) external returns (uint256) {
+        return putShares(shares, msg.sender);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -413,7 +451,11 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     /// @notice Collateralizes the account.
     /// @dev Throws `InvalidAction` if the account has collateral and `useAsCollateral` is false.
     /// @param useAsCollateral Whether to collateralize the account.
-    function collateralize(bool useAsCollateral) external {
+    function collateralize(bool useAsCollateral, address owner) public {
+        address operator = msg.sender;
+        if (operator != owner && !operatorApprovals[owner][operator]) {
+            revert NotApproved(operator, owner);
+        }
         if (!useAsCollateral && accountCollateralDeposited[msg.sender][address(asset)].amount > 0) {
             revert InvalidAction();
         }
@@ -427,106 +469,117 @@ contract LendingPool is ERC4626, Ownable, ReentrancyGuard, ILendingPool, IChedda
     }
 
     /// @notice Add ERC-20 token collateral to pool.
-    /// @dev Emits CollateralAdded(address token, address account, uint tokenType, uint amount).
-    /// @param token The token to deposit as collateral.
-    /// @param amount The amount of token to deposit.
+    /// @param token The token to deposit as collateral
+    /// @param amount The amount of token to deposit
+    /// @param owner The account to add collateral for
     function addCollateral(
         address token,
-        uint256 amount
-    ) external nonReentrant {
+        uint256 amount,
+        address owner
+    ) public nonReentrant {
+        address operator = msg.sender;
+        if (operator != owner && !operatorApprovals[owner][operator]) {
+            revert NotApproved(operator, owner);
+        }
+
         if (token == address(asset)) {
             revert AssetMustBeSupplied();
         }
-        _addCollateral(msg.sender, token, amount, true);
+        ERC20(token).safeTransferFrom(operator, address(this), amount);
+        _addCollateral(owner, token, amount, false);
     }
 
-    function _addCollateral(
-        address account,
-        address token,
-        uint256 amount,
-        bool doTransfer
-    ) private {
-        // check collateral is allowed
-        if (!collateralAllowed[token]) {
-            revert CollateralNotAllowed(token);
-        }
-
-        // check amount
-        if (amount == 0) {
-            revert ZeroAmount();
-        }
-
-        // account is always msg.sender
-        if (doTransfer) {
-            ERC20(token).safeTransferFrom(account, address(this), amount);
-        }
-        tokenCollateralDeposited[token] += amount;
-
-        // add collateral to account
-        if (_accountHasCollateral(account, token)) {
-            accountCollateralDeposited[account][token].amount += amount;
-        } else {
-            CollateralDeposit memory deposit = CollateralDeposit({
-                token: token,
-                tokenType: TokenType.ERC20,
-                amount: amount,
-                tokenIds: new uint256[](0)
-            });
-            accountCollateralDeposited[account][token] = deposit;
-        }
-
-        emit CollateralAdded(token, account, TokenType.ERC20, amount);
+    /// @notice Convenience method for addCollateral(token, amount, msg.sender)
+    function addCollateral(address token, uint256 amount) external {
+        addCollateral(token, amount, msg.sender);
     }
 
     /// @notice Removes ERC20 collateral from pool.
-    /// @dev Emits CollateralRemoved(token, account, type, amount).
-    /// @param token The collateral token to remove.
-    /// @param amount The amount to remove.
+    /// @param token The collateral token to remove
+    /// @param amount The amount to remove
+    /// @param owner The account to remove collateral from
     function removeCollateral(
         address token,
-        uint256 amount
-    ) external nonReentrant {
+        uint256 amount,
+        address owner
+    ) public nonReentrant {
+        address operator = msg.sender;
+        if (operator != owner && !operatorApprovals[owner][operator]) {
+            revert NotApproved(operator, owner);
+        }
+
         if (token == address(asset)) {
             revert AsssetMustBeWithdrawn();
         }
-        _removeCollateral(msg.sender, token, amount, true);
-        _checkIsCollateralized(msg.sender);
+        _removeCollateral(owner, token, amount, true);
+        _checkIsCollateralized(owner);
     }
 
-    function _removeCollateral(
-        address account,
+    /// @notice Convenience method for removeCollateral(token, amount, msg.sender)
+    function removeCollateral(address token, uint256 amount) external {
+        removeCollateral(token, amount, msg.sender);
+    }
+
+    /// @dev Internal function to add collateral to pool.
+    /// @param owner The account to add collateral for
+    /// @param token The collateral token to add
+    /// @param amount The amount of token to add
+    /// @param doTransfer Whether to transfer tokens to owner
+    function _addCollateral(
+        address owner,
         address token,
         uint256 amount,
         bool doTransfer
-    ) private {
+    ) internal {
         if (amount == 0) {
             revert ZeroAmount();
         }
-        uint256 accountCollateral = accountCollateralAmount(account, token);
-        if (amount > accountCollateral) {
-            revert InsufficientCollateral(
-                account,
-                token,
-                amount,
-                accountCollateral
-            );
+        if (!collateralAllowed[token]) {
+            revert UnsupportedCollateral(token);
+        }
+        if (doTransfer) {
+            ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
 
+        CollateralDeposit storage deposit = accountCollateralDeposited[owner][token];
+        if (deposit.token == address(0)) {
+            deposit.token = token;
+            deposit.tokenType = TokenType.ERC20;
+        }   
+        deposit.amount += amount;
+        tokenCollateralDeposited[token] += amount;
+
+        emit CollateralAdded(owner, token, TokenType.ERC20, amount);
+    }
+
+    /// @dev Internal function to remove collateral from pool.
+    /// @param owner The account to remove collateral from
+    /// @param token The collateral token to remove
+    /// @param amount The amount of token to remove
+    /// @param doTransfer Whether to transfer tokens to owner
+    function _removeCollateral(
+        address owner,
+        address token,
+        uint256 amount,
+        bool doTransfer
+    ) internal {
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+
+        CollateralDeposit storage deposit = accountCollateralDeposited[owner][token];
+        if (deposit.amount < amount) {
+            revert InsufficientCollateral(owner, token, amount, deposit.amount);
+        }
+
+        deposit.amount -= amount;
         tokenCollateralDeposited[token] -= amount;
 
-        if (accountCollateral == amount) {
-            accountCollateralDeposited[account][token].token = address(0);
-            accountCollateralDeposited[account][token].tokenType = TokenType.Invalid;
-            accountCollateralDeposited[account][token].amount = 0;
-            delete accountCollateralDeposited[account][token].tokenIds;
-        } else {
-            accountCollateralDeposited[account][token].amount -= amount;
+        if (doTransfer) {
+            ERC20(token).safeTransfer(owner, amount);
         }
 
-        if (doTransfer) {
-            ERC20(token).safeTransfer(account, amount);
-        }
-        emit CollateralRemoved(token, account, TokenType.ERC20, amount);
+        emit CollateralRemoved(owner, token, TokenType.ERC20, amount);
     }
 
     /// Liquidations
