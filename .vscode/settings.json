@@ -1,4 +1,15 @@
 {
     "solidity.compileUsingRemoteVersion": "v0.8.27+commit.40a35a09",
-    "security.olympix.project.includePath": "contracts"
+    "security.olympix.project.includePath": "contracts",
+    "security.olympix.project.testsPath": "/test",
+    "security.olympix.project.analyzeWholeProject": true,
+    "security.olympix.detectors.shadowingReservedKeyword": true,
+    "security.olympix.detectors.reentrancyEvents": true,
+    "security.olympix.detectors.noParameterValidationInConstructor": true,
+    "security.olympix.detectors.uninitializedStateVariable": true,
+    "security.olympix.detectors.unfuzzedLocalVariables": true,
+    "security.olympix.detectors.unfuzzedVariables": true,
+    "security.olympix.detectors.sameNamedContracts": true,
+    "security.olympix.detectors.improperDiamondPattern": true,
+    "security.olympix.detectors.eventsPriceChange": true
 }

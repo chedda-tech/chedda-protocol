@@ -155,7 +155,7 @@ contract LendingPoolBaseTest is LendingPoolTest {
         // adding unapproved collateral fails
         address notCollateral = makeAddr("not collateral");
         vm.expectRevert(
-            abi.encodeWithSelector(LendingPool.CollateralNotAllowed.selector, notCollateral)
+            abi.encodeWithSelector(LendingPool.UnsupportedCollateral.selector, notCollateral)
         );
         pool.addCollateral(notCollateral, collateralAmount);
 
